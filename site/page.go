@@ -15,14 +15,14 @@ import (
 	"strings"
 )
 
-func parsePage(path string, name string, info os.FileInfo) (*page.Page, error) {
+func parsePage(path string, name string) (*page.Page, error) {
 	name = filepath.ToSlash(name[:len(name)-3])
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
 	defer file.Close()
-	return renderer.Parse(file, name, info.ModTime())
+	return renderer.Parse(file, name)
 }
 
 func getTranslationsByName(pages map[string]*page.Page) (map[string][]Translation, error) {

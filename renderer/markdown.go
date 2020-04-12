@@ -47,7 +47,7 @@ var sanitizer = func() *bluemonday.Policy {
 }()
 
 // Parse reads a page in Markdown format and parses it.
-func Parse(r io.Reader, name string, defaultDate time.Time) (*page.Page, error) {
+func Parse(r io.Reader, name string) (*page.Page, error) {
 	var buf bytes.Buffer
 	_, err := buf.ReadFrom(r)
 	if err != nil {
@@ -55,9 +55,9 @@ func Parse(r io.Reader, name string, defaultDate time.Time) (*page.Page, error) 
 	}
 	src := buf.Bytes()
 	md := markdown.Parser().Parse(text.NewReader(src))
-	header := findHeader(md, src)
-	if header.PublishDate.IsZero() {
-		header.PublishDate = defaultDate
+	header, err := findHeader(md, src)
+	if err != nil {
+		return nil, err
 	}
 	page := &page.Page{Name: name, Source: src, Root: md, Header: header}
 	return page, nil
@@ -75,9 +75,9 @@ func Render(w io.Writer, p *page.Page) error {
 	return err
 }
 
-func findHeader(root ast.Node, src []byte) page.HeaderData {
+func findHeader(root ast.Node, src []byte) (page.HeaderData, error) {
 	var header page.HeaderData
-	ast.Walk(root, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
+	err := ast.Walk(root, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
 		if n.Kind() == extensions.KindHeaderBlock {
 			rawHeader, err := n.(*extensions.HeaderBlock).ParseContents(src)
 			if err != nil {
@@ -91,7 +91,7 @@ func findHeader(root ast.Node, src []byte) page.HeaderData {
 		}
 		return ast.WalkContinue, nil
 	})
-	return header
+	return header, err
 }
 
 func parseHeader(rawHeader *extensions.RawHeader) (page.HeaderData, error) {

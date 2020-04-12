@@ -13,14 +13,12 @@ import (
 
 // Config contains the parameters of the current site.
 type Config struct {
-	TemplatePath string
-	InputPath    string
-	OutputPath   string
-	WebRoot      string
-	SiteName     string
-	SiteURI      string
-	AuthorName   string
-	AuthorURI    string
+	TemplatePath string `yaml:"template_path"`
+	InputPath    string `yaml:"input_path"`
+	OutputPath   string `yaml:"output_path"`
+	WebRoot      string `yaml:"webroot"`
+	AuthorName   string `yaml:"author_name"`
+	AuthorURI    string `yaml:"author_uri"`
 }
 
 // Contents contains the parsed and indexed content of the site.
@@ -80,7 +78,7 @@ func (s Config) Read() (*Contents, error) {
 			return err
 		}
 		if strings.HasSuffix(path, ".md") {
-			page, err := parsePage(path, name, info)
+			page, err := parsePage(path, name)
 			if err != nil {
 				return fmt.Errorf("Error parsing page %s: %v", path, err)
 			}
