@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>
+            {{if .Tag}}Índice de historias etiquetadas &ldquo;{{.Tag}}&rdquo;{{end}}
+            {{if not .Tag}}Índice de historias{{end}}
+        </title>
+        <link rel="stylesheet" href="{{webRoot}}/style/style.css">
+    </head>
+
+    <body>
+        <div class="titleBar">
+            <div class="title">
+                {{if .Tag}}Índice de historias etiquetadas &ldquo;{{.Tag}}&rdquo;{{end}}
+                {{if not .Tag}}Índice de historias{{end}}
+            </div>
+            <div class="count">Hai {{.TotalCount}} {{plural .TotalCount "historia" "historias"}} en total.</div>
+        </div>
+
+        <div class="indexBox">
+        {{range .Years}}
+            <div class="indexItem">
+                <div class="title"><a href="{{getTocURIWithYear .Year}}">{{if .Year}}Ano {{.Year}}{{end}}{{if not .Year}}Sen data{{end}}</a></div>
+                {{if .Count}}<div class="summary">{{.Count}} {{plural .Count "historia" "historias"}}</div>{{end}}
+                {{if .Tags}}<div class="tags">Sobre {{$y := .Year}}{{range $i, $e := .Tags}}{{if $i}}, {{end}}&ldquo;<a href="{{getTagURIWithYear $e $y}}">{{$e}}</a>&rdquo;{{end}}.</div>{{end}}
+            </div>
+        {{end}}
+        </div>
+
+        <div class="theEnd">❧ ☙</div>
+
+        <div class="footBar">
+            <div>Index <a href="{{.BaseURI}}-en.html">in English</a></div>
+            <div>Índice <a href="{{.BaseURI}}-es.html">en español</a></div>
+        </div>
+        <div class="bottomBar">Agás que se indique o contrario, esta páxina e o seu contido son Copyright &copy; Jacobo Tarrío Barreiro. Todos os Dereitos Reservados. <a href="{{webRoot}}/terms-gl.html">Información sobre tratamento de datos e condicións de uso.</a></div>
+    </body>
+</html>

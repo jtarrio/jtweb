@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>{{.Title}}</title>
+        <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3.0.1/es5/tex-mml-chtml.js"></script>
+        <link rel="stylesheet" href="{{webRoot}}/style/style.css">
+    </head>
+
+    <body>
+        <div class="titleBar">
+            <div class="title"><a href="{{.Permalink}}">{{.Title}}</a></div>
+            {{if .Author.Name}}<div class="byline">By {{if .Author.URI}}<a href="{{.Author.URI}}">{{.Author.Name}}</a>{{end}}{{if not .Author.URI}}{{.Author.Name}}{{end}}</div>{{end}}
+            {{if not .PublishDate.IsZero}}<div class="date"><a href="{{.Permalink}}">{{formatDate .PublishDate}}</a></div>{{end}}
+        </div>
+
+        <div class="contentBox">
+{{.Content}}
+        </div>
+
+        <div class="theEnd">❧ ☙</div>
+
+        <div class="footBar">
+            {{range .Translations}}
+                {{if eq .Language "es"}}<div>Esta historia ha sido traducida al español: &ldquo;<a href="{{.URI}}">{{.Name}}</a>&rdquo;.</div>{{end}}
+                {{if eq .Language "gl"}}<div>Esta historia foi traducida ao galego: &ldquo;<a href="{{.URI}}">{{.Name}}</a>&rdquo;.</div>{{end}}
+            {{end}}
+            {{if .NewerPage.URI}}<div>Newer story: &ldquo;<a href="{{.NewerPage.URI}}">{{.NewerPage.Name}}</a>&rdquo;.</div>{{end}}
+            {{if .OlderPage.URI}}<div>Older story: &ldquo;<a href="{{.OlderPage.URI}}">{{.OlderPage.Name}}</a>&rdquo;.</div>{{end}}
+            {{if .Tags}}<div>Other stories about {{range $i, $e := .Tags}}{{if $i}}, {{end}}&ldquo;<a href="{{getTagURIWithTime $e $.PublishDate}}">{{$e}}</a>&rdquo;{{end}}.</div>{{end}}
+            {{if not .PublishDate.IsZero}}<div>Other stories published in <a href="{{getTocURIWithTime $.PublishDate}}">{{.PublishDate.Year}}</a>.</div>{{end}}
+        </div>
+        <div class="bottomBar">Except where indicated otherwise, this page and its contents are Copyright &copy; Jacobo Tarrío Barreiro. All Rights Reserved. <a href="{{webRoot}}/terms-en.html">Privacy statement and terms of use.</a></div>
+    </body>
+</html>

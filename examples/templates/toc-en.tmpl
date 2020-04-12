@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>
+            {{if .Tag}}
+                {{if .Year}}Stories tagged &ldquo;{{.Tag}}&rdquo; in {{.Year}}{{end}}
+                {{if not .Year}}Undated stories tagged &ldquo;{{.Tag}}&rdquo;{{end}}
+            {{end}}
+            {{if not .Tag}}
+                {{if .Year}}Stories published in {{.Year}}{{end}}
+                {{if not .Year}}Undated stories{{end}}
+            {{end}}
+        </title>
+        <link rel="stylesheet" href="{{webRoot}}/style/style.css">
+    </head>
+
+    <body>
+        <div class="titleBar">
+            <div class="title">
+                {{if .Tag}}
+                    {{if .Year}}Stories tagged &ldquo;{{.Tag}}&rdquo; in {{.Year}}{{end}}
+                    {{if not .Year}}Undated stories tagged &ldquo;{{.Tag}}&rdquo;{{end}}
+                {{end}}
+                {{if not .Tag}}
+                    {{if .Year}}Stories published in {{.Year}}{{end}}
+                    {{if not .Year}}Undated stories{{end}}
+                {{end}}
+            </div>
+            <div class="count">
+                {{if .Year}}{{.YearCount}} {{plural .YearCount "story" "stories"}} in {{.Year}},{{end}}
+                {{if not .Year}}{{.YearCount}} undated {{plural .YearCount "story" "stories"}},{{end}}
+                {{.TotalCount}} {{plural .TotalCount "story" "stories"}} in total.
+            </div>
+        </div>
+
+        <div class="indexBox">
+        {{range .Stories}}
+            <div class="indexItem">
+                <div class="title"><a href="{{.Permalink}}">{{.Title}}</a></div>
+                {{if .PublishDate}}<div class="date">{{formatDate .PublishDate}}</div>{{end}}
+                {{if .Summary}}<div class="summary">{{.Summary}}</div>{{end}}
+                {{if .Tags}}<div class="tags">About {{range $i, $e := .Tags}}{{if $i}}, {{end}}&ldquo;<a href="{{getTagURIWithYear $e $.Year}}">{{$e}}</a>&rdquo;{{end}}.</div>{{end}}
+            </div>
+        {{end}}
+        </div>
+
+        <div class="theEnd">❧ ☙</div>
+
+        <div class="footBar">
+            {{if .StoryYears}}<div>Other stories written in {{range $i, $e := .StoryYears}}{{if $i}}, {{end}}<a href="{{$.BaseURI}}-{{$e}}.html">{{$e}}</a>{{end}}.</div>{{end}}
+            {{if .UndatedStories}}<div>Other <a href="{{.BaseURI}}-0.html">undated stories</a>.</div>{{end}}
+            <div>Full <a href="{{getTocURI}}">table of contents</a>.</div>
+            {{if .Tag}}<div>Table of contents for &ldquo;<a href="{{getTagTocURI .Tag}}">{{.Tag}}</a>&rdquo;.</div>{{end}}
+        </div>
+        <div class="bottomBar">Except where indicated otherwise, this page and its contents are Copyright &copy; Jacobo Tarrío Barreiro. All Rights Reserved. <a href="{{webRoot}}/terms-en.html">Privacy statement and terms of use.</a></div>
+    </body>
+</html>
