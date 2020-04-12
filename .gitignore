@@ -1,3 +1,4 @@
 .vscode/
 
 sitegenerator.exe
+cmd/sitegenerator/__debug_bin
