@@ -11,16 +11,6 @@ import (
 	"strings"
 )
 
-// Config contains the parameters of the current site.
-type Config struct {
-	TemplatePath string `yaml:"template_path"`
-	InputPath    string `yaml:"input_path"`
-	OutputPath   string `yaml:"output_path"`
-	WebRoot      string `yaml:"webroot"`
-	AuthorName   string `yaml:"author_name"`
-	AuthorURI    string `yaml:"author_uri"`
-}
-
 // Contents contains the parsed and indexed content of the site.
 type Contents struct {
 	Config
@@ -200,6 +190,14 @@ func (c *Contents) Write() error {
 			if err != nil {
 				return err
 			}
+		}
+		err = makeFile(
+			fmt.Sprintf("%s/%s.xml", filepath.Join(c.OutputPath, "rss"), lang),
+			func(w io.Writer) error {
+				return c.outputRss(w, t, lang)
+			})
+		if err != nil {
+			return err
 		}
 	}
 	return nil

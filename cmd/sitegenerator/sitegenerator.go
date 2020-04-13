@@ -4,8 +4,6 @@ import (
 	"flag"
 	"io/ioutil"
 	"jtweb/site"
-
-	"gopkg.in/yaml.v2"
 )
 
 var flagConfigFile = flag.String("config_file", "", "The name of the file containing the site's configuration.")
@@ -13,23 +11,27 @@ var flagTemplatePath = flag.String("template_path", "", "The full pathname where
 var flagInputPath = flag.String("input_path", "", "The full pathname where the input files are located.")
 var flagOutputPath = flag.String("output_path", "", "The full pathname where the rendered HTML files will be output.")
 var flagWebroot = flag.String("webroot", "", "The URI where the generated content will live.")
+var flagSiteName = flag.String("site_name", "", "The site's name.")
+var flagSiteURI = flag.String("site_uri", "", "The site's URI.")
 var flagAuthorName = flag.String("author_name", "", "The default author's name.")
 var flagAuthorURI = flag.String("author_uri", "", "The default author's website URI.")
 
 func main() {
 	flag.Parse()
 
-	cfg := site.Config{}
+	var cfg *site.Config
 
 	if *flagConfigFile != "" {
 		file, err := ioutil.ReadFile(*flagConfigFile)
 		if err != nil {
 			panic(err)
 		}
-		err = yaml.UnmarshalStrict(file, &cfg)
+		cfg, err = site.ParseConfig(file)
 		if err != nil {
 			panic(err)
 		}
+	} else {
+		cfg = &site.Config{}
 	}
 
 	if *flagTemplatePath != "" {
@@ -44,6 +46,12 @@ func main() {
 	if *flagWebroot != "" {
 		cfg.WebRoot = *flagWebroot
 	}
+	if *flagSiteName != "" {
+		cfg.SiteName = *flagSiteName
+	}
+	if *flagSiteURI != "" {
+		cfg.SiteURI = *flagSiteURI
+	}
 	if *flagAuthorName != "" {
 		cfg.AuthorName = *flagAuthorName
 	}
@@ -51,23 +59,9 @@ func main() {
 		cfg.AuthorURI = *flagAuthorURI
 	}
 
-	if cfg.TemplatePath == "" {
-		panic("The template path has not been set.")
-	}
-	if cfg.InputPath == "" {
-		panic("The input path has not been set.")
-	}
-	if cfg.OutputPath == "" {
-		panic("The output path has not been set.")
-	}
-	if cfg.WebRoot == "" {
-		panic("The web root has not been set.")
-	}
-	if cfg.AuthorName == "" {
-		panic("The default author's name has not been set.")
-	}
-	if cfg.AuthorURI == "" {
-		cfg.AuthorURI = cfg.WebRoot
+	err := cfg.Normalize()
+	if err != nil {
+		panic(err)
 	}
 
 	content, err := cfg.Read()
