@@ -78,8 +78,6 @@ func (c *Contents) writeRedirects(bw *bufio.Writer) error {
 	}
 	sort.Stable(pats)
 
-	bw.WriteString("RewriteCond\t%{QUERY_STRING}\t(.*(?:^|&))op=historia&sid=([0-9]+)(?:&.*)$\n")
-	bw.WriteString("RewriteRule\t(.*)\t_mlog/%1\n\n")
 	for _, pat := range pats {
 		err := pat.Write(bw)
 		if err != nil {
@@ -107,10 +105,7 @@ func (c *Contents) makeRedirectPatterns(p *page.Page) ([]redirectPattern, error)
 		if path[0] == '/' {
 			path = path[1:]
 		}
-		query := parsed.Query()
-		if len(query) != 0 && len(query["op"]) != 0 && query["op"][0] == "historia" && len(query["sid"]) == 1 {
-			out = append(out, &uriBasedPattern{oldPath: "_mlog/" + query["sid"][0], newPath: newPath})
-		} else if strings.HasPrefix(path, "node/") {
+		if strings.HasPrefix(path, "node/") {
 			out = append(out, &uriBasedPattern{oldPath: "(es/|gl/)?" + regexp.QuoteMeta(path), newPath: newPath})
 		} else {
 			out = append(out, &uriBasedPattern{oldPath: regexp.QuoteMeta(path), newPath: newPath})
