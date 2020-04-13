@@ -5,6 +5,7 @@ import (
 	"jtweb/page"
 	"jtweb/renderer"
 	"jtweb/renderer/templates"
+	"jtweb/uri"
 	"math"
 	"strings"
 
@@ -40,7 +41,7 @@ func (c *Contents) outputRss(w io.Writer, t *templates.Templates, lang string) e
 		}
 		feed.Items[i] = &feeds.Item{
 			Title:       p.Header.Title,
-			Link:        &feeds.Link{Href: c.Config.WebRoot + p.Name + ".html"},
+			Link:        &feeds.Link{Href: uri.Concat(c.Config.WebRoot, p.Name) + ".html"},
 			Author:      &feeds.Author{Name: p.Header.AuthorName},
 			Created:     p.Header.PublishDate,
 			Description: sb.String(),
