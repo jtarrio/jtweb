@@ -5,34 +5,22 @@
             {{if .Tag}}Index of stories tagged &ldquo;{{.Tag}}&rdquo;{{end}}
             {{if not .Tag}}Story index{{end}}
         </title>
-        <link rel="stylesheet" href="{{webRoot}}/style/style.css">
     </head>
 
     <body>
-        <div class="titleBar">
-            <div class="title">
-                {{if .Tag}}Index of stories tagged &ldquo;{{.Tag}}&rdquo;{{end}}
-                {{if not .Tag}}Story index{{end}}
-            </div>
-            <div class="count">There are {{plural .TotalCount "is" "are"}} {{.TotalCount}} {{plural .TotalCount "story" "stories"}} in total.</div>
-        </div>
+        <h1>
+            {{if .Tag}}Index of stories tagged &ldquo;{{.Tag}}&rdquo;{{end}}
+            {{if not .Tag}}Story index{{end}}
+        </h1>
+        <p>There {{plural .TotalCount "is" "are"}} {{.TotalCount}} {{plural .TotalCount "story" "stories"}} in total.</p>
 
-        <div class="indexBox">
         {{range .Years}}
-            <div class="indexItem">
-                <div class="title"><a href="{{getTocURIWithYear .Year}}">{{if .Year}}Year {{.Year}}{{end}}{{if not .Year}}Undated{{end}}</a></div>
-                {{if .Count}}<div class="summary">{{.Count}} {{plural .Count "story" "stories"}}</div>{{end}}
-                {{if .Tags}}<div class="tags">About {{$y := .Year}}{{range $i, $e := .Tags}}{{if $i}}, {{end}}&ldquo;<a href="{{getTagURIWithYear $e $y}}">{{$e}}</a>&rdquo;{{end}}.</div>{{end}}
-            </div>
+            <h2><a href="{{getTocURIWithYear .Year}}">{{if .Year}}Year {{.Year}}{{end}}{{if not .Year}}Undated{{end}}</a></>
+            {{if .Count}}<p>{{.Count}} {{plural .Count "story" "stories"}}</p>{{end}}
+            {{if .Tags}}<p>About {{$y := .Year}}{{range $i, $e := .Tags}}{{if $i}}, {{end}}&ldquo;<a href="{{getTagURIWithYear $e $y}}">{{$e}}</a>&rdquo;{{end}}.</p>{{end}}
         {{end}}
-        </div>
 
-        <div class="theEnd">❧ ☙</div>
-
-        <div class="footBar">
-            <div>Índice <a href="{{.BaseURI}}-es.html">en español</a></div>
-            <div>Índice <a href="{{.BaseURI}}-gl.html">en galego</a></div>
-        </div>
-        <div class="bottomBar">Except where indicated otherwise, this page and its contents are Copyright &copy; Jacobo Tarrío Barreiro. All Rights Reserved. <a href="{{webRoot}}/terms-en.html">Privacy statement and terms of use.</a></div>
+        <div>Índice <a href="{{.BaseURI}}-es.html">en español</a></div>
+        <div>Índice <a href="{{.BaseURI}}-gl.html">en galego</a></div>
     </body>
 </html>
