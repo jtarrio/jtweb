@@ -25,6 +25,7 @@ type Config struct {
 type Contents struct {
 	Config
 	Files        []string
+	Templates    []string
 	Pages        map[string]*page.Page
 	Tags         map[string]string
 	Toc          GlobalTableOfContents
@@ -64,6 +65,7 @@ type Translation struct {
 // Read parses the whole site contents.
 func (s Config) Read() (*Contents, error) {
 	files := make([]string, 0)
+	templates := make([]string, 0)
 	pagesByName := make(map[string]*page.Page)
 	tagNames := make(map[string]string)
 	err := filepath.Walk(s.InputPath, func(path string, info os.FileInfo, err error) error {
@@ -86,6 +88,8 @@ func (s Config) Read() (*Contents, error) {
 			for _, tag := range page.Header.Tags {
 				tagNames[uri.GetTagPath(tag)] = tag
 			}
+		} else if strings.HasSuffix(path, ".tmpl") {
+			templates = append(templates, name[:len(name)-5])
 		} else {
 			files = append(files, name)
 		}
@@ -108,6 +112,7 @@ func (s Config) Read() (*Contents, error) {
 	c := Contents{
 		Config:       s,
 		Files:        files,
+		Templates:    templates,
 		Pages:        pagesByName,
 		Tags:         tagNames,
 		Toc:          tocByLanguage,
@@ -137,6 +142,12 @@ func (c *Contents) Write() error {
 			if err != nil {
 				return err
 			}
+		}
+	}
+	for _, name := range c.Templates {
+		err := c.renderTemplate(name)
+		if err != nil {
+			return err
 		}
 	}
 	for _, page := range c.Pages {
