@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"time"
 )
 
 const redirectPlaceholder = "### REDIRECTS ###"
@@ -67,8 +68,14 @@ func (c *Contents) outputHtaccess(name string) error {
 	return os.Chtimes(outName, stat.ModTime(), stat.ModTime())
 }
 
+type redirectPattern struct {
+	oldPath     string
+	newPath     string
+	publishDate time.Time
+}
+
 func (c *Contents) writeRedirects(bw *bufio.Writer) error {
-	var pats patternList
+	var pats []redirectPattern
 	for _, page := range c.Pages {
 		patterns, err := c.makeRedirectPatterns(page)
 		if err != nil {
@@ -76,10 +83,20 @@ func (c *Contents) writeRedirects(bw *bufio.Writer) error {
 		}
 		pats = append(pats, patterns...)
 	}
-	sort.Stable(pats)
+	sort.SliceStable(pats, func(i, j int) bool {
+		a := pats[i]
+		b := pats[j]
+		if !a.publishDate.Equal(b.publishDate) {
+			return a.publishDate.After(b.publishDate)
+		}
+		if a.newPath != b.newPath {
+			return a.newPath < b.newPath
+		}
+		return a.oldPath < b.oldPath
+	})
 
 	for _, pat := range pats {
-		err := pat.Write(bw)
+		_, err := bw.WriteString(fmt.Sprintf("RewriteRule ^%s$ %s [R,L]\n", pat.oldPath, pat.newPath))
 		if err != nil {
 			return err
 		}
@@ -95,6 +112,10 @@ func (c *Contents) makeRedirectPatterns(p *page.Page) ([]redirectPattern, error)
 		return nil, err
 	}
 	newPath := parsed.EscapedPath()
+	publishDate := p.Header.PublishDate
+	if p.Header.HidePublishDate {
+		publishDate = time.Time{}
+	}
 
 	for _, oldURI := range p.Header.OldURI {
 		parsed, err := url.Parse(oldURI)
@@ -105,42 +126,11 @@ func (c *Contents) makeRedirectPatterns(p *page.Page) ([]redirectPattern, error)
 		if path[0] == '/' {
 			path = path[1:]
 		}
-		if strings.HasPrefix(path, "node/") {
-			out = append(out, &uriBasedPattern{oldPath: "(es/|gl/)?" + regexp.QuoteMeta(path), newPath: newPath})
-		} else {
-			out = append(out, &uriBasedPattern{oldPath: regexp.QuoteMeta(path), newPath: newPath})
-		}
+		out = append(out, redirectPattern{
+			oldPath:     regexp.QuoteMeta(path),
+			newPath:     newPath,
+			publishDate: publishDate})
 	}
 
 	return out, nil
-}
-
-type redirectPattern interface {
-	Write(bw *bufio.Writer) error
-}
-
-type uriBasedPattern struct {
-	oldPath string
-	newPath string
-}
-
-func (p *uriBasedPattern) Write(bw *bufio.Writer) error {
-	_, err := bw.WriteString(fmt.Sprintf("RewriteRule\t^%s$\t%s\t[R,L]\n", p.oldPath, p.newPath))
-	return err
-}
-
-type patternList []redirectPattern
-
-func (p patternList) Len() int {
-	return len(p)
-}
-
-func (p patternList) Less(i, j int) bool {
-	a := p[i].(*uriBasedPattern)
-	b := p[j].(*uriBasedPattern)
-	return a.oldPath < b.oldPath || (a.oldPath == b.oldPath && a.newPath < b.newPath)
-}
-
-func (p patternList) Swap(i, j int) {
-	p[i], p[j] = p[j], p[i]
 }
