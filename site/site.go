@@ -118,6 +118,7 @@ func (c *Contents) Write() error {
 	t := &templates.Templates{
 		TemplatePath: c.TemplatePath,
 		WebRoot:      c.WebRoot,
+		Site:         templates.LinkData{Name: c.SiteName, URI: c.SiteURI},
 	}
 	for _, file := range c.Files {
 		if file == ".htaccess" {

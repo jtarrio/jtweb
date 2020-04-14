@@ -223,7 +223,6 @@ func (c *Contents) outputToc(w io.Writer, t *templates.Templates, lang string, n
 	}
 
 	tocData := templates.TocData{
-		WebRoot:        c.Config.WebRoot,
 		BaseURI:        baseURI,
 		Tag:            tag,
 		Year:           year,
@@ -242,7 +241,6 @@ func (c *Contents) makePageData(page *page.Page) templates.PageData {
 	renderer.Render(&sb, page)
 
 	pageData := templates.PageData{
-		WebRoot:   c.Config.WebRoot,
 		Title:     page.Header.Title,
 		Permalink: c.makePageURI(page),
 		Author:    templates.LinkData{},
@@ -311,7 +309,6 @@ func (c *Contents) outputIndex(w io.Writer, t *templates.Templates, lang string,
 		}
 	}
 	indexTocData := templates.IndexTocData{
-		WebRoot:    c.WebRoot,
 		BaseURI:    uriBase,
 		Tag:        tag,
 		TotalCount: toc.TotalCount,

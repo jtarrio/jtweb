@@ -13,6 +13,7 @@ import (
 type Templates struct {
 	TemplatePath      string
 	WebRoot           string
+	Site              LinkData
 	tocTemplates      map[string]*template.Template
 	pageTemplates     map[string]*template.Template
 	indexTocTemplates map[string]*template.Template
@@ -26,7 +27,6 @@ type LinkData struct {
 
 // PageData holds page information to be rendered.
 type PageData struct {
-	WebRoot      string
 	Title        string
 	Permalink    string
 	Author       LinkData
@@ -48,7 +48,6 @@ type TranslationData struct {
 
 // TocData holds table-of-contents information to be rendered.
 type TocData struct {
-	WebRoot        string
 	BaseURI        string
 	Tag            string
 	Year           int
@@ -61,7 +60,6 @@ type TocData struct {
 
 // IndexTocData holds per-year TOC index data to be rendered.
 type IndexTocData struct {
-	WebRoot    string
 	BaseURI    string
 	Tag        string
 	TotalCount int
@@ -149,6 +147,9 @@ func (t Templates) loadTemplate(fileName string, lang string) (*template.Templat
 			return lang
 		},
 		"plural": t.Plural,
+		"site": func() LinkData {
+			return t.Site
+		},
 		"webRoot": func() string {
 			return t.WebRoot
 		},
