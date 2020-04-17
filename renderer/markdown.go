@@ -27,6 +27,8 @@ var markdown goldmark.Markdown = goldmark.New(
 	goldmark.WithExtensions(
 		extensions.HeaderExtension,
 		extensions.YouTubeExtension,
+		extensions.MultipleImageExtension,
+		extensions.ImageCaptionExtension,
 		extension.GFM,
 		extension.Typographer,
 		highlighting.NewHighlighting(highlighting.WithStyle("igor")),

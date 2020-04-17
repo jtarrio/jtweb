@@ -20,10 +20,10 @@ var YouTubeExtension = &youTubeExtension{}
 
 func (h *youTubeExtension) Extend(m goldmark.Markdown) {
 	m.Parser().AddOptions(parser.WithBlockParsers(
-		util.Prioritized(newYouTubeBlockParser(), 0),
+		util.Prioritized(newYouTubeBlockParser(), 10),
 	))
 	m.Renderer().AddOptions(renderer.WithNodeRenderers(
-		util.Prioritized(newYouTubeBlockRenderer(), 0),
+		util.Prioritized(newYouTubeBlockRenderer(), 10),
 	))
 }
 
