@@ -53,13 +53,13 @@ func newMultipleImageASTTransformer() *multipleImageASTTransformer {
 }
 
 func (t *multipleImageASTTransformer) Transform(node *ast.Document, reader text.Reader, pc parser.Context) {
-	imgs := make([]*ast.Image, 0)
+	imgs := make([]ast.Node, 0)
 	ast.Walk(node, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
 		if entering && n.Kind() == ast.KindImage {
 			prev := previousNonBlankSibling(n)
 			next := nextNonBlankSibling(n)
-			if (prev == nil || prev.Kind() != ast.KindImage) && next != nil && next.Kind() == ast.KindImage {
-				imgs = append(imgs, n.(*ast.Image))
+			if (prev == nil || !isSingleImage(prev)) && next != nil && isSingleImage(next) {
+				imgs = append(imgs, n)
 			}
 		}
 		return ast.WalkContinue, nil
@@ -82,9 +82,20 @@ func (t *multipleImageASTTransformer) Transform(node *ast.Document, reader text.
 	}
 }
 
+func isSingleImage(n ast.Node) bool {
+	if n.Kind() == ast.KindImage {
+		return true
+	}
+	if n.Kind() == ast.KindLink {
+		child := n.FirstChild()
+		return child != nil && child.NextSibling() == nil && isSingleImage(child)
+	}
+	return false
+}
+
 func getNextImgs(n ast.Node) []ast.Node {
 	sibs := []ast.Node{n}
-	for sib := nextNonBlankSibling(n); sib != nil && sib.Kind() == ast.KindImage; sib = nextNonBlankSibling(sib) {
+	for sib := nextNonBlankSibling(n); sib != nil && isSingleImage(sib); sib = nextNonBlankSibling(sib) {
 		sibs = append(sibs, sib)
 	}
 	return sibs

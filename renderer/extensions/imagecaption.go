@@ -62,8 +62,10 @@ func (t *imageCaptionASTTransformer) Transform(node *ast.Document, reader text.R
 	})
 	for _, img := range imgs {
 		siblings := getCaptionSiblings(img)
-		nonBlank := getNonBlankNodes(siblings)
-		if len(nonBlank) == 0 {
+		for len(siblings) > 0 && isBlankNode(siblings[0]) {
+			siblings = siblings[1:]
+		}
+		if len(siblings) == 0 {
 			continue
 		}
 		parent := img.Parent()
@@ -71,15 +73,20 @@ func (t *imageCaptionASTTransformer) Transform(node *ast.Document, reader text.R
 		parent.InsertAfter(parent, img, caption)
 		for _, sib := range siblings {
 			parent.RemoveChild(parent, sib)
-		}
-		for _, sib := range nonBlank {
 			caption.AppendChild(caption, sib)
 		}
 	}
 }
 
 func isImage(n ast.Node) bool {
-	return n.Kind() == ast.KindImage || n.Kind() == KindMultipleImage
+	if n.Kind() == ast.KindImage || n.Kind() == KindMultipleImage {
+		return true
+	}
+	if n.Kind() == ast.KindLink {
+		child := n.FirstChild()
+		return child != nil && child.NextSibling() == nil && isImage(child)
+	}
+	return false
 }
 
 func getCaptionSiblings(n ast.Node) []ast.Node {
