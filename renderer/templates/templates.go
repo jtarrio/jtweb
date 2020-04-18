@@ -180,5 +180,8 @@ func (t Templates) Plural(count int, singular string, plural string) string {
 
 // Year returns the year part of the given time.
 func (t Templates) Year(tm time.Time) int {
+	if tm.IsZero() {
+		return 0
+	}
 	return tm.Year()
 }

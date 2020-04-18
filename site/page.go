@@ -164,7 +164,7 @@ func groupByPublishYear(nameList []string, pages map[string]*page.Page) map[int]
 	for _, name := range nameList {
 		header := pages[name].Header
 		year := header.PublishDate.Year()
-		if header.HidePublishDate {
+		if header.HidePublishDate || header.PublishDate.IsZero() {
 			year = 0
 		}
 		groups[year] = append(groups[year], name)
