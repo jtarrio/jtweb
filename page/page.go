@@ -28,4 +28,5 @@ type HeaderData struct {
 	NoIndex         bool
 	OldURI          []string
 	TranslationOf   string
+	Draft           bool
 }

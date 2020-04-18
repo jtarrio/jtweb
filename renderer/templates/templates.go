@@ -37,6 +37,7 @@ type PageData struct {
 	NewerPage    LinkData
 	OlderPage    LinkData
 	Translations []TranslationData
+	Draft        bool
 }
 
 // TranslationData holds information about a translation.

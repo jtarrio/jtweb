@@ -2,10 +2,8 @@ package renderer
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"regexp"
-	"time"
 
 	"jtweb/page"
 	"jtweb/renderer/extensions"
@@ -81,78 +79,11 @@ func findHeader(root ast.Node, src []byte) (page.HeaderData, error) {
 	var header page.HeaderData
 	err := ast.Walk(root, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
 		if n.Kind() == extensions.KindHeaderBlock {
-			rawHeader, err := n.(*extensions.HeaderBlock).ParseContents(src)
-			if err != nil {
-				return ast.WalkStop, err
-			}
-			header, err = parseHeader(rawHeader)
-			if err != nil {
-				return ast.WalkStop, err
-			}
-			return ast.WalkStop, nil
+			var err error
+			header, err = n.(*extensions.HeaderBlock).ParseContents(src)
+			return ast.WalkStop, err
 		}
 		return ast.WalkContinue, nil
 	})
 	return header, err
-}
-
-func parseHeader(rawHeader *extensions.RawHeader) (page.HeaderData, error) {
-	var out page.HeaderData
-
-	if rawHeader.Title == "" {
-		return out, fmt.Errorf("Missing title")
-	}
-
-	out.Title = rawHeader.Title
-	out.Language = rawHeader.Language
-	if out.Language == "" {
-		out.Language = "en"
-	}
-	out.Summary = rawHeader.Summary
-	if rawHeader.PublishDate != "" {
-		d, err := parseDate(rawHeader.PublishDate)
-		if err == nil {
-			out.PublishDate = d
-		}
-	}
-	out.HidePublishDate = rawHeader.HidePublishDate
-	out.AuthorName = rawHeader.AuthorName
-	out.AuthorURI = rawHeader.AuthorURI
-	out.HideAuthor = rawHeader.HideAuthor
-	out.Tags = rawHeader.Tags
-	out.NoIndex = rawHeader.NoIndex
-	out.OldURI = rawHeader.OldURI
-	out.TranslationOf = rawHeader.TranslationOf
-	return out, nil
-}
-
-var dateFormats []string = []string{"2006-01-02", "01/02/2006", "02-01-2006"}
-var timeFormats []string = []string{"3:04:05pm", "3:04pm", "15:04:05", "15:04"}
-
-func parseDate(str string) (time.Time, error) {
-	d, err := time.Parse("2006-01-02T15:04:05-0700", str)
-	if err == nil {
-		return d, nil
-	}
-	for _, df := range dateFormats {
-		for _, tf := range timeFormats {
-			d, err = time.Parse(df+" "+tf+" -0700 MST", str)
-			if err == nil {
-				return d, nil
-			}
-			d, err = time.Parse(df+" "+tf+" -0700", str)
-			if err == nil {
-				return d, nil
-			}
-			d, err = time.Parse(df+" "+tf, str)
-			if err == nil {
-				return d, nil
-			}
-		}
-		d, err = time.Parse(df, str)
-		if err == nil {
-			return d, nil
-		}
-	}
-	return d, err
 }

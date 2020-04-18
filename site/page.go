@@ -114,7 +114,7 @@ func indexPages(pages map[string]*page.Page, translationsByName map[string][]Tra
 func makeNameIndex(pages map[string]*page.Page, language languages.Language, translationsByName map[string][]Translation) []string {
 	allNames := make([]string, 0, len(pages))
 	for name, page := range pages {
-		if page.Header.NoIndex {
+		if page.Header.NoIndex || page.Header.Draft {
 			continue
 		}
 		if page.Header.Language == language.Code() || translationsByName[name] == nil {
@@ -247,6 +247,7 @@ func (c *Contents) makePageData(page *page.Page) templates.PageData {
 		Summary:   page.Header.Summary,
 		Tags:      page.Header.Tags,
 		Content:   template.HTML(sb.String()),
+		Draft:     page.Header.Draft,
 	}
 	if !page.Header.HidePublishDate {
 		pageData.PublishDate = page.Header.PublishDate

@@ -2,6 +2,9 @@ package extensions
 
 import (
 	"bytes"
+	"fmt"
+	"jtweb/page"
+	"time"
 
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/ast"
@@ -67,10 +70,12 @@ type RawHeader struct {
 	NoIndex         bool     `yaml:"no_index"`
 	OldURI          []string `yaml:"old_uris"`
 	TranslationOf   string   `yaml:"translation_of"`
+	Draft           bool
 }
 
-// ParseContents parses the header and returns a RawHeader object.
-func (n *HeaderBlock) ParseContents(src []byte) (*RawHeader, error) {
+// ParseContents parses the header and returns a HeaderData object.
+func (n *HeaderBlock) ParseContents(src []byte) (page.HeaderData, error) {
+	var out page.HeaderData
 	var buf bytes.Buffer
 	for i := 0; i < n.Lines().Len(); i++ {
 		line := n.Lines().At(i)
@@ -79,9 +84,66 @@ func (n *HeaderBlock) ParseContents(src []byte) (*RawHeader, error) {
 	rawHeader := &RawHeader{}
 	err := yaml.UnmarshalStrict(buf.Bytes(), rawHeader)
 	if err != nil {
-		return nil, err
+		return out, err
 	}
-	return rawHeader, nil
+
+	if rawHeader.Title == "" {
+		return out, fmt.Errorf("Missing title")
+	}
+
+	out.Title = rawHeader.Title
+	out.Language = rawHeader.Language
+	if out.Language == "" {
+		out.Language = "en"
+	}
+	out.Summary = rawHeader.Summary
+	if rawHeader.PublishDate != "" {
+		d, err := parseDate(rawHeader.PublishDate)
+		if err == nil {
+			out.PublishDate = d
+		}
+	}
+	out.HidePublishDate = rawHeader.HidePublishDate
+	out.AuthorName = rawHeader.AuthorName
+	out.AuthorURI = rawHeader.AuthorURI
+	out.HideAuthor = rawHeader.HideAuthor
+	out.Tags = rawHeader.Tags
+	out.NoIndex = rawHeader.NoIndex
+	out.OldURI = rawHeader.OldURI
+	out.TranslationOf = rawHeader.TranslationOf
+	out.Draft = rawHeader.Draft
+	return out, nil
+}
+
+var dateFormats []string = []string{"2006-01-02", "01/02/2006", "02-01-2006"}
+var timeFormats []string = []string{"3:04:05pm", "3:04pm", "15:04:05", "15:04"}
+
+func parseDate(str string) (time.Time, error) {
+	d, err := time.Parse("2006-01-02T15:04:05-0700", str)
+	if err == nil {
+		return d, nil
+	}
+	for _, df := range dateFormats {
+		for _, tf := range timeFormats {
+			d, err = time.Parse(df+" "+tf+" -0700 MST", str)
+			if err == nil {
+				return d, nil
+			}
+			d, err = time.Parse(df+" "+tf+" -0700", str)
+			if err == nil {
+				return d, nil
+			}
+			d, err = time.Parse(df+" "+tf, str)
+			if err == nil {
+				return d, nil
+			}
+		}
+		d, err = time.Parse(df, str)
+		if err == nil {
+			return d, nil
+		}
+	}
+	return d, err
 }
 
 type headerBlockParser struct{}
