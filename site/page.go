@@ -28,6 +28,9 @@ func parsePage(path string, name string) (*page.Page, error) {
 func getTranslationsByName(pages map[string]*page.Page) (map[string][]Translation, error) {
 	translationsByName := make(map[string]map[string]string)
 	for _, page := range pages {
+		if page.Header.Draft {
+			continue
+		}
 		translations := translationsByName[page.Name]
 		if translations == nil {
 			translations = make(map[string]string)
