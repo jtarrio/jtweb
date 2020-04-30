@@ -6,7 +6,6 @@ import (
 	"jtweb/renderer"
 	"jtweb/renderer/templates"
 	"jtweb/uri"
-	"math"
 	"strings"
 
 	"github.com/gorilla/feeds"
@@ -14,14 +13,7 @@ import (
 
 func (c *Contents) outputRss(w io.Writer, t *templates.Templates, lang string) error {
 	toc := c.Toc[lang]
-	year := math.MinInt32
-	pageName := ""
-	for y, toc := range toc.All.ByYear {
-		if y > year {
-			year = y
-			pageName = toc[0]
-		}
-	}
+	pageName := toc.All[0]
 	pages := make([]*page.Page, 0, 5)
 	for i := 0; i < cap(pages) && pageName != ""; i++ {
 		pages = append(pages, c.Pages[pageName])

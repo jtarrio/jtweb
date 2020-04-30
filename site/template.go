@@ -4,7 +4,6 @@ import (
 	"html/template"
 	"io"
 	"jtweb/page"
-	"math"
 	"path/filepath"
 )
 
@@ -17,17 +16,7 @@ func (c *Contents) renderTemplate(name string) error {
 			if !ok {
 				return nil
 			}
-			years := toc.All.ByYear
-			if len(years) == 0 {
-				return nil
-			}
-			year := math.MinInt32
-			for y := range years {
-				if y > year {
-					year = y
-				}
-			}
-			name := years[year][0]
+			name := toc.All[0]
 			return c.Pages[name]
 		},
 		"webRoot": func() string {

@@ -96,17 +96,11 @@ func indexPages(pages map[string]*page.Page, translationsByName map[string][]Tra
 				languageToc.OlderPages[name] = allNames[i+1]
 			}
 		}
-		languageToc.All = TableOfContents{
-			TotalCount: len(allNames),
-			ByYear:     groupByPublishYear(allNames, pages),
-		}
+		languageToc.All = allNames
 		allNamesByTag := groupByTag(allNames, pages)
 		languageToc.ByTag = make(map[string]TableOfContents)
 		for tag, allNamesOfTag := range allNamesByTag {
-			languageToc.ByTag[tag] = TableOfContents{
-				TotalCount: len(allNamesOfTag),
-				ByYear:     groupByPublishYear(allNamesOfTag, pages),
-			}
+			languageToc.ByTag[tag] = allNamesOfTag
 		}
 		toc[lang] = languageToc
 	}
@@ -162,21 +156,8 @@ func makeNameIndex(pages map[string]*page.Page, language languages.Language, tra
 	return allNames
 }
 
-func groupByPublishYear(nameList []string, pages map[string]*page.Page) map[int]SingleTableOfContents {
-	groups := make(map[int]SingleTableOfContents)
-	for _, name := range nameList {
-		header := pages[name].Header
-		year := header.PublishDate.Year()
-		if header.HidePublishDate || header.PublishDate.IsZero() {
-			year = 0
-		}
-		groups[year] = append(groups[year], name)
-	}
-	return groups
-}
-
-func groupByTag(names []string, pages map[string]*page.Page) map[string]SingleTableOfContents {
-	byTag := make(map[string]SingleTableOfContents)
+func groupByTag(names []string, pages map[string]*page.Page) map[string]TableOfContents {
+	byTag := make(map[string]TableOfContents)
 	for _, name := range names {
 		for _, tag := range pages[name].Header.Tags {
 			tagPath := uri.GetTagPath(tag)
@@ -184,17 +165,6 @@ func groupByTag(names []string, pages map[string]*page.Page) map[string]SingleTa
 		}
 	}
 	return byTag
-}
-
-func getYearsInReverseOrder(m map[int]SingleTableOfContents) []int {
-	years := make([]int, len(m))
-	i := 0
-	for k := range m {
-		years[i] = k
-		i++
-	}
-	sort.Sort(sort.Reverse(sort.IntSlice(years)))
-	return years
 }
 
 func (c *Contents) outputPage(w io.Writer, t *templates.Templates, page *page.Page) error {
@@ -205,19 +175,10 @@ func (c *Contents) outputPage(w io.Writer, t *templates.Templates, page *page.Pa
 	return tmpl.Execute(w, c.makePageData(page))
 }
 
-func (c *Contents) outputToc(w io.Writer, t *templates.Templates, lang string, names []string, year int, years []int, totalCount int, tag string, baseURI string) error {
+func (c *Contents) outputToc(w io.Writer, t *templates.Templates, lang string, names []string, tag string) error {
 	tmpl, err := t.GetTocTemplate(lang)
 	if err != nil {
 		return err
-	}
-	undatedStories := false
-	storyYears := make([]int, 0, len(names))
-	for _, y := range years {
-		if y == 0 {
-			undatedStories = true
-		} else if y != year {
-			storyYears = append(storyYears, y)
-		}
 	}
 
 	stories := make([]templates.PageData, len(names))
@@ -226,14 +187,9 @@ func (c *Contents) outputToc(w io.Writer, t *templates.Templates, lang string, n
 	}
 
 	tocData := templates.TocData{
-		BaseURI:        baseURI,
-		Tag:            tag,
-		Year:           year,
-		YearCount:      len(names),
-		TotalCount:     totalCount,
-		Stories:        stories,
-		StoryYears:     storyYears,
-		UndatedStories: undatedStories,
+		Tag:        tag,
+		TotalCount: len(names),
+		Stories:    stories,
 	}
 
 	return tmpl.Execute(w, tocData)
@@ -297,28 +253,6 @@ func (c *Contents) makePageData(page *page.Page) templates.PageData {
 
 func (c *Contents) makePageURI(p *page.Page) string {
 	return uri.Concat(c.WebRoot, p.Name+".html")
-}
-
-func (c *Contents) outputIndex(w io.Writer, t *templates.Templates, lang string, years []int, toc TableOfContents, tag string, uriBase string) error {
-	tmpl, err := t.GetIndexTocTemplate(lang)
-	if err != nil {
-		return err
-	}
-	yearData := make([]templates.YearData, len(years))
-	for i, year := range years {
-		yearData[i] = templates.YearData{
-			Year:  year,
-			Count: len(toc.ByYear[year]),
-			Tags:  c.getTags(toc.ByYear[year]),
-		}
-	}
-	indexTocData := templates.IndexTocData{
-		BaseURI:    uriBase,
-		Tag:        tag,
-		TotalCount: toc.TotalCount,
-		Years:      yearData,
-	}
-	return tmpl.Execute(w, indexTocData)
 }
 
 func (c *Contents) getTags(stories []string) []string {

@@ -49,29 +49,9 @@ type TranslationData struct {
 
 // TocData holds table-of-contents information to be rendered.
 type TocData struct {
-	BaseURI        string
-	Tag            string
-	Year           int
-	YearCount      int
-	TotalCount     int
-	Stories        []PageData
-	StoryYears     []int
-	UndatedStories bool
-}
-
-// IndexTocData holds per-year TOC index data to be rendered.
-type IndexTocData struct {
-	BaseURI    string
 	Tag        string
 	TotalCount int
-	Years      []YearData
-}
-
-// YearData holds one year's TOC information.
-type YearData struct {
-	Year  int
-	Count int
-	Tags  []string
+	Stories    []PageData
 }
 
 // GetTocTemplate loads the table-of-contents template for a particular language.
@@ -117,31 +97,11 @@ func (t Templates) loadTemplate(fileName string, lang string) (*template.Templat
 		"formatDate": func(tm time.Time) string {
 			return t.FormatDate(tm, dateLocale)
 		},
-		"getTagTocURI": func(tag string) string {
-			return t.GetURI(fmt.Sprintf("/tags/toc-%s-%s.html", uri.GetTagPath(tag), lang))
-		},
-		"getTagURIWithTime": func(tag string, tm time.Time) string {
-			year := tm.Year()
-			if tm.IsZero() {
-				year = 0
-			}
-			return t.GetURI(fmt.Sprintf("/tags/%s-%s-%d.html", uri.GetTagPath(tag), lang, year))
-		},
-		"getTagURIWithYear": func(tag string, year int) string {
-			return t.GetURI(fmt.Sprintf("/tags/%s-%s-%d.html", uri.GetTagPath(tag), lang, year))
+		"getTagURI": func(tag string) string {
+			return t.GetURI(fmt.Sprintf("/tags/%s-%s.html", uri.GetTagPath(tag), lang))
 		},
 		"getTocURI": func() string {
 			return t.GetURI(fmt.Sprintf("/toc/toc-%s.html", lang))
-		},
-		"getTocURIWithTime": func(tm time.Time) string {
-			year := tm.Year()
-			if tm.IsZero() {
-				year = 0
-			}
-			return t.GetURI(fmt.Sprintf("/toc/toc-%s-%d.html", lang, year))
-		},
-		"getTocURIWithYear": func(year int) string {
-			return t.GetURI(fmt.Sprintf("/toc/toc-%s-%d.html", lang, year))
 		},
 		"getURI": t.GetURI,
 		"language": func() string {
@@ -154,7 +114,6 @@ func (t Templates) loadTemplate(fileName string, lang string) (*template.Templat
 		"webRoot": func() string {
 			return t.WebRoot
 		},
-		"year": t.Year,
 	}).ParseFiles(filepath.Join(t.TemplatePath, fileName))
 }
 
@@ -177,12 +136,4 @@ func (t Templates) Plural(count int, singular string, plural string) string {
 		return singular
 	}
 	return plural
-}
-
-// Year returns the year part of the given time.
-func (t Templates) Year(tm time.Time) int {
-	if tm.IsZero() {
-		return 0
-	}
-	return tm.Year()
 }

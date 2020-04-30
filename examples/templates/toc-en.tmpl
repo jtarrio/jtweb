@@ -2,44 +2,25 @@
 <html>
     <head>
         <title>
-            {{if .Tag}}
-                {{if .Year}}Stories tagged &ldquo;{{.Tag}}&rdquo; in {{.Year}}{{end}}
-                {{if not .Year}}Undated stories tagged &ldquo;{{.Tag}}&rdquo;{{end}}
-            {{end}}
-            {{if not .Tag}}
-                {{if .Year}}Stories published in {{.Year}}{{end}}
-                {{if not .Year}}Undated stories{{end}}
-            {{end}}
+            {{if not .Tag}}Table of contents{{end}}
+            {{if .Tag}}Stories tagged &ldquo;{{.Tag}}&rdquo;{{end}}
         </title>
     </head>
 
     <body>
         <h1>
-            {{if .Tag}}
-                {{if .Year}}Stories tagged &ldquo;{{.Tag}}&rdquo; in {{.Year}}{{end}}
-                {{if not .Year}}Undated stories tagged &ldquo;{{.Tag}}&rdquo;{{end}}
-            {{end}}
-            {{if not .Tag}}
-                {{if .Year}}Stories published in {{.Year}}{{end}}
-                {{if not .Year}}Undated stories{{end}}
-            {{end}}
+            {{if not .Tag}}Table of contents{{end}}
+            {{if .Tag}}Stories tagged &ldquo;{{.Tag}}&rdquo;{{end}}
         </h1>
-        <p>
-            {{if .Year}}{{.YearCount}} {{plural .YearCount "story" "stories"}} in {{.Year}},{{end}}
-            {{if not .Year}}{{.YearCount}} undated {{plural .YearCount "story" "stories"}},{{end}}
-            {{.TotalCount}} {{plural .TotalCount "story" "stories"}} in total.
-        </p>
+        <p>{{.TotalCount}} {{plural .TotalCount "story" "stories"}}.</p>
 
         {{range .Stories}}
             <h2><a href="{{.Permalink}}">{{.Title}}</a></h2>
             {{if .PublishDate}}<p>{{formatDate .PublishDate}}</p>{{end}}
             {{if .Summary}}<p>{{.Summary}}</p>{{end}}
-            {{if .Tags}}<p>About {{range $i, $e := .Tags}}{{if $i}}, {{end}}&ldquo;<a href="{{getTagURIWithYear $e $.Year}}">{{$e}}</a>&rdquo;{{end}}.</p>{{end}}
+            {{if .Tags}}<p>About {{range $i, $e := .Tags}}{{if $i}}, {{end}}&ldquo;<a href="{{getTagURI $e}}">{{$e}}</a>&rdquo;{{end}}.</p>{{end}}
         {{end}}
 
-        {{if .StoryYears}}<p>Other stories written in {{range $i, $e := .StoryYears}}{{if $i}}, {{end}}<a href="{{$.BaseURI}}-{{$e}}.html">{{$e}}</a>{{end}}.</p>{{end}}
-        {{if .UndatedStories}}<p>Other <a href="{{.BaseURI}}-0.html">undated stories</a>.</p>{{end}}
-        <p>Full <a href="{{getTocURI}}">table of contents</a>.</p>
-        {{if .Tag}}<p>Table of contents for &ldquo;<a href="{{getTagTocURI .Tag}}">{{.Tag}}</a>&rdquo;.</p>{{end}}
+        {{if .Tag}}<p>Full <a href="{{getTocURI}}">table of contents</a>.</p>{{end}}
     </body>
 </html>

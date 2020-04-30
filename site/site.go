@@ -37,14 +37,8 @@ type LanguageTableOfContents struct {
 	OlderPages map[string]string
 }
 
-// TableOfContents contains a list of pages for each year.
-type TableOfContents struct {
-	TotalCount int
-	ByYear     map[int]SingleTableOfContents
-}
-
-// SingleTableOfContents contains a list of pages for a single year.
-type SingleTableOfContents []string
+// TableOfContents contains a list of pages.
+type TableOfContents []string
 
 // Translation contains information about a page translation.
 type Translation struct {
@@ -152,41 +146,19 @@ func (c *Contents) Write() error {
 		}
 	}
 	for lang, languageToc := range c.Toc {
-		years := getYearsInReverseOrder(languageToc.All.ByYear)
-		for year, toc := range languageToc.All.ByYear {
-			err := makeFile(
-				fmt.Sprintf("%s-%s-%d.html", filepath.Join(c.OutputPath, "toc", "toc"), lang, year),
-				func(w io.Writer) error {
-					return c.outputToc(w, t, lang, toc, year, years, languageToc.All.TotalCount, "", uri.Concat(c.WebRoot, "toc", "toc-"+lang))
-				})
-			if err != nil {
-				return err
-			}
-		}
 		err := makeFile(
 			fmt.Sprintf("%s-%s.html", filepath.Join(c.OutputPath, "toc", "toc"), lang),
 			func(w io.Writer) error {
-				return c.outputIndex(w, t, lang, years, languageToc.All, "", uri.Concat(c.WebRoot, "toc", "toc-"))
+				return c.outputToc(w, t, lang, languageToc.All, "")
 			})
 		if err != nil {
 			return err
 		}
 		for tag, tagToc := range languageToc.ByTag {
-			years := getYearsInReverseOrder(tagToc.ByYear)
-			for year, toc := range tagToc.ByYear {
-				err := makeFile(
-					fmt.Sprintf("%s-%s-%d.html", filepath.Join(c.OutputPath, "tags", tag), lang, year),
-					func(w io.Writer) error {
-						return c.outputToc(w, t, lang, toc, year, years, tagToc.TotalCount, c.Tags[tag], uri.Concat(c.WebRoot, "tags", tag+"-"+lang))
-					})
-				if err != nil {
-					return err
-				}
-			}
 			err := makeFile(
-				fmt.Sprintf("%s-%s-%s.html", filepath.Join(c.OutputPath, "tags", "toc"), tag, lang),
+				fmt.Sprintf("%s-%s.html", filepath.Join(c.OutputPath, "tags", tag), lang),
 				func(w io.Writer) error {
-					return c.outputIndex(w, t, lang, years, tagToc, c.Tags[tag], uri.Concat(c.WebRoot, "tags", "toc-"+tag))
+					return c.outputToc(w, t, lang, tagToc, c.Tags[tag])
 				})
 			if err != nil {
 				return err

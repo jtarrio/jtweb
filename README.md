@@ -58,8 +58,8 @@ its `.md` extension. The output file name its formed by adding the `.html`
 extension to the Markdown file's name.
 
 Markdown files are rendered through the template files found in the
-`template_path`. There must be a set of `page-LANG.tmpl`, `toc-LANG.tmpl`,
-and `index-toc-LANG.tmpl` files for each language that you have pages in.
+`template_path`. There must be a set of `page-LANG.tmpl` and `toc-LANG.tmpl`
+files for each language that you have pages in.
 
 ### Extensions
 
@@ -112,8 +112,8 @@ You can add YouTube videos using the `!youtube(URI)` syntax.
 
 Markdown files are rendered to HTML and written using the template files for
 the page's language. The template files are found in the `template_path` and
-have the names `page-LANG.tmpl`, `toc-LANG.tmpl`, and `index-toc-LANG.tmpl`,
-where `LANG` is the ISO code specified in the page header's `language` field.
+have the names `page-LANG.tmpl` and `toc-LANG.tmpl`, where `LANG` is the ISO
+code specified in the page header's `language` field.
 
 #### `page-LANG.tmpl`
 
@@ -144,49 +144,22 @@ This table of contents could be general or for a particular tag. It is
 rendered from a `templates.TocData` structure that contains the following
 fields:
 
-* `BaseURI` --- the URI of the current page, minus the year and the `.html` extension. Used to render links to other indices for other years.
 * `Tag` --- the current tag, if any.
-* `Year` --- the current year. It's 0 if it's an index for undated stories.
-* `YearCount` --- the number of stories in the current year.
 * `TotalCount` --- the total number of indexed stories.
 * `Stories` --- an array of `templates.PageData` structures with the story data for the current page.
-* `StoryYears` --- an array containing other years that have stories.
-* `UndatedStories` --- a boolean indicating if there are undated stories in the index.
-
-#### `index-toc-LANG.tmpl`
-
-This template is used to render a list of years with stories, either
-general or for a particular tag. It is rendered from a `templates.IndexTocData`
-structure that contains the following fields:
-
-* `BaseURI` --- the URI of the current page, minus the `.html` extension. Used to render links to indices for the different years.
-* `Tag` --- the current tag, if any.
-* `TotalCount` --- the total number of indexed stories.
-* `Years` --- an array of `templates.YearData` structures that have per-year information.
-
-The `templates.YearData` structure has the following fields:
-
-* `Year` --- the current year, or 0 for undated stories.
-* `Count` --- the number of stories in this year.
-* `Tags` --- an array of tag names the stories in this year belong to.
 
 #### Template functions
 
 Several functions are available in these three templates:
 
 * `formatDate` --- takes a `time.Time` structure and formats it according to the current language.
-* `getTagTocURI` --- takes a tag name and returns the URI of its master table of contents file.
-* `getTagURIWithTime` --- takes a tag name and `time.Time` structure and returns the URI of its table of contents file for the year.
-* `getTagURIWithYear` --- takes a tag name and a year and returns the URI of its table of contents file for the year.
-* `getTocURI` --- returns the URI of the master table of contents file.
-* `getTocURIWithTime` --- takes a `time.Time` structure and returns the URI of the table of contents for the year.
-* `getTocURIWithYear` --- takes a year and returns the URI of the table of contents for the year.
+* `getTagURI` --- takes a tag name and returns the URI of its table of contents file.
+* `getTocURI` --- returns the URI of the general table of contents file.
 * `getURI` --- takes a relative URI and makes it absolute to the webroot.
 * `language` --- returns the current language's ISO code.
 * `plural` --- takes a number, a singular form and a plural form, and returns either the singular or plural form depending on whether the number is 1 or not.
 * `site` --- returns a `template.LinkData` structure containing the current site's name and URI.
 * `webRoot` --- returns the webroot URI.
-* `year` --- takes a `time.Time` structure and returns the year, or 0 for a Zero time.
 
 ## Go template files
 

@@ -21,7 +21,7 @@
             {{if eq .Language "gl"}}<p>Esta historia foi traducida ao galego: &ldquo;<a href="{{.URI}}">{{.Name}}</a>&rdquo;.</p>{{end}}
         {{end}}
 
-        {{if .Tags}}<p>Other stories about {{range $i, $e := .Tags}}{{if $i}}, {{end}}&ldquo;<a href="{{getTagURIWithTime $e $.PublishDate}}">{{$e}}</a>&rdquo;{{end}}.</p>{{end}}
-        {{if not .PublishDate.IsZero}}<p>Other stories published in <a href="{{getTocURIWithTime $.PublishDate}}">{{.PublishDate.Year}}</a>.</p>{{end}}
+        {{if .Tags}}<p>Other stories about {{range $i, $e := .Tags}}{{if $i}}, {{end}}&ldquo;<a href="{{getTagURI $e}}">{{$e}}</a>&rdquo;{{end}}.</p>{{end}}
+        <p><a href="{{getTocURI}}">Table of contents</a></p>
     </body>
 </html>
