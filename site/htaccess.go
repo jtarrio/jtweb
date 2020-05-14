@@ -96,7 +96,7 @@ func (c *Contents) writeRedirects(bw *bufio.Writer) error {
 	})
 
 	for _, pat := range pats {
-		_, err := bw.WriteString(fmt.Sprintf("RewriteRule ^%s$ %s [R,L]\n", pat.oldPath, pat.newPath))
+		_, err := bw.WriteString(fmt.Sprintf("RewriteRule ^%s$ %s [R=301,L]\n", pat.oldPath, pat.newPath))
 		if err != nil {
 			return err
 		}
