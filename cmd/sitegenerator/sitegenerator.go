@@ -4,6 +4,7 @@ import (
 	"flag"
 	"io/ioutil"
 	"jtweb/site"
+	"time"
 )
 
 var flagConfigFile = flag.String("config_file", "", "The name of the file containing the site's configuration.")
@@ -15,6 +16,7 @@ var flagSiteName = flag.String("site_name", "", "The site's name.")
 var flagSiteURI = flag.String("site_uri", "", "The site's URI.")
 var flagAuthorName = flag.String("author_name", "", "The default author's name.")
 var flagAuthorURI = flag.String("author_uri", "", "The default author's website URI.")
+var flagCurrentTime = flag.String("current_time", "", "The time to use instead of the current time.")
 
 func main() {
 	flag.Parse()
@@ -57,6 +59,15 @@ func main() {
 	}
 	if *flagAuthorURI != "" {
 		cfg.AuthorURI = *flagAuthorURI
+	}
+	if *flagCurrentTime != "" {
+		parsed, err := time.Parse(time.RFC3339, *flagCurrentTime)
+		if err != nil {
+			panic(err)
+		}
+		cfg.CurrentTime = parsed
+	} else {
+		cfg.CurrentTime = time.Now()
 	}
 
 	err := cfg.Normalize()

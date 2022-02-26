@@ -68,6 +68,9 @@ func (s Config) Read() (*Contents, error) {
 			if err != nil {
 				return fmt.Errorf("Error parsing page %s: %v", path, err)
 			}
+			if page.Header.PublishDate.After(s.CurrentTime) {
+				return nil
+			}
 			pagesByName[page.Name] = page
 			for _, tag := range page.Header.Tags {
 				tagNames[uri.GetTagPath(tag)] = tag

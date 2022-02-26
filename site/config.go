@@ -2,20 +2,22 @@ package site
 
 import (
 	"fmt"
+	"time"
 
 	"gopkg.in/yaml.v2"
 )
 
 // Config contains the parameters of the current site.
 type Config struct {
-	TemplatePath string `yaml:"template_path"`
-	InputPath    string `yaml:"input_path"`
-	OutputPath   string `yaml:"output_path"`
-	WebRoot      string `yaml:"webroot"`
-	SiteName     string `yaml:"site_name"`
-	SiteURI      string `yaml:"site_uri"`
-	AuthorName   string `yaml:"author_name"`
-	AuthorURI    string `yaml:"author_uri"`
+	TemplatePath string    `yaml:"template_path"`
+	InputPath    string    `yaml:"input_path"`
+	OutputPath   string    `yaml:"output_path"`
+	WebRoot      string    `yaml:"webroot"`
+	SiteName     string    `yaml:"site_name"`
+	SiteURI      string    `yaml:"site_uri"`
+	AuthorName   string    `yaml:"author_name"`
+	AuthorURI    string    `yaml:"author_uri"`
+	CurrentTime  time.Time `yaml:"current_time"`
 }
 
 // ParseConfig reads the configuration from a file.
@@ -53,6 +55,9 @@ func (c *Config) Normalize() error {
 	}
 	if c.AuthorURI == "" {
 		c.AuthorURI = c.SiteURI
+	}
+	if c.CurrentTime.IsZero() {
+		c.CurrentTime = time.Now()
 	}
 	return nil
 }

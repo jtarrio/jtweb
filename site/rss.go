@@ -13,11 +13,13 @@ import (
 
 func (c *Contents) outputRss(w io.Writer, t *templates.Templates, lang string) error {
 	toc := c.Toc[lang]
-	pageName := toc.All[0]
 	pages := make([]*page.Page, 0, 5)
-	for i := 0; i < cap(pages) && pageName != ""; i++ {
-		pages = append(pages, c.Pages[pageName])
-		pageName = toc.OlderPages[pageName]
+	if len(toc.All) > 0 {
+		pageName := toc.All[0]
+		for i := 0; i < cap(pages) && pageName != ""; i++ {
+			pages = append(pages, c.Pages[pageName])
+			pageName = toc.OlderPages[pageName]
+		}
 	}
 
 	feed := &feeds.Feed{

@@ -11,6 +11,13 @@ func (c *Contents) renderTemplate(name string) error {
 	inputFileName := filepath.Join(c.InputPath, name+".tmpl")
 	templateName := filepath.Base(inputFileName)
 	tmpl, err := template.New(templateName).Funcs(template.FuncMap{
+		"hasContent": func(lang string) bool {
+			toc, ok := c.Toc[lang]
+			if !ok {
+				return false
+			}
+			return len(toc.All) > 0
+		},
 		"latestPage": func(lang string) *page.Page {
 			toc, ok := c.Toc[lang]
 			if !ok {
