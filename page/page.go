@@ -19,6 +19,7 @@ type HeaderData struct {
 	Title           string
 	Language        string
 	Summary         string
+	Episode         string
 	PublishDate     time.Time
 	HidePublishDate bool
 	AuthorName      string

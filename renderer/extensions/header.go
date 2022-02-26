@@ -61,6 +61,7 @@ type RawHeader struct {
 	Title           string
 	Language        string
 	Summary         string
+	Episode         string
 	PublishDate     string `yaml:"publish_date"`
 	HidePublishDate bool   `yaml:"no_publish_date"`
 	AuthorName      string `yaml:"author_name"`
@@ -103,6 +104,7 @@ func (n *HeaderBlock) ParseContents(src []byte) (page.HeaderData, error) {
 			out.PublishDate = d
 		}
 	}
+	out.Episode = rawHeader.Episode
 	out.HidePublishDate = rawHeader.HidePublishDate
 	out.AuthorName = rawHeader.AuthorName
 	out.AuthorURI = rawHeader.AuthorURI

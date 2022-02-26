@@ -31,6 +31,7 @@ type PageData struct {
 	Permalink    string
 	Author       LinkData
 	Summary      string
+	Episode      string
 	PublishDate  time.Time
 	Tags         []string
 	Content      template.HTML

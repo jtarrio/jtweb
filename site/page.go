@@ -204,6 +204,7 @@ func (c *Contents) makePageData(page *page.Page) templates.PageData {
 		Permalink: c.makePageURI(page),
 		Author:    templates.LinkData{},
 		Summary:   page.Header.Summary,
+		Episode:   page.Header.Episode,
 		Tags:      page.Header.Tags,
 		Content:   template.HTML(sb.String()),
 		Draft:     page.Header.Draft,
