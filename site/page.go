@@ -76,7 +76,7 @@ func getTranslationsByName(pages map[string]*page.Page) (map[string][]Translatio
 	return translations, nil
 }
 
-func indexPages(pages map[string]*page.Page, translationsByName map[string][]Translation) (GlobalTableOfContents, error) {
+func indexPages(pages map[string]*page.Page, translationsByName map[string][]Translation, hideUntranslated bool) (GlobalTableOfContents, error) {
 	langs := make(map[string]bool)
 	for _, page := range pages {
 		langs[page.Header.Language] = true
@@ -88,7 +88,7 @@ func indexPages(pages map[string]*page.Page, translationsByName map[string][]Tra
 			OlderPages: make(map[string]string),
 		}
 		language := languages.FindByCodeWithFallback(lang, languages.LanguageEn)
-		allNames := makeNameIndex(pages, language, translationsByName)
+		allNames := makeNameIndex(pages, language, translationsByName, hideUntranslated)
 		for i, name := range allNames {
 			if i > 0 {
 				languageToc.NewerPages[name] = allNames[i-1]
@@ -109,38 +109,47 @@ func indexPages(pages map[string]*page.Page, translationsByName map[string][]Tra
 	return toc, nil
 }
 
-func makeNameIndex(pages map[string]*page.Page, language languages.Language, translationsByName map[string][]Translation) []string {
+func makeNameIndex(pages map[string]*page.Page, language languages.Language, translationsByName map[string][]Translation, hideUntranslated bool) []string {
 	allNames := make([]string, 0, len(pages))
 	for name, page := range pages {
 		if page.Header.NoIndex || page.Header.Draft {
 			continue
 		}
-		if page.Header.Language == language.Code() || translationsByName[name] == nil {
-			// If the page is in the index language or has no translations, add it.
+		if page.Header.Language == language.Code() {
+			// If the page is in the index language, add it.
 			allNames = append(allNames, name)
-		} else {
-			// If the index language is among the translations, skip it.
-			translations := make(map[string]bool)
-			translations[page.Header.Language] = true
-			for _, tl := range translationsByName[name] {
-				translations[tl.Language] = true
-			}
-			if translations[language.Code()] {
-				continue
-			}
-			// We want to show only the preferred translation.
-			wanted := make([]string, 0, len(translations))
-			for lang := range translations {
-				wanted = append(wanted, lang)
-			}
-			sort.Strings(wanted)
-			preferred := language.PreferredLanguage(wanted)
-			if preferred == "" {
-				preferred = wanted[0]
-			}
-			if preferred == page.Header.Language {
-				allNames = append(allNames, name)
-			}
+			continue
+		}
+		// Skip if we are hiding untranslated
+		if hideUntranslated {
+			continue
+		}
+		// If it has no translations, add it.
+		if translationsByName[name] == nil {
+			allNames = append(allNames, name)
+			continue
+		}
+		// If the index language is among the translations, skip it.
+		translations := make(map[string]bool)
+		translations[page.Header.Language] = true
+		for _, tl := range translationsByName[name] {
+			translations[tl.Language] = true
+		}
+		if translations[language.Code()] {
+			continue
+		}
+		// We want to show only the preferred translation.
+		wanted := make([]string, 0, len(translations))
+		for lang := range translations {
+			wanted = append(wanted, lang)
+		}
+		sort.Strings(wanted)
+		preferred := language.PreferredLanguage(wanted)
+		if preferred == "" {
+			preferred = wanted[0]
+		}
+		if preferred == page.Header.Language {
+			allNames = append(allNames, name)
 		}
 	}
 	sort.SliceStable(allNames, func(i, j int) bool {
@@ -254,7 +263,7 @@ func (c *Contents) makePageData(page *page.Page) templates.PageData {
 }
 
 func (c *Contents) makePageURI(p *page.Page) string {
-	return uri.Concat(c.WebRoot, p.Name+".html")
+	return uri.Concat(c.GetWebRoot(p.Header.Language), p.Name+".html")
 }
 
 func (c *Contents) getTags(stories []string) []string {

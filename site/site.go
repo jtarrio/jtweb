@@ -92,7 +92,7 @@ func (s Config) Read() (*Contents, error) {
 		return nil, err
 	}
 
-	tocByLanguage, err := indexPages(pagesByName, translationsByName)
+	tocByLanguage, err := indexPages(pagesByName, translationsByName, s.HideUntranslated)
 	if err != nil {
 		return nil, err
 	}
@@ -113,11 +113,6 @@ type filePopulator func(w io.Writer) error
 
 // Write converts the site contents to HTML and writes it to disk.
 func (c *Contents) Write() error {
-	t := &templates.Templates{
-		TemplatePath: c.TemplatePath,
-		WebRoot:      c.WebRoot,
-		Site:         templates.LinkData{Name: c.SiteName, URI: c.SiteURI},
-	}
 	for _, file := range c.Files {
 		if file == ".htaccess" {
 			err := c.outputHtaccess(file)
@@ -140,6 +135,11 @@ func (c *Contents) Write() error {
 		}
 	}
 	for _, page := range c.Pages {
+		t := &templates.Templates{
+			TemplatePath: c.TemplatePath,
+			WebRoot:      c.GetWebRoot(page.Header.Language),
+			Site:         templates.LinkData{Name: c.GetSiteName(page.Header.Language), URI: c.GetSiteURI(page.Header.Language)},
+		}
 		err := makeFile(
 			filepath.Join(c.OutputPath, page.Name+".html"),
 			func(w io.Writer) error {
@@ -150,6 +150,11 @@ func (c *Contents) Write() error {
 		}
 	}
 	for lang, languageToc := range c.Toc {
+		t := &templates.Templates{
+			TemplatePath: c.TemplatePath,
+			WebRoot:      c.GetWebRoot(lang),
+			Site:         templates.LinkData{Name: c.GetSiteName(lang), URI: c.GetSiteURI(lang)},
+		}
 		err := makeFile(
 			fmt.Sprintf("%s-%s.html", filepath.Join(c.OutputPath, "toc", "toc"), lang),
 			func(w io.Writer) error {

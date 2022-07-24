@@ -9,15 +9,19 @@ import (
 
 // Config contains the parameters of the current site.
 type Config struct {
-	TemplatePath string    `yaml:"template_path"`
-	InputPath    string    `yaml:"input_path"`
-	OutputPath   string    `yaml:"output_path"`
-	WebRoot      string    `yaml:"webroot"`
-	SiteName     string    `yaml:"site_name"`
-	SiteURI      string    `yaml:"site_uri"`
-	AuthorName   string    `yaml:"author_name"`
-	AuthorURI    string    `yaml:"author_uri"`
-	CurrentTime  time.Time `yaml:"current_time"`
+	TemplatePath      string            `yaml:"template_path"`
+	InputPath         string            `yaml:"input_path"`
+	OutputPath        string            `yaml:"output_path"`
+	WebRoot           string            `yaml:"webroot"`
+	SiteName          string            `yaml:"site_name"`
+	SiteURI           string            `yaml:"site_uri"`
+	HideUntranslated  bool              `yaml:"hide_untranslated"`
+	WebRootLanguages  map[string]string `yaml:"webroot_languages"`
+	SiteNameLanguages map[string]string `yaml:"site_name_languages"`
+	SiteURILanguages  map[string]string `yaml:"site_uri_languages"`
+	AuthorName        string            `yaml:"author_name"`
+	AuthorURI         string            `yaml:"author_uri"`
+	CurrentTime       time.Time         `yaml:"current_time"`
 }
 
 // ParseConfig reads the configuration from a file.
@@ -60,4 +64,28 @@ func (c *Config) Normalize() error {
 		c.CurrentTime = time.Now()
 	}
 	return nil
+}
+
+func (c *Config) GetWebRoot(lang string) string {
+	uri, ok := c.WebRootLanguages[lang]
+	if ok {
+		return uri
+	}
+	return c.WebRoot
+}
+
+func (c *Config) GetSiteName(lang string) string {
+	uri, ok := c.SiteNameLanguages[lang]
+	if ok {
+		return uri
+	}
+	return c.SiteName
+}
+
+func (c *Config) GetSiteURI(lang string) string {
+	uri, ok := c.SiteURILanguages[lang]
+	if ok {
+		return uri
+	}
+	return c.SiteURI
 }

@@ -27,8 +27,8 @@ func (c *Contents) renderTemplate(name string) error {
 			name := toc.All[0]
 			return c.Pages[name]
 		},
-		"webRoot": func() string {
-			return c.WebRoot
+		"webRoot": func(lang string) string {
+			return c.GetWebRoot(lang)
 		},
 	}).ParseFiles(inputFileName)
 	if err != nil {
