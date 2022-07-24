@@ -3,8 +3,9 @@ package extensions
 import (
 	"bytes"
 	"fmt"
-	"jtweb/page"
 	"time"
+
+	"jacobo.tarrio.org/jtweb/page"
 
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/ast"

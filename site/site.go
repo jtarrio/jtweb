@@ -3,12 +3,13 @@ package site
 import (
 	"fmt"
 	"io"
-	"jtweb/page"
-	"jtweb/renderer/templates"
-	"jtweb/uri"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"jacobo.tarrio.org/jtweb/page"
+	"jacobo.tarrio.org/jtweb/renderer/templates"
+	"jacobo.tarrio.org/jtweb/uri"
 )
 
 // Contents contains the parsed and indexed content of the site.

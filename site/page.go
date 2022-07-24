@@ -4,15 +4,16 @@ import (
 	"fmt"
 	"html/template"
 	"io"
-	"jtweb/languages"
-	"jtweb/page"
-	"jtweb/renderer"
-	"jtweb/renderer/templates"
-	"jtweb/uri"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"jacobo.tarrio.org/jtweb/languages"
+	"jacobo.tarrio.org/jtweb/page"
+	"jacobo.tarrio.org/jtweb/renderer"
+	"jacobo.tarrio.org/jtweb/renderer/templates"
+	"jacobo.tarrio.org/jtweb/uri"
 )
 
 func parsePage(path string, name string) (*page.Page, error) {

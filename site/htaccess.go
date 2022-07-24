@@ -4,8 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"jtweb/page"
-	"jtweb/uri"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -13,6 +11,9 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"jacobo.tarrio.org/jtweb/page"
+	"jacobo.tarrio.org/jtweb/uri"
 )
 
 const redirectPlaceholder = "### REDIRECTS ###"

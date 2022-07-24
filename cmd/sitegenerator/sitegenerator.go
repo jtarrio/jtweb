@@ -3,8 +3,9 @@ package main
 import (
 	"flag"
 	"io/ioutil"
-	"jtweb/site"
 	"time"
+
+	"jacobo.tarrio.org/jtweb/site"
 )
 
 var flagConfigFile = flag.String("config_file", "", "The name of the file containing the site's configuration.")

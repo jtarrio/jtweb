@@ -3,10 +3,11 @@ package templates
 import (
 	"fmt"
 	"html/template"
-	"jtweb/languages"
-	"jtweb/uri"
 	"path/filepath"
 	"time"
+
+	"jacobo.tarrio.org/jtweb/languages"
+	"jacobo.tarrio.org/jtweb/uri"
 )
 
 // Templates holds the configuration for the template system.

@@ -2,11 +2,12 @@ package site
 
 import (
 	"io"
-	"jtweb/page"
-	"jtweb/renderer"
-	"jtweb/renderer/templates"
-	"jtweb/uri"
 	"strings"
+
+	"jacobo.tarrio.org/jtweb/page"
+	"jacobo.tarrio.org/jtweb/renderer"
+	"jacobo.tarrio.org/jtweb/renderer/templates"
+	"jacobo.tarrio.org/jtweb/uri"
 
 	"github.com/gorilla/feeds"
 )

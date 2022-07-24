@@ -5,8 +5,8 @@ import (
 	"io"
 	"regexp"
 
-	"jtweb/page"
-	"jtweb/renderer/extensions"
+	"jacobo.tarrio.org/jtweb/page"
+	"jacobo.tarrio.org/jtweb/renderer/extensions"
 
 	mathjax "github.com/litao91/goldmark-mathjax"
 	"github.com/microcosm-cc/bluemonday"
