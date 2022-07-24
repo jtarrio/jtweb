@@ -21,7 +21,7 @@ type Config struct {
 	SiteURILanguages  map[string]string `yaml:"site_uri_languages"`
 	AuthorName        string            `yaml:"author_name"`
 	AuthorURI         string            `yaml:"author_uri"`
-	CurrentTime       time.Time         `yaml:"current_time"`
+	PublishUntil      time.Time         `yaml:"publish_until"`
 }
 
 // ParseConfig reads the configuration from a file.
@@ -60,8 +60,8 @@ func (c *Config) Normalize() error {
 	if c.AuthorURI == "" {
 		c.AuthorURI = c.SiteURI
 	}
-	if c.CurrentTime.IsZero() {
-		c.CurrentTime = time.Now()
+	if c.PublishUntil.IsZero() {
+		c.PublishUntil = time.Now()
 	}
 	return nil
 }

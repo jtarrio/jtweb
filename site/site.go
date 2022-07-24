@@ -69,7 +69,7 @@ func (s Config) Read() (*Contents, error) {
 			if err != nil {
 				return fmt.Errorf("Error parsing page %s: %v", path, err)
 			}
-			if page.Header.PublishDate.After(s.CurrentTime) {
+			if page.Header.PublishDate.After(s.PublishUntil) {
 				return nil
 			}
 			pagesByName[page.Name] = page

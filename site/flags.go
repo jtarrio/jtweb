@@ -21,7 +21,7 @@ var flagSiteNameLanguages = flag.String("site_name_languages", "", "Per-language
 var flagSiteURILanguages = flag.String("site_uri_languages", "", "Per-language site URIs, in lang=uri[;lang=uri...] format.")
 var flagAuthorName = flag.String("author_name", "", "The default author's name.")
 var flagAuthorURI = flag.String("author_uri", "", "The default author's website URI.")
-var flagCurrentTime = flag.String("current_time", "", "The time to use instead of the current time.")
+var flagPublishUntil = flag.String("publish_until", "", "Publish all posts older than the given date/time.")
 
 func parseByLanguage(cfg string) (map[string]string, error) {
 	out := make(map[string]string)
@@ -100,14 +100,14 @@ func FromFlags() (*Config, error) {
 	if *flagAuthorURI != "" {
 		cfg.AuthorURI = *flagAuthorURI
 	}
-	if *flagCurrentTime != "" {
-		parsed, err := time.Parse(time.RFC3339, *flagCurrentTime)
+	if *flagPublishUntil != "" {
+		parsed, err := time.Parse(time.RFC3339, *flagPublishUntil)
 		if err != nil {
 			return nil, err
 		}
-		cfg.CurrentTime = parsed
+		cfg.PublishUntil = parsed
 	} else {
-		cfg.CurrentTime = time.Now()
+		cfg.PublishUntil = time.Now()
 	}
 
 	err := cfg.Normalize()
