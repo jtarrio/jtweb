@@ -182,7 +182,32 @@ func (c *Contents) outputPage(w io.Writer, t *templates.Templates, page *page.Pa
 	if err != nil {
 		return err
 	}
+	return c.runTemplate(tmpl, w, page)
+}
+
+func (c *Contents) OutputEmail(w io.Writer, t *templates.Templates, page *page.Page) error {
+	tmpl, err := t.GetEmailTemplate(page.Header.Language)
+	if err != nil {
+		return err
+	}
+	return c.runTemplate(tmpl, w, page)
+}
+
+func (c *Contents) OutputPlainEmail(w io.Writer, t *templates.Templates, page *page.Page) error {
+	tmpl, err := t.GetPlainEmailTemplate(page.Header.Language)
+	if err != nil {
+		return err
+	}
 	return tmpl.Execute(w, c.makePageData(page))
+}
+
+func (c *Contents) runTemplate(tmpl *template.Template, w io.Writer, page *page.Page) error {
+	sb := strings.Builder{}
+	err := tmpl.Execute(&sb, c.makePageData(page))
+	if err != nil {
+		return err
+	}
+	return templates.MakeUrisAbsolute(strings.NewReader(sb.String()), w, c.GetWebRoot(page.Header.Language), page.Name)
 }
 
 func (c *Contents) outputToc(w io.Writer, t *templates.Templates, lang string, names []string, tag string) error {

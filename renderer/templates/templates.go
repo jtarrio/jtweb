@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"html/template"
 	"path/filepath"
+	"strings"
+	text_template "text/template"
 	"time"
 
 	"jacobo.tarrio.org/jtweb/languages"
@@ -12,12 +14,14 @@ import (
 
 // Templates holds the configuration for the template system.
 type Templates struct {
-	TemplatePath      string
-	WebRoot           string
-	Site              LinkData
-	tocTemplates      map[string]*template.Template
-	pageTemplates     map[string]*template.Template
-	indexTocTemplates map[string]*template.Template
+	TemplatePath        string
+	WebRoot             string
+	Site                LinkData
+	tocTemplates        map[string]*template.Template
+	pageTemplates       map[string]*template.Template
+	emailTemplates      map[string]*template.Template
+	plainEmailTemplates map[string]*text_template.Template
+	indexTocTemplates   map[string]*template.Template
 }
 
 // LinkData holds information about a link.
@@ -68,6 +72,18 @@ func (t Templates) GetPageTemplate(lang string) (tmpl *template.Template, err er
 	return
 }
 
+// GetPageTemplate loads the email template for a particular language.
+func (t Templates) GetEmailTemplate(lang string) (tmpl *template.Template, err error) {
+	t.emailTemplates, tmpl, err = t.getTemplate(t.emailTemplates, "email", lang)
+	return
+}
+
+// GetPageTemplate loads the plain-txt email template for a particular language.
+func (t Templates) GetPlainEmailTemplate(lang string) (tmpl *text_template.Template, err error) {
+	t.plainEmailTemplates, tmpl, err = t.getTextTemplate(t.plainEmailTemplates, "email-plain", lang)
+	return
+}
+
 // GetIndexTocTemplate loads the story index template for a particular language.
 func (t Templates) GetIndexTocTemplate(lang string) (tmpl *template.Template, err error) {
 	t.indexTocTemplates, tmpl, err = t.getTemplate(t.indexTocTemplates, "index-toc", lang)
@@ -82,6 +98,22 @@ func (t Templates) getTemplate(cache map[string]*template.Template, name string,
 	tmpl, ok := cache[lang]
 	if !ok {
 		tmpl, err = t.loadTemplate(name+"-"+lang+".tmpl", lang)
+		if err != nil {
+			return cache, nil, err
+		}
+		cache[lang] = tmpl
+	}
+	return cache, tmpl, nil
+}
+
+func (t Templates) getTextTemplate(cache map[string]*text_template.Template, name string, lang string) (map[string]*text_template.Template, *text_template.Template, error) {
+	var err error
+	if cache == nil {
+		cache = make(map[string]*text_template.Template)
+	}
+	tmpl, ok := cache[lang]
+	if !ok {
+		tmpl, err = t.loadTextTemplate(name+"-"+lang+".tmpl", lang)
 		if err != nil {
 			return cache, nil, err
 		}
@@ -119,6 +151,36 @@ func (t Templates) loadTemplate(fileName string, lang string) (*template.Templat
 	}).ParseFiles(filepath.Join(t.TemplatePath, fileName))
 }
 
+func (t Templates) loadTextTemplate(fileName string, lang string) (*text_template.Template, error) {
+	dateLocale, err := languages.FindByCode(lang)
+	if err != nil {
+		return nil, err
+	}
+	return text_template.New(fileName).Funcs(text_template.FuncMap{
+		"formatDate": func(tm time.Time) string {
+			return t.FormatDate(tm, dateLocale)
+		},
+		"getTagURI": func(tag string) string {
+			return t.GetURI(fmt.Sprintf("/tags/%s-%s.html", uri.GetTagPath(tag), lang))
+		},
+		"getTocURI": func() string {
+			return t.GetURI(fmt.Sprintf("/toc/toc-%s.html", lang))
+		},
+		"getURI":     t.GetURI,
+		"htmlToText": t.HtmlToText,
+		"language": func() string {
+			return lang
+		},
+		"plural": t.Plural,
+		"site": func() LinkData {
+			return t.Site
+		},
+		"webRoot": func() string {
+			return t.WebRoot
+		},
+	}).ParseFiles(filepath.Join(t.TemplatePath, fileName))
+}
+
 // FormatDate renders the given time as a date.
 func (t Templates) FormatDate(tm time.Time, locale languages.Language) string {
 	if tm.IsZero() {
@@ -138,4 +200,13 @@ func (t Templates) Plural(count int, singular string, plural string) string {
 		return singular
 	}
 	return plural
+}
+
+func (t Templates) HtmlToText(content template.HTML, linksTitle string, pictureTitle string) string {
+	sb := strings.Builder{}
+	err := HtmlToText(strings.NewReader(string(content)), &sb, linksTitle, pictureTitle)
+	if err != nil {
+		panic(err)
+	}
+	return sb.String()
 }
