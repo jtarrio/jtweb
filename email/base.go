@@ -8,9 +8,18 @@ type ScheduledEmail struct {
 	When time.Time
 }
 
+type Email struct {
+	Name      string
+	Group     int
+	Language  string
+	Subject   string
+	Plaintext string
+	Html      string
+}
+
 type Mailer interface {
 	GetScheduledEmailDates() ([]ScheduledEmail, error)
-	DraftEmail(name string, group int, subject string, plaintext string, html string) (int, error)
+	DraftEmail(email Email) (int, error)
 	Send(id int) error
 	Schedule(id int, date time.Time) error
 }

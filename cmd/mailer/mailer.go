@@ -94,9 +94,9 @@ func gatherEmails(language string, sendAfter time.Time, subjectPrefix string, co
 	return emails, nil
 }
 
-func draftEmail(m email.Mailer, group int, email *emailData) (int, error) {
-	name, _, _ := strings.Cut(email.subject, ":")
-	id, err := m.DraftEmail(name, group, email.subject, email.plaintext, email.html)
+func draftEmail(m email.Mailer, group int, language string, data *emailData) (int, error) {
+	name, _, _ := strings.Cut(data.subject, ":")
+	id, err := m.DraftEmail(email.Email{Name: name, Group: group, Language: language, Subject: data.subject, Plaintext: data.plaintext, Html: data.html})
 	if err != nil {
 		return -1, err
 	}
@@ -147,7 +147,7 @@ func main() {
 	}
 
 	if *flagSendFirstEmail {
-		id, err := draftEmail(mailer, *flagGroup, &emails[len(emails)-1])
+		id, err := draftEmail(mailer, *flagGroup, language, &emails[len(emails)-1])
 		if err != nil {
 			panic(err)
 		}
@@ -163,7 +163,7 @@ func main() {
 	}
 
 	for _, email := range emails {
-		id, err := draftEmail(mailer, *flagGroup, &email)
+		id, err := draftEmail(mailer, *flagGroup, language, &email)
 		if err != nil {
 			panic(err)
 		}

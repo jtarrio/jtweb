@@ -20,6 +20,19 @@ type Mailerlite struct {
 	utcTz  int
 }
 
+func mapLanguage(language string) string {
+	switch language {
+	case "en":
+	case "es":
+		return language
+	case "gl":
+		return "pt"
+	default:
+		return "en"
+	}
+	return "en"
+}
+
 func query[R any](m *Mailerlite, path string, method string, response *R) error {
 	var dummy *string
 	dummy = nil
@@ -141,7 +154,7 @@ func (m *Mailerlite) GetScheduledEmailDates() ([]ScheduledEmail, error) {
 
 var fakeId int
 
-func (m *Mailerlite) DraftEmail(name string, group int, subject string, plaintext string, html string) (int, error) {
+func (m *Mailerlite) DraftEmail(email Email) (int, error) {
 	if m.dryRun {
 		fakeId++
 		return fakeId, nil
@@ -151,17 +164,18 @@ func (m *Mailerlite) DraftEmail(name string, group int, subject string, plaintex
 
 	{
 		type campaignReq struct {
-			Type    string `json:"type"`
-			Name    string `json:"name"`
-			Groups  []int  `json:"groups"`
-			Subject string `json:"subject"`
+			Type     string `json:"type"`
+			Name     string `json:"name"`
+			Groups   []int  `json:"groups"`
+			Subject  string `json:"subject"`
+			Language string `json:"language"`
 		}
 
 		type campaignResp struct {
 			Id int `json:"id"`
 		}
 
-		req := campaignReq{Type: "regular", Name: name, Groups: []int{group}, Subject: subject}
+		req := campaignReq{Type: "regular", Name: email.Name, Groups: []int{email.Group}, Subject: email.Subject, Language: mapLanguage(email.Language)}
 		var resp campaignResp
 		err := queryPayload(m, "v2/campaigns", "POST", &req, &resp)
 		if err != nil {
@@ -181,7 +195,7 @@ func (m *Mailerlite) DraftEmail(name string, group int, subject string, plaintex
 			Success bool `json:"success"`
 		}
 
-		req := contentReq{Plain: plaintext, Html: html, AutoInline: true}
+		req := contentReq{Plain: email.Plaintext, Html: email.Html, AutoInline: true}
 		var resp contentResp
 		err := queryPayload(m, fmt.Sprintf("v2/campaigns/%d/content", id), "PUT", &req, &resp)
 		if err != nil {
