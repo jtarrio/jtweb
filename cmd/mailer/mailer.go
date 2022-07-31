@@ -41,6 +41,7 @@ func gatherEmails(language string, sendAfter time.Time, subjectPrefix string, co
 
 	seen := make(map[int64]string)
 	for _, e := range scheduled {
+		fmt.Printf("Found scheduled email [%s] for %s\n", e.Name, e.When.String())
 		seen[e.When.Unix()] = e.Name
 	}
 
@@ -49,7 +50,10 @@ func gatherEmails(language string, sendAfter time.Time, subjectPrefix string, co
 		page := content.Pages[name]
 		if page.Header.PublishDate.After(sendAfter) {
 			_, ok := seen[page.Header.PublishDate.Unix()]
-			if !ok {
+			if ok {
+				fmt.Printf("Page [%s] for %s already scheduled\n", page.Name, page.Header.PublishDate.String())
+			} else {
+				fmt.Printf("Schedule page [%s] for %s\n", page.Name, page.Header.PublishDate.String())
 				pages = append(pages, page)
 			}
 		}
@@ -143,6 +147,7 @@ func main() {
 	}
 
 	if len(emails) == 0 {
+		fmt.Printf("No emails to be scheduled, exiting")
 		return
 	}
 
