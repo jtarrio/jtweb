@@ -57,8 +57,6 @@ func gatherEmails(language string, sendAfter time.Time, subjectPrefix string, co
 				fmt.Printf("Schedule page [%s] for %s\n", page.Name, page.Header.PublishDate.String())
 				pages = append(pages, page)
 			}
-		} else {
-			fmt.Printf("Page [%s] for %s already in the past\n", page.Name, page.Header.PublishDate.String())
 		}
 	}
 
