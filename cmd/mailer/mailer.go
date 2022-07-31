@@ -45,6 +45,7 @@ func gatherEmails(language string, sendAfter time.Time, subjectPrefix string, co
 		seen[e.When.Unix()] = e.Name
 	}
 
+	fmt.Printf("Finding pages scheduled after %s\n", sendAfter.String())
 	var pages []*page.Page
 	for _, name := range toc.All {
 		page := content.Pages[name]
@@ -147,7 +148,7 @@ func main() {
 	}
 
 	if len(emails) == 0 {
-		fmt.Printf("No emails to be scheduled, exiting")
+		fmt.Printf("No emails to be scheduled, exiting\n")
 		return
 	}
 
