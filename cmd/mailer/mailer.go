@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"jacobo.tarrio.org/jtweb/email"
+	mailerlite "jacobo.tarrio.org/jtweb/email/mailerlite"
 	"jacobo.tarrio.org/jtweb/page"
 	"jacobo.tarrio.org/jtweb/renderer/templates"
 	"jacobo.tarrio.org/jtweb/site"
@@ -132,7 +133,7 @@ func main() {
 		panic(err)
 	}
 
-	mailer, err := email.ConnectMailerlite(*flagApikey, *flagGroup, *flagDryRun)
+	mailer, err := mailerlite.ConnectMailerlite(*flagApikey, *flagGroup, *flagDryRun)
 	if err != nil {
 		panic(err)
 	}

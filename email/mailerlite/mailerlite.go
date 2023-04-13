@@ -1,4 +1,4 @@
-package email
+package mailerlite
 
 import (
 	"bytes"
@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	email "jacobo.tarrio.org/jtweb/email"
 )
 
 const baseUri = "https://api.mailerlite.com/api/"
@@ -127,7 +129,7 @@ func ConnectMailerlite(apikey string, group int, dryRun bool) (*Mailerlite, erro
 	return &Mailerlite{apikey: apikey, group: group, dryRun: dryRun, utcTz: -1}, nil
 }
 
-func (m *Mailerlite) GetScheduledEmailDates() ([]ScheduledEmail, error) {
+func (m *Mailerlite) GetScheduledEmailDates() ([]email.ScheduledEmail, error) {
 	type campaign struct {
 		Id       int    `json:"id"`
 		DateSend string `json:"date_send"`
@@ -140,13 +142,13 @@ func (m *Mailerlite) GetScheduledEmailDates() ([]ScheduledEmail, error) {
 		return nil, err
 	}
 
-	var ret []ScheduledEmail
+	var ret []email.ScheduledEmail
 	for _, c := range campaigns {
 		dt, err := m.parseUtcTime(c.DateSend)
 		if err != nil {
 			return nil, err
 		}
-		ret = append(ret, ScheduledEmail{Id: c.Id, Name: c.Name, When: dt})
+		ret = append(ret, email.ScheduledEmail{Id: c.Id, Name: c.Name, When: dt})
 	}
 
 	return ret, nil
@@ -154,7 +156,7 @@ func (m *Mailerlite) GetScheduledEmailDates() ([]ScheduledEmail, error) {
 
 var fakeId int
 
-func (m *Mailerlite) DraftEmail(email Email) (int, error) {
+func (m *Mailerlite) DraftEmail(email email.Email) (int, error) {
 	if m.dryRun {
 		fakeId++
 		return fakeId, nil
