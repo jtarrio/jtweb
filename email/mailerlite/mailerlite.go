@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -36,8 +37,7 @@ func mapLanguage(language string) string {
 }
 
 func query[R any](m *Mailerlite, path string, method string, response *R) error {
-	var dummy *string
-	dummy = nil
+	var dummy *string = nil
 
 	return queryPayload(m, path, method, dummy, response)
 }
@@ -77,7 +77,7 @@ func queryPayload[Q any, R any](m *Mailerlite, path string, method string, reque
 	}
 
 	if res.StatusCode != 200 {
-		return fmt.Errorf("Request for %s returned status \"%s\": %s", req.URL, res.Status, string(body))
+		return fmt.Errorf("request for %s returned status \"%s\": %s", req.URL, res.Status, string(body))
 	}
 
 	err = json.Unmarshal(body, &response)
@@ -148,7 +148,7 @@ func (m *Mailerlite) GetScheduledEmailDates() ([]email.ScheduledEmail, error) {
 		if err != nil {
 			return nil, err
 		}
-		ret = append(ret, email.ScheduledEmail{Id: c.Id, Name: c.Name, When: dt})
+		ret = append(ret, email.ScheduledEmail{Id: fmt.Sprint(c.Id), Name: c.Name, When: dt})
 	}
 
 	return ret, nil
@@ -156,10 +156,10 @@ func (m *Mailerlite) GetScheduledEmailDates() ([]email.ScheduledEmail, error) {
 
 var fakeId int
 
-func (m *Mailerlite) DraftEmail(email email.Email) (int, error) {
+func (m *Mailerlite) DraftEmail(email email.Email) (string, error) {
 	if m.dryRun {
 		fakeId++
-		return fakeId, nil
+		return fmt.Sprint(fakeId), nil
 	}
 
 	var id int
@@ -177,11 +177,11 @@ func (m *Mailerlite) DraftEmail(email email.Email) (int, error) {
 			Id int `json:"id"`
 		}
 
-		req := campaignReq{Type: "regular", Name: email.Name, Groups: []int{email.Group}, Subject: email.Subject, Language: mapLanguage(email.Language)}
+		req := campaignReq{Type: "regular", Name: email.Name, Groups: []int{m.group}, Subject: email.Subject, Language: mapLanguage(email.Language)}
 		var resp campaignResp
 		err := queryPayload(m, "v2/campaigns", "POST", &req, &resp)
 		if err != nil {
-			return 0, err
+			return "", err
 		}
 		id = resp.Id
 	}
@@ -201,14 +201,14 @@ func (m *Mailerlite) DraftEmail(email email.Email) (int, error) {
 		var resp contentResp
 		err := queryPayload(m, fmt.Sprintf("v2/campaigns/%d/content", id), "PUT", &req, &resp)
 		if err != nil {
-			return 0, err
+			return "", err
 		}
 		if !resp.Success {
-			return 0, fmt.Errorf("Mailerlite returned a non-success state for id %d", id)
+			return "", fmt.Errorf("Mailerlite returned a non-success state for id %d", id)
 		}
 	}
 
-	return id, nil
+	return fmt.Sprint(id), nil
 }
 
 func (m *Mailerlite) sendOrSchedule(id int, date *time.Time) error {
@@ -244,10 +244,18 @@ func (m *Mailerlite) sendOrSchedule(id int, date *time.Time) error {
 	return queryPayload(m, fmt.Sprintf("v2/campaigns/%d/actions/send", id), "POST", &req, &resp)
 }
 
-func (m *Mailerlite) Schedule(id int, date time.Time) error {
-	return m.sendOrSchedule(id, &date)
+func (m *Mailerlite) Schedule(id string, date time.Time) error {
+	idint, err := strconv.Atoi(id)
+	if err != nil {
+		return err
+	}
+	return m.sendOrSchedule(idint, &date)
 }
 
-func (m *Mailerlite) Send(id int) error {
-	return m.sendOrSchedule(id, nil)
+func (m *Mailerlite) Send(id string) error {
+	idint, err := strconv.Atoi(id)
+	if err != nil {
+		return err
+	}
+	return m.sendOrSchedule(idint, nil)
 }

@@ -8,6 +8,7 @@ import (
 
 	"jacobo.tarrio.org/jtweb/email"
 	mailerlite "jacobo.tarrio.org/jtweb/email/mailerlite"
+	"jacobo.tarrio.org/jtweb/email/mailerlitev2"
 	"jacobo.tarrio.org/jtweb/page"
 	"jacobo.tarrio.org/jtweb/renderer/templates"
 	"jacobo.tarrio.org/jtweb/site"
@@ -15,6 +16,9 @@ import (
 
 var flagLanguage = flag.String("language", "", "The language to send mail for.")
 var flagSendAfter = flag.String("send_after", "", "Schedule posts newer than the given date/time.")
+var flagUseV2 = flag.Bool("use_v2", false, "Use Mailerlite V2")
+var flagSenderName = flag.String("sender_name", "", "The sender's name.")
+var flagSenderEmail = flag.String("sender_email", "", "The sender's email address.")
 var flagApikey = flag.String("apikey", "", "The API key for the mailer.")
 var flagGroup = flag.Int("group", -1, "The mail group to send to.")
 var flagSubjectPrefix = flag.String("subject_prefix", "", "The prefix to use in subject lines.")
@@ -95,13 +99,13 @@ func gatherEmails(language string, sendAfter time.Time, subjectPrefix string, co
 	return emails, nil
 }
 
-func draftEmail(m email.Mailer, group int, language string, data *emailData) (int, error) {
+func draftEmail(m email.Mailer, language string, data *emailData) (string, error) {
 	name, _, _ := strings.Cut(data.subject, ":")
-	id, err := m.DraftEmail(email.Email{Name: name, Group: group, Language: language, Subject: data.subject, Plaintext: data.plaintext, Html: data.html})
+	id, err := m.DraftEmail(email.Email{Name: name, Language: language, Subject: data.subject, Plaintext: data.plaintext, Html: data.html})
 	if err != nil {
-		return -1, err
+		return "", err
 	}
-	fmt.Printf("Created draft for [%s] as id %d\n", name, id)
+	fmt.Printf("Created draft for [%s] as id %s\n", name, id)
 	return id, nil
 }
 
@@ -133,7 +137,16 @@ func main() {
 		panic(err)
 	}
 
-	mailer, err := mailerlite.ConnectMailerlite(*flagApikey, *flagGroup, *flagDryRun)
+	var mailer email.Mailer
+
+	if *flagUseV2 {
+		if *flagSenderName == "" || *flagSenderEmail == "" {
+			panic("Must specify a sender name and email")
+		}
+		mailer, err = mailerlitev2.ConnectMailerliteV2(*flagApikey, *flagSenderName, *flagSenderEmail, fmt.Sprint(*flagGroup), *flagDryRun)
+	} else {
+		mailer, err = mailerlite.ConnectMailerlite(*flagApikey, *flagGroup, *flagDryRun)
+	}
 	if err != nil {
 		panic(err)
 	}
@@ -149,7 +162,7 @@ func main() {
 	}
 
 	if *flagSendFirstEmail {
-		id, err := draftEmail(mailer, *flagGroup, language, &emails[len(emails)-1])
+		id, err := draftEmail(mailer, language, &emails[len(emails)-1])
 		if err != nil {
 			panic(err)
 		}
@@ -160,12 +173,12 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		fmt.Printf("Sent id %d\n", id)
+		fmt.Printf("Sent id %s\n", id)
 		return
 	}
 
 	for _, email := range emails {
-		id, err := draftEmail(mailer, *flagGroup, language, &email)
+		id, err := draftEmail(mailer, language, &email)
 		if err != nil {
 			panic(err)
 		}
@@ -176,6 +189,6 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		fmt.Printf("Scheduled id %d for %s\n", id, email.date.String())
+		fmt.Printf("Scheduled id %s for %s\n", id, email.date.String())
 	}
 }

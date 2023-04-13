@@ -3,14 +3,13 @@ package email
 import "time"
 
 type ScheduledEmail struct {
-	Id   int
+	Id   string
 	Name string
 	When time.Time
 }
 
 type Email struct {
 	Name      string
-	Group     int
 	Language  string
 	Subject   string
 	Plaintext string
@@ -19,7 +18,7 @@ type Email struct {
 
 type Mailer interface {
 	GetScheduledEmailDates() ([]ScheduledEmail, error)
-	DraftEmail(email Email) (int, error)
-	Send(id int) error
-	Schedule(id int, date time.Time) error
+	DraftEmail(email Email) (string, error)
+	Send(id string) error
+	Schedule(id string, date time.Time) error
 }
