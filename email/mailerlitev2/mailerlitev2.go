@@ -82,7 +82,7 @@ func (m *Mailerlite) GetScheduledEmailDates() ([]email.ScheduledEmail, error) {
 			{Name: "type", Value: "regular"},
 		},
 		Page:  1,
-		Limit: 1000,
+		Limit: 100,
 	})
 	if err != nil {
 		return nil, err
