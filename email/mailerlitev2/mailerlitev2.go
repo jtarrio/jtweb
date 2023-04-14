@@ -151,8 +151,8 @@ func (m *Mailerlite) sendOrSchedule(client *mlgo.Client, id string, date *time.T
 			Delivery: mlgo.CampaignScheduleTypeScheduled,
 			Schedule: &mlgo.Schedule{
 				Date:       date.UTC().Format("2006-01-02"),
-				Hours:      fmt.Sprint(date.Hour()),
-				Minutes:    fmt.Sprint(date.Minute()),
+				Hours:      fmt.Sprintf("%02d", date.Hour()),
+				Minutes:    fmt.Sprintf("%02d", date.Minute()),
 				TimezoneID: tzid,
 			},
 		}
