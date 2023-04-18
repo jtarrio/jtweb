@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/google/go-querystring/query"
 	"io"
 	"net/http"
 	"net/url"
@@ -14,11 +13,13 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/google/go-querystring/query"
 )
 
 const (
 	Version    = "0.0.1"
-	APIVersion = "2022-12-01"
+	APIVersion = "2023-04-18"
 
 	defaultBaseURL   = "https://connect.mailerlite.com/api"
 	defaultUserAgent = "go-mailerlite" + "/" + Version

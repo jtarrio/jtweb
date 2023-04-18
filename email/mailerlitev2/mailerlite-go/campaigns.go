@@ -150,10 +150,11 @@ type CreateCampaign struct {
 }
 
 type Emails struct {
-	Subject  string `json:"subject"`
-	FromName string `json:"from_name"`
-	From     string `json:"from"`
-	Content  string `json:"content"`
+	Subject   string `json:"subject"`
+	FromName  string `json:"from_name"`
+	From      string `json:"from"`
+	Content   string `json:"content"`
+	PlainText string `json:"plain_text"`
 }
 
 type AbSettings struct {

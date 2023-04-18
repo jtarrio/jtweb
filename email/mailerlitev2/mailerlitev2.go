@@ -19,36 +19,21 @@ type Mailerlite struct {
 	group       string
 	dryRun      bool
 	utcTz       int
-}
-
-func mapLanguage(language string) string {
-	switch language {
-	case "en":
-	case "es":
-		return language
-	case "gl":
-		return "pt"
-	default:
-		return "en"
-	}
-	return "en"
-}
-
-func getClient(m *Mailerlite) *mlgo.Client {
-	return mlgo.NewClient(m.apikey)
+	client      *mlgo.Client
+	languageIds map[string]int
 }
 
 func (m *Mailerlite) parseUtcTime(t string) (time.Time, error) {
 	return time.Parse("2006-01-02 15:04:05", t)
 }
 
-func (m *Mailerlite) getUtcTimezone(client *mlgo.Client) (int, error) {
+func (m *Mailerlite) getUtcTimezone() (int, error) {
 	if m.utcTz != -1 {
 		return m.utcTz, nil
 	}
 
 	ctx := context.TODO()
-	tzs, _, err := client.Timezone.List(ctx)
+	tzs, _, err := m.client.Timezone.List(ctx)
 	if err != nil {
 		return -1, err
 	}
@@ -69,14 +54,54 @@ func (m *Mailerlite) getUtcTimezone(client *mlgo.Client) (int, error) {
 	return -1, fmt.Errorf("UTC timezone not found")
 }
 
+func (m *Mailerlite) getLanguageId(language string) (int, error) {
+	if len(m.languageIds) == 0 {
+		ctx := context.TODO()
+		lids, _, err := m.client.Campaign.Languages(ctx)
+		if err != nil {
+			return -1, err
+		}
+		for _, lid := range lids.Data {
+			m.languageIds[lid.Shortcode], err = strconv.Atoi(lid.Id)
+			if err != nil {
+				return -1, err
+			}
+		}
+	}
+	var id int
+	ok := false
+	for !ok && language != "" {
+		id, ok = m.languageIds[language]
+		if !ok {
+			if language == "gl" {
+				language = "pt"
+			} else {
+				language = ""
+			}
+		}
+	}
+	if !ok {
+		return -1, fmt.Errorf("language not found")
+	}
+	return id, nil
+}
+
 func ConnectMailerliteV2(apikey string, senderName string, senderEmail string, group string, dryRun bool) (*Mailerlite, error) {
-	return &Mailerlite{apikey: apikey, senderName: senderName, senderEmail: senderEmail, group: group, dryRun: dryRun, utcTz: -1}, nil
+	return &Mailerlite{
+		apikey:      apikey,
+		senderName:  senderName,
+		senderEmail: senderEmail,
+		group:       group,
+		dryRun:      dryRun,
+		utcTz:       -1,
+		client:      mlgo.NewClient(apikey),
+		languageIds: make(map[string]int),
+	}, nil
 }
 
 func (m *Mailerlite) GetScheduledEmailDates() ([]email.ScheduledEmail, error) {
-	client := getClient(m)
 	ctx := context.TODO()
-	campaigns, _, err := client.Campaign.List(ctx, &mlgo.ListCampaignOptions{
+	campaigns, _, err := m.client.Campaign.List(ctx, &mlgo.ListCampaignOptions{
 		Filters: &[]mlgo.Filter{
 			{Name: "status", Value: "ready"},
 			{Name: "type", Value: "regular"},
@@ -103,30 +128,39 @@ func (m *Mailerlite) GetScheduledEmailDates() ([]email.ScheduledEmail, error) {
 var fakeId int
 
 func (m *Mailerlite) DraftEmail(email email.Email) (string, error) {
-	if m.dryRun {
-		fakeId++
-		return fmt.Sprint(fakeId), nil
-	}
-
 	html, err := inliner.Inline(email.Html)
 	if err != nil {
 		return "", err
 	}
 
-	client := getClient(m)
-	ctx := context.TODO()
-	campaign, _, err := client.Campaign.Create(ctx, &mlgo.CreateCampaign{
-		Name:   email.Name,
-		Type:   mlgo.CampaignTypeRegular,
-		Groups: []string{m.group},
+	language, err := m.getLanguageId(email.Language)
+	if err != nil {
+		return "", err
+	}
+
+	request := &mlgo.CreateCampaign{
+		Name:       email.Name,
+		Type:       mlgo.CampaignTypeRegular,
+		LanguageID: language,
+		Groups:     []string{m.group},
 		Emails: []mlgo.Emails{
 			{FromName: m.senderName,
-				From:    m.senderEmail,
-				Subject: email.Subject,
-				Content: html,
+				From:      m.senderEmail,
+				Subject:   email.Subject,
+				Content:   html,
+				PlainText: email.Plaintext,
 			},
 		},
-	})
+	}
+
+	if m.dryRun {
+		fakeId++
+		// fmt.Println(*request)
+		return fmt.Sprint(fakeId), nil
+	}
+
+	ctx := context.TODO()
+	campaign, _, err := m.client.Campaign.Create(ctx, request)
 	if err != nil {
 		return "", err
 	}
@@ -135,12 +169,12 @@ func (m *Mailerlite) DraftEmail(email email.Email) (string, error) {
 	return id, nil
 }
 
-func (m *Mailerlite) sendOrSchedule(client *mlgo.Client, id string, date *time.Time) error {
+func (m *Mailerlite) sendOrSchedule(id string, date *time.Time) error {
 	if m.dryRun {
 		return nil
 	}
 
-	tzid, err := m.getUtcTimezone(client)
+	tzid, err := m.getUtcTimezone()
 	if err != nil {
 		return err
 	}
@@ -151,8 +185,8 @@ func (m *Mailerlite) sendOrSchedule(client *mlgo.Client, id string, date *time.T
 			Delivery: mlgo.CampaignScheduleTypeScheduled,
 			Schedule: &mlgo.Schedule{
 				Date:       date.UTC().Format("2006-01-02"),
-				Hours:      fmt.Sprintf("%02d", date.Hour()),
-				Minutes:    fmt.Sprintf("%02d", date.Minute()),
+				Hours:      fmt.Sprintf("%02d", date.UTC().Hour()),
+				Minutes:    fmt.Sprintf("%02d", date.UTC().Minute()),
 				TimezoneID: tzid,
 			},
 		}
@@ -161,16 +195,14 @@ func (m *Mailerlite) sendOrSchedule(client *mlgo.Client, id string, date *time.T
 			Delivery: mlgo.CampaignScheduleTypeInstant,
 		}
 	}
-	_, _, err = client.Campaign.Schedule(ctx, id, schedule)
+	_, _, err = m.client.Campaign.Schedule(ctx, id, schedule)
 	return err
 }
 
 func (m *Mailerlite) Schedule(id string, date time.Time) error {
-	client := getClient(m)
-	return m.sendOrSchedule(client, id, &date)
+	return m.sendOrSchedule(id, &date)
 }
 
 func (m *Mailerlite) Send(id string) error {
-	client := getClient(m)
-	return m.sendOrSchedule(client, id, nil)
+	return m.sendOrSchedule(id, nil)
 }
