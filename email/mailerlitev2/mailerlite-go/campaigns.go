@@ -186,18 +186,18 @@ type ScheduleCampaign struct {
 }
 
 type Schedule struct {
-	Date       string `json:"date"`
-	Hours      string `json:"hours"`
-	Minutes    string `json:"minutes"`
-	TimezoneID int    `json:"timezone_id,omitempty"`
+	Date     string `json:"date"`
+	Hours    string `json:"hours"`
+	Minutes  string `json:"minutes"`
+	Timezone int    `json:"timezone,omitempty"`
 }
 
 type Resend struct {
-	Delivery   string `json:"delivery"`
-	Date       string `json:"date"`
-	Hours      string `json:"hours"`
-	Minutes    string `json:"minutes"`
-	TimezoneID int    `json:"timezone_id,omitempty"`
+	Delivery string `json:"delivery"`
+	Date     string `json:"date"`
+	Hours    string `json:"hours"`
+	Minutes  string `json:"minutes"`
+	Timezone int    `json:"timezone,omitempty"`
 }
 
 type CampaignSubscriber struct {

@@ -170,10 +170,6 @@ func (m *Mailerlite) DraftEmail(email email.Email) (string, error) {
 }
 
 func (m *Mailerlite) sendOrSchedule(id string, date *time.Time) error {
-	if m.dryRun {
-		return nil
-	}
-
 	tzid, err := m.getUtcTimezone()
 	if err != nil {
 		return err
@@ -184,10 +180,10 @@ func (m *Mailerlite) sendOrSchedule(id string, date *time.Time) error {
 		schedule = &mlgo.ScheduleCampaign{
 			Delivery: mlgo.CampaignScheduleTypeScheduled,
 			Schedule: &mlgo.Schedule{
-				Date:       date.UTC().Format("2006-01-02"),
-				Hours:      fmt.Sprintf("%02d", date.UTC().Hour()),
-				Minutes:    fmt.Sprintf("%02d", date.UTC().Minute()),
-				TimezoneID: tzid,
+				Date:     date.UTC().Format("2006-01-02"),
+				Hours:    fmt.Sprintf("%02d", date.UTC().Hour()),
+				Minutes:  fmt.Sprintf("%02d", date.UTC().Minute()),
+				Timezone: tzid,
 			},
 		}
 	} else {
@@ -195,8 +191,15 @@ func (m *Mailerlite) sendOrSchedule(id string, date *time.Time) error {
 			Delivery: mlgo.CampaignScheduleTypeInstant,
 		}
 	}
-	_, _, err = m.client.Campaign.Schedule(ctx, id, schedule)
-	return err
+	if m.dryRun {
+		if schedule.Delivery == mlgo.CampaignScheduleTypeScheduled {
+			fmt.Println(*schedule.Schedule)
+		}
+		return nil
+	} else {
+		_, _, err = m.client.Campaign.Schedule(ctx, id, schedule)
+		return err
+	}
 }
 
 func (m *Mailerlite) Schedule(id string, date time.Time) error {
