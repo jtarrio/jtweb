@@ -24,6 +24,10 @@ These configuration options are available:
 * `site_uri` --- The site's URI, if different from the webroot.
 * `author_name` --- The default author's name.
 * `author_uri` --- The default author's website URI, if different from the site URI.
+* `hide_untranslated` --- Show only links to posts that are available in the same language.
+* `webroot_languages` --- Alternative values of `webroot` for different languages.
+* `site_name_languages` --- Alternative values of `site_name` for different languages.
+* `site_uri_languages` --- Alternative values of `site_uri` for different languages.
 
 The configuration file will look like this:
 
@@ -85,6 +89,7 @@ These are the fields that are available for the header:
 * `title` --- the page's title. This field is mandatory.
 * `summary` --- a one-line summary for use in indices.
 * `language` --- the ISO code for the page's language. "en" is assumed if omitted.
+* `episode` --- an episode number or name.
 * `publish_date` --- the date (and, optionally, time) when the page was posted.
 * `hide_publish_date` --- boolean; if true, the publish date is not shown.
 * `draft` --- boolean; if true, the page is not indexed and it's marked as a draft.
@@ -124,6 +129,7 @@ This template is used to render the page itself. It is rendered from a
 * `Permalink` --- the page's permalink.
 * `Author` --- a `templates.LinkData` structure containing the author's name and website URI.
 * `Summary` --- the page's one-line summary.
+* `Episode` --- the episode number or name.
 * `PublishDate` --- the page's publish date, or zero if it's been unspecified or hidden.
 * `Tags` --- an array of tag names.
 * `Content` --- the page's rendered content in HTML.
