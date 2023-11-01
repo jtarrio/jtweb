@@ -1,4 +1,6 @@
 .vscode/
 
-sitegenerator.exe
-cmd/sitegenerator/__debug_bin
+**/node_modules
+**/__debug_bin
+**/*.exe
+**/*.js
