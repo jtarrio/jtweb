@@ -19,7 +19,7 @@ require (
 )
 
 require (
-	github.com/alecthomas/chroma v0.10.0 // indirect
+	github.com/alecthomas/chroma v0.10.0
 	github.com/aymerick/douceur v0.2.0
 	github.com/dlclark/regexp2 v1.9.0 // indirect
 	github.com/gorilla/css v1.0.0 // indirect

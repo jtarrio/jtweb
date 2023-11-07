@@ -32,7 +32,7 @@ var markdown goldmark.Markdown = goldmark.New(
 		extension.Typographer,
 		highlighting.NewHighlighting(
 			highlighting.WithStyle("igor"),
-			highlighting.WithFormatOptions(htmlformatter.TabWidth(4))),
+			highlighting.WithFormatOptions(htmlformatter.TabWidth(2))),
 		mathjax.MathJax,
 	),
 )
