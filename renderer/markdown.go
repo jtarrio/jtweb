@@ -8,6 +8,7 @@ import (
 	"jacobo.tarrio.org/jtweb/page"
 	"jacobo.tarrio.org/jtweb/renderer/extensions"
 
+	htmlformatter "github.com/alecthomas/chroma/formatters/html"
 	mathjax "github.com/litao91/goldmark-mathjax"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/yuin/goldmark"
@@ -29,7 +30,9 @@ var markdown goldmark.Markdown = goldmark.New(
 		extensions.ImageCaptionExtension,
 		extension.GFM,
 		extension.Typographer,
-		highlighting.NewHighlighting(highlighting.WithStyle("igor")),
+		highlighting.NewHighlighting(
+			highlighting.WithStyle("igor"),
+			highlighting.WithFormatOptions(htmlformatter.TabWidth(4))),
 		mathjax.MathJax,
 	),
 )
