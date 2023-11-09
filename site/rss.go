@@ -24,8 +24,8 @@ func (c *Contents) outputRss(w io.Writer, t *templates.Templates, lang string) e
 	}
 
 	feed := &feeds.Feed{
-		Title: c.Config.SiteName,
-		Link:  &feeds.Link{Href: c.Config.SiteURI},
+		Title: c.Config.GetSiteName(lang),
+		Link:  &feeds.Link{Href: c.Config.GetSiteURI(lang)},
 	}
 	feed.Items = make([]*feeds.Item, len(pages))
 	for i, p := range pages {
@@ -36,7 +36,7 @@ func (c *Contents) outputRss(w io.Writer, t *templates.Templates, lang string) e
 		}
 		feed.Items[i] = &feeds.Item{
 			Title:       p.Header.Title,
-			Link:        &feeds.Link{Href: uri.Concat(c.Config.WebRoot, p.Name) + ".html"},
+			Link:        &feeds.Link{Href: uri.Concat(c.Config.GetWebRoot(lang), p.Name) + ".html"},
 			Author:      &feeds.Author{Name: p.Header.AuthorName},
 			Created:     p.Header.PublishDate,
 			Description: sb.String(),

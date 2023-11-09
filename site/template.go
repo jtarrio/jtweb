@@ -9,7 +9,7 @@ import (
 )
 
 func (c *Contents) renderTemplate(name string) error {
-	inputFileName := filepath.Join(c.InputPath, name+".tmpl")
+	inputFileName := filepath.Join(c.Config.GetInputPath(), name+".tmpl")
 	templateName := filepath.Base(inputFileName)
 	tmpl, err := template.New(templateName).Funcs(template.FuncMap{
 		"hasContent": func(lang string) bool {
@@ -28,14 +28,14 @@ func (c *Contents) renderTemplate(name string) error {
 			return c.Pages[name]
 		},
 		"webRoot": func(lang string) string {
-			return c.GetWebRoot(lang)
+			return c.Config.GetWebRoot(lang)
 		},
 	}).ParseFiles(inputFileName)
 	if err != nil {
 		return err
 	}
 	return makeFile(
-		filepath.Join(c.OutputPath, name),
+		filepath.Join(c.Config.GetOutputPath(), name),
 		func(w io.Writer) error {
 			return tmpl.Execute(w, c)
 		})

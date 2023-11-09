@@ -39,7 +39,7 @@ func getTranslationsByName(pages map[string]*page.Page) (map[string][]Translatio
 		}
 		if translations[page.Header.Language] != "" && translations[page.Header.Language] != page.Name {
 			return nil, fmt.Errorf(
-				"Two pages claim language [%s] for the same content: [%s] and [%s]",
+				"two pages claim language [%s] for the same content: [%s] and [%s]",
 				page.Header.Language,
 				translations[page.Header.Language],
 				page.Name,
@@ -52,7 +52,7 @@ func getTranslationsByName(pages map[string]*page.Page) (map[string][]Translatio
 				for l, p := range otherTranslations {
 					if translations[l] != "" && translations[l] != p {
 						return nil, fmt.Errorf(
-							"Translation of [%s] to language [%s] has two conflicting values: [%s] and [%s]",
+							"translation of [%s] to language [%s] has two conflicting values: [%s] and [%s]",
 							page.Name,
 							l,
 							translations[l],
@@ -207,7 +207,7 @@ func (c *Contents) runTemplate(tmpl *template.Template, w io.Writer, page *page.
 	if err != nil {
 		return err
 	}
-	return templates.MakeUrisAbsolute(strings.NewReader(sb.String()), w, c.GetWebRoot(page.Header.Language), page.Name)
+	return templates.MakeUrisAbsolute(strings.NewReader(sb.String()), w, c.Config.GetWebRoot(page.Header.Language), page.Name)
 }
 
 func (c *Contents) outputToc(w io.Writer, t *templates.Templates, lang string, names []string, tag string) error {
@@ -253,8 +253,8 @@ func (c *Contents) makePageData(page *page.Page) templates.PageData {
 			URI:  page.Header.AuthorURI,
 		}
 		if pageData.Author.Name == "" && pageData.Author.URI == "" {
-			pageData.Author.Name = c.Config.AuthorName
-			pageData.Author.URI = c.Config.AuthorURI
+			pageData.Author.Name = c.Config.GetAuthorName()
+			pageData.Author.URI = c.Config.GetAuthorURI()
 		}
 	}
 	newer := c.Toc[page.Header.Language].NewerPages[page.Name]
@@ -288,7 +288,7 @@ func (c *Contents) makePageData(page *page.Page) templates.PageData {
 }
 
 func (c *Contents) makePageURI(p *page.Page) string {
-	return uri.Concat(c.GetWebRoot(p.Header.Language), p.Name+".html")
+	return uri.Concat(c.Config.GetWebRoot(p.Header.Language), p.Name+".html")
 }
 
 func (c *Contents) getTags(stories []string) []string {

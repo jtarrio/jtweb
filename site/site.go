@@ -9,12 +9,13 @@ import (
 
 	"jacobo.tarrio.org/jtweb/page"
 	"jacobo.tarrio.org/jtweb/renderer/templates"
+	"jacobo.tarrio.org/jtweb/site/config"
 	"jacobo.tarrio.org/jtweb/uri"
 )
 
 // Contents contains the parsed and indexed content of the site.
 type Contents struct {
-	Config
+	Config       config.Config
 	Files        []string
 	Templates    []string
 	Pages        map[string]*page.Page
@@ -48,28 +49,28 @@ type Translation struct {
 }
 
 // Read parses the whole site contents.
-func (s Config) Read() (*Contents, error) {
+func Read(s config.Config) (*Contents, error) {
 	files := make([]string, 0)
 	templates := make([]string, 0)
 	pagesByName := make(map[string]*page.Page)
 	tagNames := make(map[string]string)
-	err := filepath.Walk(s.InputPath, func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk(s.GetInputPath(), func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
 		if info.IsDir() {
 			return nil
 		}
-		name, err := filepath.Rel(s.InputPath, path)
+		name, err := filepath.Rel(s.GetInputPath(), path)
 		if err != nil {
 			return err
 		}
 		if strings.HasSuffix(path, ".md") {
 			page, err := parsePage(path, name)
 			if err != nil {
-				return fmt.Errorf("Error parsing page %s: %v", path, err)
+				return fmt.Errorf("error parsing page %s: %v", path, err)
 			}
-			if page.Header.PublishDate.After(s.PublishUntil) {
+			if page.Header.PublishDate.After(s.GetPublishUntil()) {
 				return nil
 			}
 			pagesByName[page.Name] = page
@@ -92,7 +93,7 @@ func (s Config) Read() (*Contents, error) {
 		return nil, err
 	}
 
-	tocByLanguage, err := indexPages(pagesByName, translationsByName, s.HideUntranslated)
+	tocByLanguage, err := indexPages(pagesByName, translationsByName, s.GetHideUntranslated())
 	if err != nil {
 		return nil, err
 	}
@@ -136,12 +137,15 @@ func (c *Contents) Write() error {
 	}
 	for _, page := range c.Pages {
 		t := &templates.Templates{
-			TemplatePath: c.TemplatePath,
-			WebRoot:      c.GetWebRoot(page.Header.Language),
-			Site:         templates.LinkData{Name: c.GetSiteName(page.Header.Language), URI: c.GetSiteURI(page.Header.Language)},
+			TemplatePath: c.Config.GetTemplatePath(),
+			WebRoot:      c.Config.GetWebRoot(page.Header.Language),
+			Site: templates.LinkData{
+				Name: c.Config.GetSiteName(page.Header.Language),
+				URI:  c.Config.GetSiteURI(page.Header.Language),
+			},
 		}
 		err := makeFile(
-			filepath.Join(c.OutputPath, page.Name+".html"),
+			filepath.Join(c.Config.GetOutputPath(), page.Name+".html"),
 			func(w io.Writer) error {
 				return c.outputPage(w, t, page)
 			})
@@ -151,12 +155,15 @@ func (c *Contents) Write() error {
 	}
 	for lang, languageToc := range c.Toc {
 		t := &templates.Templates{
-			TemplatePath: c.TemplatePath,
-			WebRoot:      c.GetWebRoot(lang),
-			Site:         templates.LinkData{Name: c.GetSiteName(lang), URI: c.GetSiteURI(lang)},
+			TemplatePath: c.Config.GetTemplatePath(),
+			WebRoot:      c.Config.GetWebRoot(lang),
+			Site: templates.LinkData{
+				Name: c.Config.GetSiteName(lang),
+				URI:  c.Config.GetSiteURI(lang),
+			},
 		}
 		err := makeFile(
-			fmt.Sprintf("%s-%s.html", filepath.Join(c.OutputPath, "toc", "toc"), lang),
+			fmt.Sprintf("%s-%s.html", filepath.Join(c.Config.GetOutputPath(), "toc", "toc"), lang),
 			func(w io.Writer) error {
 				return c.outputToc(w, t, lang, languageToc.All, "")
 			})
@@ -165,7 +172,7 @@ func (c *Contents) Write() error {
 		}
 		for tag, tagToc := range languageToc.ByTag {
 			err := makeFile(
-				fmt.Sprintf("%s-%s.html", filepath.Join(c.OutputPath, "tags", tag), lang),
+				fmt.Sprintf("%s-%s.html", filepath.Join(c.Config.GetOutputPath(), "tags", tag), lang),
 				func(w io.Writer) error {
 					return c.outputToc(w, t, lang, tagToc, c.Tags[tag])
 				})
@@ -174,7 +181,7 @@ func (c *Contents) Write() error {
 			}
 		}
 		err = makeFile(
-			fmt.Sprintf("%s/%s.xml", filepath.Join(c.OutputPath, "rss"), lang),
+			fmt.Sprintf("%s/%s.xml", filepath.Join(c.Config.GetOutputPath(), "rss"), lang),
 			func(w io.Writer) error {
 				return c.outputRss(w, t, lang)
 			})
@@ -186,8 +193,8 @@ func (c *Contents) Write() error {
 }
 
 func (c *Contents) copyFile(name string) error {
-	inName := filepath.Join(c.InputPath, name)
-	outName := filepath.Join(c.OutputPath, name)
+	inName := filepath.Join(c.Config.GetInputPath(), name)
+	outName := filepath.Join(c.Config.GetOutputPath(), name)
 	inFile, err := os.Open(inName)
 	if err != nil {
 		return err

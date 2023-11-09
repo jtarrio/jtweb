@@ -19,8 +19,8 @@ import (
 const redirectPlaceholder = "### REDIRECTS ###"
 
 func (c *Contents) outputHtaccess(name string) error {
-	inName := filepath.Join(c.InputPath, name)
-	outName := filepath.Join(c.OutputPath, name)
+	inName := filepath.Join(c.Config.GetInputPath(), name)
+	outName := filepath.Join(c.Config.GetOutputPath(), name)
 	inFile, err := os.Open(inName)
 	if err != nil {
 		return err
@@ -108,7 +108,7 @@ func (c *Contents) writeRedirects(bw *bufio.Writer) error {
 func (c *Contents) makeRedirectPatterns(p *page.Page) ([]redirectPattern, error) {
 	out := make([]redirectPattern, 0)
 
-	parsed, err := url.Parse(uri.Concat(c.GetWebRoot(p.Header.Language), p.Name+".html"))
+	parsed, err := url.Parse(uri.Concat(c.Config.GetWebRoot(p.Header.Language), p.Name+".html"))
 	if err != nil {
 		return nil, err
 	}

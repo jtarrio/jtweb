@@ -4,16 +4,17 @@ import (
 	"flag"
 
 	"jacobo.tarrio.org/jtweb/site"
+	"jacobo.tarrio.org/jtweb/site/config"
 )
 
 func main() {
 	flag.Parse()
 
-	cfg, err := site.FromFlags()
+	cfg, err := config.GetConfig()
 	if err != nil {
 		panic(err)
 	}
-	content, err := cfg.Read()
+	content, err := site.Read(cfg)
 	if err != nil {
 		panic(err)
 	}

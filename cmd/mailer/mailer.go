@@ -12,6 +12,7 @@ import (
 	"jacobo.tarrio.org/jtweb/page"
 	"jacobo.tarrio.org/jtweb/renderer/templates"
 	"jacobo.tarrio.org/jtweb/site"
+	"jacobo.tarrio.org/jtweb/site/config"
 )
 
 var flagLanguage = flag.String("language", "", "The language to send mail for.")
@@ -61,9 +62,12 @@ func gatherEmails(language string, sendAfter time.Time, subjectPrefix string, co
 	}
 
 	t := &templates.Templates{
-		TemplatePath: content.TemplatePath,
-		WebRoot:      content.GetWebRoot(language),
-		Site:         templates.LinkData{Name: content.GetSiteName(language), URI: content.GetSiteURI(language)},
+		TemplatePath: content.Config.GetTemplatePath(),
+		WebRoot:      content.Config.GetWebRoot(language),
+		Site: templates.LinkData{
+			Name: content.Config.GetSiteName(language),
+			URI:  content.Config.GetSiteURI(language),
+		},
 	}
 
 	var emails []emailData
@@ -128,11 +132,11 @@ func main() {
 		sendAfter = parsed
 	}
 
-	cfg, err := site.FromFlags()
+	cfg, err := config.GetConfig()
 	if err != nil {
 		panic(err)
 	}
-	content, err := cfg.Read()
+	content, err := site.Read(cfg)
 	if err != nil {
 		panic(err)
 	}
