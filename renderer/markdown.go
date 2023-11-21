@@ -5,7 +5,6 @@ import (
 	"io"
 	"regexp"
 
-	"jacobo.tarrio.org/jtweb/page"
 	"jacobo.tarrio.org/jtweb/renderer/extensions"
 
 	htmlformatter "github.com/alecthomas/chroma/formatters/html"
@@ -49,44 +48,44 @@ var sanitizer = func() *bluemonday.Policy {
 	return p
 }()
 
-// Parse reads a page in Markdown format and parses it.
-func Parse(r io.Reader, name string) (*page.Page, error) {
+type PageMarkdown struct {
+	Root   ast.Node
+	Header []byte
+}
+
+func ParseMarkdown(src []byte) PageMarkdown {
+	var ret PageMarkdown
+	ret.Root = markdown.Parser().Parse(text.NewReader(src))
+	ret.Header = findHeader(ret.Root, src)
+	return ret
+}
+
+func findHeader(root ast.Node, src []byte) []byte {
 	var buf bytes.Buffer
-	_, err := buf.ReadFrom(r)
-	if err != nil {
-		return nil, err
-	}
-	src := buf.Bytes()
-	md := markdown.Parser().Parse(text.NewReader(src))
-	header, err := findHeader(md, src)
-	if err != nil {
-		return nil, err
-	}
-	page := &page.Page{Name: name, Source: src, Root: md, Header: header}
-	return page, nil
+	ast.Walk(root, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
+		if n.Kind() == extensions.KindHeaderBlock {
+			for i := 0; i < n.Lines().Len(); i++ {
+				line := n.Lines().At(i)
+				buf.Write(src[line.Start:line.Stop])
+			}
+			return ast.WalkStop, nil
+		}
+		return ast.WalkContinue, nil
+	})
+	return buf.Bytes()
 }
 
 // Render renders the page in HTML format.
-func Render(w io.Writer, p *page.Page) error {
+func RenderMarkdown(w io.Writer, source []byte, root ast.Node) error {
 	buf := &bytes.Buffer{}
-	err := markdown.Renderer().Render(buf, p.Source, p.Root)
+	err := markdown.Renderer().Render(buf, source, root)
 	if err != nil {
 		return err
 	}
-	buf.WriteTo(w)
 	_, err = sanitizer.SanitizeReader(buf).WriteTo(w)
 	return err
 }
 
-func findHeader(root ast.Node, src []byte) (page.HeaderData, error) {
-	var header page.HeaderData
-	err := ast.Walk(root, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
-		if n.Kind() == extensions.KindHeaderBlock {
-			var err error
-			header, err = n.(*extensions.HeaderBlock).ParseContents(src)
-			return ast.WalkStop, err
-		}
-		return ast.WalkContinue, nil
-	})
-	return header, err
+func Sanitizer() *bluemonday.Policy {
+	return sanitizer
 }

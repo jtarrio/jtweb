@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"jacobo.tarrio.org/jtweb/page"
-	"jacobo.tarrio.org/jtweb/renderer"
 	"jacobo.tarrio.org/jtweb/renderer/templates"
 	"jacobo.tarrio.org/jtweb/uri"
 
@@ -30,7 +29,7 @@ func (c *Contents) outputRss(w io.Writer, t *templates.Templates, lang string) e
 	feed.Items = make([]*feeds.Item, len(pages))
 	for i, p := range pages {
 		var sb strings.Builder
-		err := renderer.Render(&sb, p)
+		err := p.Render(&sb)
 		if err != nil {
 			return err
 		}

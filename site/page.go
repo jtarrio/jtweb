@@ -11,7 +11,6 @@ import (
 
 	"jacobo.tarrio.org/jtweb/languages"
 	"jacobo.tarrio.org/jtweb/page"
-	"jacobo.tarrio.org/jtweb/renderer"
 	"jacobo.tarrio.org/jtweb/renderer/templates"
 	"jacobo.tarrio.org/jtweb/uri"
 )
@@ -23,7 +22,7 @@ func parsePage(path string, name string) (*page.Page, error) {
 		return nil, err
 	}
 	defer file.Close()
-	return renderer.Parse(file, name)
+	return page.Parse(name, file)
 }
 
 func getTranslationsByName(pages map[string]*page.Page) (map[string][]Translation, error) {
@@ -232,7 +231,7 @@ func (c *Contents) outputToc(w io.Writer, t *templates.Templates, lang string, n
 
 func (c *Contents) makePageData(page *page.Page) templates.PageData {
 	sb := strings.Builder{}
-	renderer.Render(&sb, page)
+	page.Render(&sb)
 
 	pageData := templates.PageData{
 		Title:     page.Header.Title,
