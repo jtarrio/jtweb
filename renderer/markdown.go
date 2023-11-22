@@ -83,6 +83,9 @@ func RenderMarkdown(w io.Writer, source []byte, root ast.Node) error {
 		return err
 	}
 	_, err = buf.WriteTo(w)
+	if err != nil {
+		return err
+	}
 	_, err = sanitizer.SanitizeReader(buf).WriteTo(w)
 	return err
 }
