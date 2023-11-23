@@ -19,7 +19,7 @@ func cleanRel(name string) string {
 }
 
 func OsFile(basePath string) File {
-	return &osFile{rel: "", base: cleanRel(basePath)}
+	return &osFile{rel: "", base: cleanRel(filepath.ToSlash(basePath))}
 }
 
 func (i *osFile) PathName() string {
@@ -27,7 +27,7 @@ func (i *osFile) PathName() string {
 }
 
 func (i *osFile) path() string {
-	return path.Join(i.base, i.rel)
+	return filepath.FromSlash(path.Join(i.base, i.rel))
 }
 
 func (i *osFile) GoTo(name string) File {
@@ -82,7 +82,7 @@ func (i *osFile) ForAllFiles(fn ForAllFilesFunc) error {
 		if d.IsDir() {
 			return nil
 		}
-		suffix, nerr := filepath.Rel(i.base, name)
+		suffix, nerr := filepath.Rel(i.base, filepath.ToSlash(name))
 		if nerr != nil {
 			return nerr
 		}
