@@ -22,20 +22,20 @@ func OsFile(basePath string) File {
 	return &osFile{rel: "", base: cleanRel(filepath.ToSlash(basePath))}
 }
 
-func (i *osFile) PathName() string {
-	return i.rel
+func (f *osFile) PathName() string {
+	return f.rel
 }
 
-func (i *osFile) path() string {
-	return filepath.FromSlash(path.Join(i.base, i.rel))
+func (f *osFile) path() string {
+	return filepath.FromSlash(path.Join(f.base, f.rel))
 }
 
-func (i *osFile) GoTo(name string) File {
-	return &osFile{rel: cleanRel(path.Join(i.rel, name)), base: i.base}
+func (f *osFile) GoTo(name string) File {
+	return &osFile{rel: cleanRel(path.Join(f.rel, name)), base: f.base}
 }
 
-func (i *osFile) Create() (Output, error) {
-	path := i.path()
+func (f *osFile) Create() (Output, error) {
+	path := f.path()
 	out, err := os.Create(path)
 	if err == nil {
 		return out, nil
@@ -47,8 +47,8 @@ func (i *osFile) Create() (Output, error) {
 	return os.Create(path)
 }
 
-func (i *osFile) CreateBytes(content []byte) error {
-	output, err := i.Create()
+func (f *osFile) CreateBytes(content []byte) error {
+	output, err := f.Create()
 	if err != nil {
 		return err
 	}
@@ -57,12 +57,12 @@ func (i *osFile) CreateBytes(content []byte) error {
 	return err
 }
 
-func (i *osFile) Read() (Input, error) {
-	return os.Open(i.path())
+func (f *osFile) Read() (Input, error) {
+	return os.Open(f.path())
 }
 
-func (i *osFile) ReadBytes() ([]byte, error) {
-	input, err := i.Read()
+func (f *osFile) ReadBytes() ([]byte, error) {
+	input, err := f.Read()
 	if err != nil {
 		return nil, err
 	}
@@ -75,28 +75,28 @@ func (i *osFile) ReadBytes() ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-func (i *osFile) Stat() (Stat, error) {
-	stat, err := os.Stat(i.path())
+func (f *osFile) Stat() (Stat, error) {
+	stat, err := os.Stat(f.path())
 	if err != nil {
 		return Stat{}, err
 	}
 	return Stat{ModTime: stat.ModTime()}, nil
 }
 
-func (i *osFile) Chtime(mtime time.Time) error {
-	return os.Chtimes(i.path(), mtime, mtime)
+func (f *osFile) Chtime(mtime time.Time) error {
+	return os.Chtimes(f.path(), mtime, mtime)
 }
 
-func (i *osFile) ForAllFiles(fn ForAllFilesFunc) error {
-	err := filepath.WalkDir(i.path(), func(name string, d fs.DirEntry, err error) error {
+func (f *osFile) ForAllFiles(fn ForAllFilesFunc) error {
+	err := filepath.WalkDir(f.path(), func(name string, d fs.DirEntry, err error) error {
 		if d.IsDir() {
 			return nil
 		}
-		suffix, nerr := filepath.Rel(i.base, filepath.ToSlash(name))
+		suffix, nerr := filepath.Rel(f.base, filepath.ToSlash(name))
 		if nerr != nil {
 			return nerr
 		}
-		return fn(i.GoTo(suffix), err)
+		return fn(f.GoTo(suffix), err)
 	})
 	if err == SkipRemaining {
 		return nil

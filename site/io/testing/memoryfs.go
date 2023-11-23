@@ -9,7 +9,7 @@ import (
 	"jacobo.tarrio.org/jtweb/site/io"
 )
 
-var defaultMtime = time.Date(2023, 1, 1, 12, 34, 56, 0, time.UTC)
+var DefaultMtime = time.Date(2023, 1, 1, 12, 34, 56, 0, time.UTC)
 
 type memoryFs struct {
 	files map[string]memoryFsEntry
@@ -33,16 +33,16 @@ func NewMemoryFs() io.File {
 	return &memoryFile{fs: &memoryFs{files: map[string]memoryFsEntry{}}, rel: ""}
 }
 
-func (i *memoryFile) PathName() string {
-	return i.rel
+func (f *memoryFile) PathName() string {
+	return f.rel
 }
 
-func (i *memoryFile) GoTo(name string) io.File {
-	return &memoryFile{fs: i.fs, rel: cleanRel(path.Join(i.rel, name))}
+func (f *memoryFile) GoTo(name string) io.File {
+	return &memoryFile{fs: f.fs, rel: cleanRel(path.Join(f.rel, name))}
 }
 
-func (i *memoryFile) Create() (io.Output, error) {
-	return &memoryOutput{file: i}, nil
+func (f *memoryFile) Create() (io.Output, error) {
+	return &memoryOutput{file: f}, nil
 }
 
 type memoryOutput struct {
@@ -51,21 +51,21 @@ type memoryOutput struct {
 }
 
 func (o *memoryOutput) Close() error {
-	o.file.fs.files[o.file.rel] = memoryFsEntry{mtime: defaultMtime, content: o.Bytes()}
+	o.file.fs.files[o.file.rel] = memoryFsEntry{mtime: DefaultMtime, content: o.Bytes()}
 	return nil
 }
 
-func (i *memoryFile) CreateBytes(content []byte) error {
-	i.fs.files[i.rel] = memoryFsEntry{mtime: defaultMtime, content: content}
+func (f *memoryFile) CreateBytes(content []byte) error {
+	f.fs.files[f.rel] = memoryFsEntry{mtime: DefaultMtime, content: content}
 	return nil
 }
 
-func (i *memoryFile) Read() (io.Input, error) {
-	b, ok := i.fs.files[i.rel]
+func (f *memoryFile) Read() (io.Input, error) {
+	b, ok := f.fs.files[f.rel]
 	if !ok {
-		return nil, fmt.Errorf("file does not exist: %s", i.rel)
+		return nil, fmt.Errorf("file does not exist: %s", f.rel)
 	}
-	return &memoryInput{Reader: *bytes.NewReader(b.content), file: i}, nil
+	return &memoryInput{Reader: *bytes.NewReader(b.content), file: f}, nil
 }
 
 type memoryInput struct {
@@ -77,35 +77,35 @@ func (*memoryInput) Close() error {
 	return nil
 }
 
-func (i *memoryFile) ReadBytes() ([]byte, error) {
-	b, ok := i.fs.files[i.rel]
+func (f *memoryFile) ReadBytes() ([]byte, error) {
+	b, ok := f.fs.files[f.rel]
 	if !ok {
-		return nil, fmt.Errorf("file does not exist: %s", i.rel)
+		return nil, fmt.Errorf("file does not exist: %s", f.rel)
 	}
 	return b.content, nil
 }
 
-func (i *memoryFile) Stat() (io.Stat, error) {
-	b, ok := i.fs.files[i.rel]
+func (f *memoryFile) Stat() (io.Stat, error) {
+	b, ok := f.fs.files[f.rel]
 	if !ok {
-		return io.Stat{}, fmt.Errorf("file does not exist: %s", i.rel)
+		return io.Stat{}, fmt.Errorf("file does not exist: %s", f.rel)
 	}
 	return io.Stat{ModTime: b.mtime}, nil
 }
 
-func (i *memoryFile) Chtime(mtime time.Time) error {
-	b, ok := i.fs.files[i.rel]
+func (f *memoryFile) Chtime(mtime time.Time) error {
+	b, ok := f.fs.files[f.rel]
 	if !ok {
-		return fmt.Errorf("file does not exist: %s", i.rel)
+		return fmt.Errorf("file does not exist: %s", f.rel)
 	}
 	b.mtime = mtime
-	i.fs.files[i.rel] = b
+	f.fs.files[f.rel] = b
 	return nil
 }
 
-func (i *memoryFile) ForAllFiles(fn io.ForAllFilesFunc) error {
-	for k := range i.fs.files {
-		err := fn(i.GoTo(k), nil)
+func (f *memoryFile) ForAllFiles(fn io.ForAllFilesFunc) error {
+	for k := range f.fs.files {
+		err := fn(f.GoTo(k), nil)
 		if err == io.SkipRemaining {
 			return nil
 		}
