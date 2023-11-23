@@ -3,6 +3,7 @@ package io
 import (
 	"errors"
 	"io"
+	"time"
 )
 
 type Input interface {
@@ -20,7 +21,14 @@ type File interface {
 	GoTo(name string) File
 	Create() (Output, error)
 	Read() (Input, error)
+	ReadBytes() ([]byte, error)
+	Stat() (Stat, error)
+	Chtime(mtime time.Time) error
 	ForAllFiles(fn ForAllFilesFunc) error
+}
+
+type Stat struct {
+	ModTime time.Time
 }
 
 type ForAllFilesFunc func(file File, err error) error

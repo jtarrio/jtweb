@@ -3,18 +3,18 @@ package templates
 import (
 	"fmt"
 	"html/template"
-	"path/filepath"
 	"strings"
 	text_template "text/template"
 	"time"
 
 	"jacobo.tarrio.org/jtweb/languages"
+	"jacobo.tarrio.org/jtweb/site/io"
 	"jacobo.tarrio.org/jtweb/uri"
 )
 
 // Templates holds the configuration for the template system.
 type Templates struct {
-	TemplatePath        string
+	TemplateBase        io.File
 	WebRoot             string
 	Site                LinkData
 	tocTemplates        map[string]*template.Template
@@ -127,6 +127,10 @@ func (t Templates) loadTemplate(fileName string, lang string) (*template.Templat
 	if err != nil {
 		return nil, err
 	}
+	tmpl, err := t.TemplateBase.GoTo(fileName).ReadBytes()
+	if err != nil {
+		return nil, err
+	}
 	return template.New(fileName).Funcs(template.FuncMap{
 		"formatDate": func(tm time.Time) string {
 			return t.FormatDate(tm, dateLocale)
@@ -148,11 +152,15 @@ func (t Templates) loadTemplate(fileName string, lang string) (*template.Templat
 		"webRoot": func() string {
 			return t.WebRoot
 		},
-	}).ParseFiles(filepath.Join(t.TemplatePath, fileName))
+	}).Parse(string(tmpl))
 }
 
 func (t Templates) loadTextTemplate(fileName string, lang string) (*text_template.Template, error) {
 	dateLocale, err := languages.FindByCode(lang)
+	if err != nil {
+		return nil, err
+	}
+	tmpl, err := t.TemplateBase.GoTo(fileName).ReadBytes()
 	if err != nil {
 		return nil, err
 	}
@@ -178,7 +186,7 @@ func (t Templates) loadTextTemplate(fileName string, lang string) (*text_templat
 		"webRoot": func() string {
 			return t.WebRoot
 		},
-	}).ParseFiles(filepath.Join(t.TemplatePath, fileName))
+	}).ParseFiles(string(tmpl))
 }
 
 // FormatDate renders the given time as a date.

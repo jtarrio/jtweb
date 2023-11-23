@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"path"
+	"time"
 
 	"jacobo.tarrio.org/jtweb/site/io"
 )
@@ -60,7 +61,23 @@ type memoryInput struct {
 	file *memoryFile
 }
 
-func (o *memoryInput) Close() error {
+func (*memoryInput) Close() error {
+	return nil
+}
+
+func (i *memoryFile) ReadBytes() ([]byte, error) {
+	b, ok := i.fs.files[i.rel]
+	if !ok {
+		return nil, fmt.Errorf("file does not exist: %s", i.rel)
+	}
+	return b, nil
+}
+
+func (*memoryFile) Stat() (io.Stat, error) {
+	return io.Stat{ModTime: time.Now()}, nil
+}
+
+func (*memoryFile) Chtime(time.Time) error {
 	return nil
 }
 

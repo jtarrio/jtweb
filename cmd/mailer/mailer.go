@@ -62,7 +62,7 @@ func gatherEmails(language string, sendAfter time.Time, subjectPrefix string, co
 	}
 
 	t := &templates.Templates{
-		TemplatePath: content.Config.GetTemplatePath(),
+		TemplateBase: content.Config.GetTemplateBase(),
 		WebRoot:      content.Config.GetWebRoot(language),
 		Site: templates.LinkData{
 			Name: content.Config.GetSiteName(language),

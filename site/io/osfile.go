@@ -1,10 +1,12 @@
 package io
 
 import (
+	"bytes"
 	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
+	"time"
 )
 
 type osFile struct {
@@ -47,6 +49,32 @@ func (i *osFile) Create() (Output, error) {
 
 func (i *osFile) Read() (Input, error) {
 	return os.Open(i.path())
+}
+
+func (i *osFile) ReadBytes() ([]byte, error) {
+	input, err := i.Read()
+	if err != nil {
+		return nil, err
+	}
+	defer input.Close()
+	buffer := bytes.Buffer{}
+	_, err = buffer.ReadFrom(input)
+	if err != nil {
+		return nil, err
+	}
+	return buffer.Bytes(), nil
+}
+
+func (i *osFile) Stat() (Stat, error) {
+	stat, err := os.Stat(i.path())
+	if err != nil {
+		return Stat{}, err
+	}
+	return Stat{ModTime: stat.ModTime()}, nil
+}
+
+func (i *osFile) Chtime(mtime time.Time) error {
+	return os.Chtimes(i.path(), mtime, mtime)
 }
 
 func (i *osFile) ForAllFiles(fn ForAllFilesFunc) error {

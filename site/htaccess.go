@@ -3,10 +3,8 @@ package site
 import (
 	"bufio"
 	"fmt"
-	"io"
+	goio "io"
 	"net/url"
-	"os"
-	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
@@ -19,54 +17,55 @@ import (
 const redirectPlaceholder = "### REDIRECTS ###"
 
 func (c *Contents) outputHtaccess(name string) error {
-	inName := filepath.Join(c.Config.GetInputPath(), name)
-	outName := filepath.Join(c.Config.GetOutputPath(), name)
-	inFile, err := os.Open(inName)
+	source := c.Config.GetInputBase().GoTo(name)
+	target := c.Config.GetOutputBase().GoTo(name)
+	input, err := source.Read()
 	if err != nil {
 		return err
 	}
-	err = makeFile(outName, func(w io.Writer) error {
-		var eof bool
-		br := bufio.NewReader(inFile)
-		bw := bufio.NewWriter(w)
-		for {
-			line, err := br.ReadString('\n')
-			if err == io.EOF {
-				err = nil
-				eof = true
-			}
+	output, err := target.Create()
+	if err != nil {
+		input.Close()
+		return err
+	}
+	eof := false
+	br := bufio.NewReader(input)
+	bw := bufio.NewWriter(output)
+	for !eof {
+		line, err := br.ReadString('\n')
+		if err == goio.EOF {
+			err = nil
+			eof = true
+		}
+		if err != nil {
+			break
+		}
+		if strings.TrimSpace(line) == redirectPlaceholder {
+			err = c.writeRedirects(bw)
 			if err != nil {
-				return err
+				break
 			}
-			if strings.TrimSpace(line) == redirectPlaceholder {
-				err = c.writeRedirects(bw)
-				if err != nil {
-					return err
-				}
-			} else {
-				_, err = bw.WriteString(line)
-				if err != nil {
-					return err
-				}
-			}
-			if eof {
-				bw.Flush()
-				return nil
+		} else {
+			_, err = bw.WriteString(line)
+			if err != nil {
+				break
 			}
 		}
-	})
-	err2 := inFile.Close()
+		if eof {
+			bw.Flush()
+			err = nil
+		}
+	}
+	input.Close()
+	output.Close()
 	if err != nil {
 		return err
 	}
-	if err2 != nil {
-		return err2
-	}
-	stat, err := os.Stat(inName)
+	stat, err := source.Stat()
 	if err != nil {
 		return err
 	}
-	return os.Chtimes(outName, stat.ModTime(), stat.ModTime())
+	return target.Chtime(stat.ModTime)
 }
 
 type redirectPattern struct {

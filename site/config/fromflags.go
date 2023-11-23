@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"gopkg.in/yaml.v2"
+	"jacobo.tarrio.org/jtweb/site/io"
 )
 
 var flagConfigFile = flag.String("config_file", "", "The name of the file containing the site's configuration.")
@@ -148,16 +149,16 @@ func GetConfig() (*config, error) {
 	return cfg, err
 }
 
-func (c *config) GetTemplatePath() string {
-	return c.TemplatePath
+func (c *config) GetTemplateBase() io.File {
+	return io.OsFile(c.TemplatePath)
 }
 
-func (c *config) GetInputPath() string {
-	return c.InputPath
+func (c *config) GetInputBase() io.File {
+	return io.OsFile(c.InputPath)
 }
 
-func (c *config) GetOutputPath() string {
-	return c.OutputPath
+func (c *config) GetOutputBase() io.File {
+	return io.OsFile(c.OutputPath)
 }
 
 func (c *config) GetWebRoot(lang string) string {

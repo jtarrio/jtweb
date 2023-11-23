@@ -2,12 +2,14 @@ package config
 
 import (
 	"time"
+
+	"jacobo.tarrio.org/jtweb/site/io"
 )
 
 type Config interface {
-	GetTemplatePath() string
-	GetInputPath() string
-	GetOutputPath() string
+	GetTemplateBase() io.File
+	GetInputBase() io.File
+	GetOutputBase() io.File
 	GetWebRoot(lang string) string
 	GetSiteName(lang string) string
 	GetSiteURI(lang string) string

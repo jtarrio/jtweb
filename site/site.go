@@ -2,14 +2,14 @@ package site
 
 import (
 	"fmt"
-	"io"
-	"os"
+	goio "io"
 	"path/filepath"
 	"strings"
 
 	"jacobo.tarrio.org/jtweb/page"
 	"jacobo.tarrio.org/jtweb/renderer/templates"
 	"jacobo.tarrio.org/jtweb/site/config"
+	"jacobo.tarrio.org/jtweb/site/io"
 	"jacobo.tarrio.org/jtweb/uri"
 )
 
@@ -54,21 +54,15 @@ func Read(s config.Config) (*Contents, error) {
 	templates := make([]string, 0)
 	pagesByName := make(map[string]*page.Page)
 	tagNames := make(map[string]string)
-	err := filepath.Walk(s.GetInputPath(), func(path string, info os.FileInfo, err error) error {
+	err := s.GetInputBase().ForAllFiles(func(file io.File, err error) error {
 		if err != nil {
 			return err
 		}
-		if info.IsDir() {
-			return nil
-		}
-		name, err := filepath.Rel(s.GetInputPath(), path)
-		if err != nil {
-			return err
-		}
-		if strings.HasSuffix(path, ".md") {
-			page, err := parsePage(path, name)
+		name := file.PathName()
+		if strings.HasSuffix(name, ".md") {
+			page, err := parsePage(file)
 			if err != nil {
-				return fmt.Errorf("error parsing page %s: %v", path, err)
+				return fmt.Errorf("error parsing page %s: %v", file.PathName(), err)
 			}
 			if page.Header.PublishDate.After(s.GetPublishUntil()) {
 				return nil
@@ -77,7 +71,7 @@ func Read(s config.Config) (*Contents, error) {
 			for _, tag := range page.Header.Tags {
 				tagNames[uri.GetTagPath(tag)] = tag
 			}
-		} else if strings.HasSuffix(path, ".tmpl") {
+		} else if strings.HasSuffix(name, ".tmpl") {
 			templates = append(templates, name[:len(name)-5])
 		} else {
 			files = append(files, name)
@@ -110,7 +104,7 @@ func Read(s config.Config) (*Contents, error) {
 	return &c, nil
 }
 
-type filePopulator func(w io.Writer) error
+type filePopulator func(w io.Output) error
 
 // Write converts the site contents to HTML and writes it to disk.
 func (c *Contents) Write() error {
@@ -137,7 +131,7 @@ func (c *Contents) Write() error {
 	}
 	for _, page := range c.Pages {
 		t := &templates.Templates{
-			TemplatePath: c.Config.GetTemplatePath(),
+			TemplateBase: c.Config.GetTemplateBase(),
 			WebRoot:      c.Config.GetWebRoot(page.Header.Language),
 			Site: templates.LinkData{
 				Name: c.Config.GetSiteName(page.Header.Language),
@@ -145,8 +139,8 @@ func (c *Contents) Write() error {
 			},
 		}
 		err := makeFile(
-			filepath.Join(c.Config.GetOutputPath(), page.Name+".html"),
-			func(w io.Writer) error {
+			c.Config.GetOutputBase(), page.Name+".html",
+			func(w io.Output) error {
 				return c.outputPage(w, t, page)
 			})
 		if err != nil {
@@ -155,7 +149,7 @@ func (c *Contents) Write() error {
 	}
 	for lang, languageToc := range c.Toc {
 		t := &templates.Templates{
-			TemplatePath: c.Config.GetTemplatePath(),
+			TemplateBase: c.Config.GetTemplateBase(),
 			WebRoot:      c.Config.GetWebRoot(lang),
 			Site: templates.LinkData{
 				Name: c.Config.GetSiteName(lang),
@@ -163,8 +157,8 @@ func (c *Contents) Write() error {
 			},
 		}
 		err := makeFile(
-			fmt.Sprintf("%s-%s.html", filepath.Join(c.Config.GetOutputPath(), "toc", "toc"), lang),
-			func(w io.Writer) error {
+			c.Config.GetOutputBase(), fmt.Sprintf("toc/toc-%s.html", lang),
+			func(w io.Output) error {
 				return c.outputToc(w, t, lang, languageToc.All, "")
 			})
 		if err != nil {
@@ -172,8 +166,8 @@ func (c *Contents) Write() error {
 		}
 		for tag, tagToc := range languageToc.ByTag {
 			err := makeFile(
-				fmt.Sprintf("%s-%s.html", filepath.Join(c.Config.GetOutputPath(), "tags", tag), lang),
-				func(w io.Writer) error {
+				c.Config.GetOutputBase(), fmt.Sprintf("tags/%s-%s.html", tag, lang),
+				func(w io.Output) error {
 					return c.outputToc(w, t, lang, tagToc, c.Tags[tag])
 				})
 			if err != nil {
@@ -181,8 +175,8 @@ func (c *Contents) Write() error {
 			}
 		}
 		err = makeFile(
-			fmt.Sprintf("%s/%s.xml", filepath.Join(c.Config.GetOutputPath(), "rss"), lang),
-			func(w io.Writer) error {
+			c.Config.GetOutputBase(), fmt.Sprintf("rss/%s.xml", lang),
+			func(w io.Output) error {
 				return c.outputRss(w, t, lang)
 			})
 		if err != nil {
@@ -193,40 +187,37 @@ func (c *Contents) Write() error {
 }
 
 func (c *Contents) copyFile(name string) error {
-	inName := filepath.Join(c.Config.GetInputPath(), name)
-	outName := filepath.Join(c.Config.GetOutputPath(), name)
-	inFile, err := os.Open(inName)
+	in := c.Config.GetInputBase().GoTo(name)
+	out := c.Config.GetOutputBase().GoTo(name)
+	stat, err := in.Stat()
 	if err != nil {
 		return err
 	}
-	err = makeFile(outName, func(w io.Writer) error {
-		_, err := io.Copy(w, inFile)
-		return err
-	})
-	err2 := inFile.Close()
+	input, err := in.Read()
 	if err != nil {
 		return err
 	}
-	if err2 != nil {
-		return err2
+	output, err := out.Create()
+	if err != nil {
+		input.Close()
+		return err
 	}
-	stat, err := os.Stat(inName)
+	_, err = goio.Copy(output, input)
+	input.Close()
+	output.Close()
 	if err != nil {
 		return err
 	}
-	return os.Chtimes(outName, stat.ModTime(), stat.ModTime())
+	return out.Chtime(stat.ModTime)
 }
 
-func makeFile(name string, populator filePopulator) error {
-	err := os.MkdirAll(filepath.Dir(name), 0o755)
+func makeFile(base io.File, path string, populator filePopulator) error {
+	file := base.GoTo(path)
+	output, err := file.Create()
 	if err != nil {
 		return err
 	}
-	file, err := os.Create(name)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-	err = populator(file)
+	defer output.Close()
+	err = populator(output)
 	return err
 }

@@ -3,8 +3,7 @@ package site
 import (
 	"fmt"
 	"html/template"
-	"io"
-	"os"
+	goio "io"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -12,17 +11,19 @@ import (
 	"jacobo.tarrio.org/jtweb/languages"
 	"jacobo.tarrio.org/jtweb/page"
 	"jacobo.tarrio.org/jtweb/renderer/templates"
+	"jacobo.tarrio.org/jtweb/site/io"
 	"jacobo.tarrio.org/jtweb/uri"
 )
 
-func parsePage(path string, name string) (*page.Page, error) {
+func parsePage(file io.File) (*page.Page, error) {
+	name := file.PathName()
 	name = filepath.ToSlash(name[:len(name)-3])
-	file, err := os.Open(path)
+	input, err := file.Read()
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
-	return page.Parse(name, file)
+	defer input.Close()
+	return page.Parse(name, input)
 }
 
 func getTranslationsByName(pages map[string]*page.Page) (map[string][]Translation, error) {
@@ -176,7 +177,7 @@ func groupByTag(names []string, pages map[string]*page.Page) map[string]TableOfC
 	return byTag
 }
 
-func (c *Contents) outputPage(w io.Writer, t *templates.Templates, page *page.Page) error {
+func (c *Contents) outputPage(w goio.Writer, t *templates.Templates, page *page.Page) error {
 	tmpl, err := t.GetPageTemplate(page.Header.Language)
 	if err != nil {
 		return err
@@ -184,7 +185,7 @@ func (c *Contents) outputPage(w io.Writer, t *templates.Templates, page *page.Pa
 	return c.runTemplate(tmpl, w, page)
 }
 
-func (c *Contents) OutputEmail(w io.Writer, t *templates.Templates, page *page.Page) error {
+func (c *Contents) OutputEmail(w goio.Writer, t *templates.Templates, page *page.Page) error {
 	tmpl, err := t.GetEmailTemplate(page.Header.Language)
 	if err != nil {
 		return err
@@ -192,7 +193,7 @@ func (c *Contents) OutputEmail(w io.Writer, t *templates.Templates, page *page.P
 	return c.runTemplate(tmpl, w, page)
 }
 
-func (c *Contents) OutputPlainEmail(w io.Writer, t *templates.Templates, page *page.Page) error {
+func (c *Contents) OutputPlainEmail(w goio.Writer, t *templates.Templates, page *page.Page) error {
 	tmpl, err := t.GetPlainEmailTemplate(page.Header.Language)
 	if err != nil {
 		return err
@@ -200,7 +201,7 @@ func (c *Contents) OutputPlainEmail(w io.Writer, t *templates.Templates, page *p
 	return tmpl.Execute(w, c.makePageData(page))
 }
 
-func (c *Contents) runTemplate(tmpl *template.Template, w io.Writer, page *page.Page) error {
+func (c *Contents) runTemplate(tmpl *template.Template, w goio.Writer, page *page.Page) error {
 	sb := strings.Builder{}
 	err := tmpl.Execute(&sb, c.makePageData(page))
 	if err != nil {
@@ -209,7 +210,7 @@ func (c *Contents) runTemplate(tmpl *template.Template, w io.Writer, page *page.
 	return templates.MakeUrisAbsolute(strings.NewReader(sb.String()), w, c.Config.GetWebRoot(page.Header.Language), page.Name)
 }
 
-func (c *Contents) outputToc(w io.Writer, t *templates.Templates, lang string, names []string, tag string) error {
+func (c *Contents) outputToc(w goio.Writer, t *templates.Templates, lang string, names []string, tag string) error {
 	tmpl, err := t.GetTocTemplate(lang)
 	if err != nil {
 		return err

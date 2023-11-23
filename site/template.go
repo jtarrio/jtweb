@@ -2,15 +2,19 @@ package site
 
 import (
 	"html/template"
-	"io"
 	"path/filepath"
 
 	"jacobo.tarrio.org/jtweb/page"
+	"jacobo.tarrio.org/jtweb/site/io"
 )
 
 func (c *Contents) renderTemplate(name string) error {
-	inputFileName := filepath.Join(c.Config.GetInputPath(), name+".tmpl")
-	templateName := filepath.Base(inputFileName)
+	source := c.Config.GetInputBase().GoTo(name + ".tmpl")
+	content, err := source.ReadBytes()
+	if err != nil {
+		return err
+	}
+	templateName := filepath.Base(source.PathName())
 	tmpl, err := template.New(templateName).Funcs(template.FuncMap{
 		"hasContent": func(lang string) bool {
 			toc, ok := c.Toc[lang]
@@ -30,13 +34,13 @@ func (c *Contents) renderTemplate(name string) error {
 		"webRoot": func(lang string) string {
 			return c.Config.GetWebRoot(lang)
 		},
-	}).ParseFiles(inputFileName)
+	}).Parse(string(content))
 	if err != nil {
 		return err
 	}
 	return makeFile(
-		filepath.Join(c.Config.GetOutputPath(), name),
-		func(w io.Writer) error {
+		c.Config.GetOutputBase(), name,
+		func(w io.Output) error {
 			return tmpl.Execute(w, c)
 		})
 }
