@@ -20,6 +20,7 @@ type File interface {
 	PathName() string
 	GoTo(name string) File
 	Create() (Output, error)
+	CreateBytes([]byte) error
 	Read() (Input, error)
 	ReadBytes() ([]byte, error)
 	Stat() (Stat, error)

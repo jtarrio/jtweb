@@ -47,6 +47,16 @@ func (i *osFile) Create() (Output, error) {
 	return os.Create(path)
 }
 
+func (i *osFile) CreateBytes(content []byte) error {
+	output, err := i.Create()
+	if err != nil {
+		return err
+	}
+	_, err = output.Write(content)
+	output.Close()
+	return err
+}
+
 func (i *osFile) Read() (Input, error) {
 	return os.Open(i.path())
 }

@@ -9,8 +9,15 @@ import (
 	"jacobo.tarrio.org/jtweb/site/io"
 )
 
+var defaultMtime = time.Date(2023, 1, 1, 12, 34, 56, 0, time.UTC)
+
 type memoryFs struct {
-	files map[string][]byte
+	files map[string]memoryFsEntry
+}
+
+type memoryFsEntry struct {
+	mtime   time.Time
+	content []byte
 }
 
 type memoryFile struct {
@@ -22,8 +29,8 @@ func cleanRel(name string) string {
 	return path.Join("/", name)[1:]
 }
 
-func NewMemoryFs(basePath string) io.File {
-	return &memoryFile{fs: &memoryFs{}, rel: ""}
+func NewMemoryFs() io.File {
+	return &memoryFile{fs: &memoryFs{files: map[string]memoryFsEntry{}}, rel: ""}
 }
 
 func (i *memoryFile) PathName() string {
@@ -44,7 +51,12 @@ type memoryOutput struct {
 }
 
 func (o *memoryOutput) Close() error {
-	o.file.fs.files[o.file.rel] = o.Bytes()
+	o.file.fs.files[o.file.rel] = memoryFsEntry{mtime: defaultMtime, content: o.Bytes()}
+	return nil
+}
+
+func (i *memoryFile) CreateBytes(content []byte) error {
+	i.fs.files[i.rel] = memoryFsEntry{mtime: defaultMtime, content: content}
 	return nil
 }
 
@@ -53,7 +65,7 @@ func (i *memoryFile) Read() (io.Input, error) {
 	if !ok {
 		return nil, fmt.Errorf("file does not exist: %s", i.rel)
 	}
-	return &memoryInput{Reader: *bytes.NewReader(b), file: i}, nil
+	return &memoryInput{Reader: *bytes.NewReader(b.content), file: i}, nil
 }
 
 type memoryInput struct {
@@ -70,14 +82,24 @@ func (i *memoryFile) ReadBytes() ([]byte, error) {
 	if !ok {
 		return nil, fmt.Errorf("file does not exist: %s", i.rel)
 	}
-	return b, nil
+	return b.content, nil
 }
 
-func (*memoryFile) Stat() (io.Stat, error) {
-	return io.Stat{ModTime: time.Now()}, nil
+func (i *memoryFile) Stat() (io.Stat, error) {
+	b, ok := i.fs.files[i.rel]
+	if !ok {
+		return io.Stat{}, fmt.Errorf("file does not exist: %s", i.rel)
+	}
+	return io.Stat{ModTime: b.mtime}, nil
 }
 
-func (*memoryFile) Chtime(time.Time) error {
+func (i *memoryFile) Chtime(mtime time.Time) error {
+	b, ok := i.fs.files[i.rel]
+	if !ok {
+		return fmt.Errorf("file does not exist: %s", i.rel)
+	}
+	b.mtime = mtime
+	i.fs.files[i.rel] = b
 	return nil
 }
 
