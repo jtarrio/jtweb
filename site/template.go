@@ -38,8 +38,8 @@ func (c *Contents) renderTemplate(name string) error {
 	if err != nil {
 		return err
 	}
-	return makeFile(
-		c.Config.GetOutputBase(), name,
+	return c.makeFile(
+		name,
 		func(w io.Output) error {
 			return tmpl.Execute(w, c)
 		})

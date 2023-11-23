@@ -138,13 +138,13 @@ func (c *Contents) Write() error {
 				URI:  c.Config.GetSiteURI(page.Header.Language),
 			},
 		}
-		err := makeFile(
-			c.Config.GetOutputBase(), page.Name+".html",
+		err := c.makeFile(
+			page.Name+".html",
 			func(w io.Output) error {
 				return c.outputPage(w, t, page)
 			})
 		if err != nil {
-			return fmt.Errorf("Error rendering page %s: %v", page.Name, err)
+			return fmt.Errorf("error rendering page %s: %v", page.Name, err)
 		}
 	}
 	for lang, languageToc := range c.Toc {
@@ -156,8 +156,8 @@ func (c *Contents) Write() error {
 				URI:  c.Config.GetSiteURI(lang),
 			},
 		}
-		err := makeFile(
-			c.Config.GetOutputBase(), fmt.Sprintf("toc/toc-%s.html", lang),
+		err := c.makeFile(
+			fmt.Sprintf("toc/toc-%s.html", lang),
 			func(w io.Output) error {
 				return c.outputToc(w, t, lang, languageToc.All, "")
 			})
@@ -165,8 +165,8 @@ func (c *Contents) Write() error {
 			return err
 		}
 		for tag, tagToc := range languageToc.ByTag {
-			err := makeFile(
-				c.Config.GetOutputBase(), fmt.Sprintf("tags/%s-%s.html", tag, lang),
+			err := c.makeFile(
+				fmt.Sprintf("tags/%s-%s.html", tag, lang),
 				func(w io.Output) error {
 					return c.outputToc(w, t, lang, tagToc, c.Tags[tag])
 				})
@@ -174,8 +174,8 @@ func (c *Contents) Write() error {
 				return err
 			}
 		}
-		err = makeFile(
-			c.Config.GetOutputBase(), fmt.Sprintf("rss/%s.xml", lang),
+		err = c.makeFile(
+			fmt.Sprintf("rss/%s.xml", lang),
 			func(w io.Output) error {
 				return c.outputRss(w, t, lang)
 			})
@@ -211,8 +211,8 @@ func (c *Contents) copyFile(name string) error {
 	return out.Chtime(stat.ModTime)
 }
 
-func makeFile(base io.File, path string, populator filePopulator) error {
-	file := base.GoTo(path)
+func (c *Contents) makeFile(path string, populator filePopulator) error {
+	file := c.Config.GetOutputBase().GoTo(path)
 	output, err := file.Create()
 	if err != nil {
 		return err
