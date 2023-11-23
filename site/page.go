@@ -48,19 +48,17 @@ func getTranslationsByName(pages map[string]*page.Page) (map[string][]Translatio
 		translations[page.Header.Language] = page.Name
 		if page.Header.TranslationOf != "" {
 			otherTranslations := translationsByName[page.Header.TranslationOf]
-			if otherTranslations != nil {
-				for l, p := range otherTranslations {
-					if translations[l] != "" && translations[l] != p {
-						return nil, fmt.Errorf(
-							"translation of [%s] to language [%s] has two conflicting values: [%s] and [%s]",
-							page.Name,
-							l,
-							translations[l],
-							p,
-						)
-					}
-					translations[l] = p
+			for l, p := range otherTranslations {
+				if translations[l] != "" && translations[l] != p {
+					return nil, fmt.Errorf(
+						"translation of [%s] to language [%s] has two conflicting values: [%s] and [%s]",
+						page.Name,
+						l,
+						translations[l],
+						p,
+					)
 				}
+				translations[l] = p
 			}
 			translationsByName[page.Header.TranslationOf] = translations
 		}
@@ -272,36 +270,19 @@ func (c *Contents) makePageData(page *page.Page) templates.PageData {
 		}
 	}
 	translations := c.Translations[page.Name]
-	if translations != nil {
-		for _, t := range translations {
-			translation := c.Pages[t.Name]
-			pageData.Translations = append(
-				pageData.Translations,
-				templates.TranslationData{
-					Name:     translation.Header.Title,
-					URI:      c.makePageURI(translation),
-					Language: t.Language,
-				})
-		}
+	for _, t := range translations {
+		translation := c.Pages[t.Name]
+		pageData.Translations = append(
+			pageData.Translations,
+			templates.TranslationData{
+				Name:     translation.Header.Title,
+				URI:      c.makePageURI(translation),
+				Language: t.Language,
+			})
 	}
 	return pageData
 }
 
 func (c *Contents) makePageURI(p *page.Page) string {
 	return uri.Concat(c.Config.GetWebRoot(p.Header.Language), p.Name+".html")
-}
-
-func (c *Contents) getTags(stories []string) []string {
-	tagMap := make(map[string]string)
-	for _, storyName := range stories {
-		for _, tag := range c.Pages[storyName].Header.Tags {
-			tagMap[uri.GetTagPath(tag)] = tag
-		}
-	}
-	tags := make([]string, 0, len(tagMap))
-	for _, tag := range tagMap {
-		tags = append(tags, tag)
-	}
-	sort.Strings(tags)
-	return tags
 }
