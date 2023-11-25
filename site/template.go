@@ -2,7 +2,6 @@ package site
 
 import (
 	"html/template"
-	"path/filepath"
 
 	"jacobo.tarrio.org/jtweb/page"
 	"jacobo.tarrio.org/jtweb/site/io"
@@ -14,7 +13,7 @@ func (c *Contents) renderTemplate(name string) error {
 	if err != nil {
 		return err
 	}
-	templateName := filepath.Base(source.PathName())
+	templateName := source.BaseName()
 	tmpl, err := template.New(templateName).Funcs(template.FuncMap{
 		"hasContent": func(lang string) bool {
 			toc, ok := c.Toc[lang]

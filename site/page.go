@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"html/template"
 	goio "io"
-	"path/filepath"
 	"sort"
 	"strings"
 
@@ -16,8 +15,8 @@ import (
 )
 
 func parsePage(file io.File) (*page.Page, error) {
-	name := file.PathName()
-	name = filepath.ToSlash(name[:len(name)-3])
+	name := file.Name()
+	name = name[:len(name)-3]
 	input, err := file.Read()
 	if err != nil {
 		return nil, err

@@ -22,11 +22,15 @@ func OsFile(basePath string) File {
 	return &osFile{rel: "", base: cleanRel(filepath.ToSlash(basePath))}
 }
 
-func (f *osFile) PathName() string {
+func (f *osFile) Name() string {
 	return f.rel
 }
 
-func (f *osFile) path() string {
+func (f *osFile) BaseName() string {
+	return filepath.Base(f.rel)
+}
+
+func (f *osFile) FullPath() string {
 	return filepath.FromSlash(path.Join(f.base, f.rel))
 }
 
@@ -35,7 +39,7 @@ func (f *osFile) GoTo(name string) File {
 }
 
 func (f *osFile) Create() (Output, error) {
-	path := f.path()
+	path := f.FullPath()
 	out, err := os.Create(path)
 	if err == nil {
 		return out, nil
@@ -58,7 +62,7 @@ func (f *osFile) CreateBytes(content []byte) error {
 }
 
 func (f *osFile) Read() (Input, error) {
-	return os.Open(f.path())
+	return os.Open(f.FullPath())
 }
 
 func (f *osFile) ReadBytes() ([]byte, error) {
@@ -76,7 +80,7 @@ func (f *osFile) ReadBytes() ([]byte, error) {
 }
 
 func (f *osFile) Stat() (Stat, error) {
-	stat, err := os.Stat(f.path())
+	stat, err := os.Stat(f.FullPath())
 	if err != nil {
 		return Stat{}, err
 	}
@@ -84,11 +88,11 @@ func (f *osFile) Stat() (Stat, error) {
 }
 
 func (f *osFile) Chtime(mtime time.Time) error {
-	return os.Chtimes(f.path(), mtime, mtime)
+	return os.Chtimes(f.FullPath(), mtime, mtime)
 }
 
 func (f *osFile) ForAllFiles(fn ForAllFilesFunc) error {
-	err := filepath.WalkDir(f.path(), func(name string, d fs.DirEntry, err error) error {
+	err := filepath.WalkDir(f.FullPath(), func(name string, d fs.DirEntry, err error) error {
 		if d.IsDir() {
 			return nil
 		}

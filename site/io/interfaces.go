@@ -17,7 +17,9 @@ type Output interface {
 }
 
 type File interface {
-	PathName() string
+	Name() string
+	BaseName() string
+	FullPath() string
 	GoTo(name string) File
 	Create() (Output, error)
 	CreateBytes([]byte) error

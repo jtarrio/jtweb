@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"path"
+	"path/filepath"
 	"time"
 
 	"jacobo.tarrio.org/jtweb/site/io"
@@ -33,8 +34,16 @@ func NewMemoryFs() io.File {
 	return &memoryFile{fs: &memoryFs{files: map[string]memoryFsEntry{}}, rel: ""}
 }
 
-func (f *memoryFile) PathName() string {
+func (f *memoryFile) Name() string {
 	return f.rel
+}
+
+func (f *memoryFile) BaseName() string {
+	return filepath.Base(f.rel)
+}
+
+func (f *memoryFile) FullPath() string {
+	return "/memory/" + f.rel
 }
 
 func (f *memoryFile) GoTo(name string) io.File {

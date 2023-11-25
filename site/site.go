@@ -58,11 +58,11 @@ func Read(s config.Config) (*Contents, error) {
 		if err != nil {
 			return err
 		}
-		name := file.PathName()
+		name := file.Name()
 		if strings.HasSuffix(name, ".md") {
 			page, err := parsePage(file)
 			if err != nil {
-				return fmt.Errorf("error parsing page %s: %v", file.PathName(), err)
+				return fmt.Errorf("error parsing page %s: %v", file.Name(), err)
 			}
 			if page.Header.PublishDate.After(s.GetPublishUntil()) {
 				return nil
