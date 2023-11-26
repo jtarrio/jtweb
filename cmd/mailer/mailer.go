@@ -83,7 +83,7 @@ func gatherEmails(language string, sendAfter time.Time, subjectPrefix string, co
 		email.date = page.Header.PublishDate
 		{
 			sb := strings.Builder{}
-			err := content.OutputEmail(&sb, t, page)
+			err := content.OutputAsEmail(&sb, t, page)
 			if err != nil {
 				return nil, err
 			}
@@ -91,7 +91,7 @@ func gatherEmails(language string, sendAfter time.Time, subjectPrefix string, co
 		}
 		{
 			sb := strings.Builder{}
-			err = content.OutputPlainEmail(&sb, t, page)
+			err = content.OutputAsPlainEmail(&sb, t, page)
 			if err != nil {
 				return nil, err
 			}
