@@ -10,7 +10,6 @@ import (
 	mailerlite "jacobo.tarrio.org/jtweb/email/mailerlite"
 	"jacobo.tarrio.org/jtweb/email/mailerlitev2"
 	"jacobo.tarrio.org/jtweb/page"
-	"jacobo.tarrio.org/jtweb/renderer/templates"
 	"jacobo.tarrio.org/jtweb/site"
 	"jacobo.tarrio.org/jtweb/site/config"
 )
@@ -61,15 +60,6 @@ func gatherEmails(language string, sendAfter time.Time, subjectPrefix string, co
 		}
 	}
 
-	t := &templates.Templates{
-		TemplateBase: content.Config.GetTemplateBase(),
-		WebRoot:      content.Config.GetWebRoot(language),
-		Site: templates.LinkData{
-			Name: content.Config.GetSiteName(language),
-			URI:  content.Config.GetSiteURI(language),
-		},
-	}
-
 	var emails []emailData
 	for _, page := range pages {
 		var email emailData
@@ -83,7 +73,7 @@ func gatherEmails(language string, sendAfter time.Time, subjectPrefix string, co
 		email.date = page.Header.PublishDate
 		{
 			sb := strings.Builder{}
-			err := content.OutputAsEmail(&sb, t, page)
+			err := content.OutputAsEmail(&sb, page)
 			if err != nil {
 				return nil, err
 			}
@@ -91,7 +81,7 @@ func gatherEmails(language string, sendAfter time.Time, subjectPrefix string, co
 		}
 		{
 			sb := strings.Builder{}
-			err = content.OutputAsPlainEmail(&sb, t, page)
+			err = content.OutputAsPlainEmail(&sb, page)
 			if err != nil {
 				return nil, err
 			}

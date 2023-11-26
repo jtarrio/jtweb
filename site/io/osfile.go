@@ -4,38 +4,46 @@ import (
 	"bytes"
 	"io/fs"
 	"os"
-	"path"
 	"path/filepath"
 	"time"
 )
 
 type osFile struct {
-	rel  string
+	path string
 	base string
 }
 
-func cleanRel(name string) string {
-	return path.Join("/", name)[1:]
-}
-
 func OsFile(basePath string) File {
-	return &osFile{rel: "", base: cleanRel(filepath.ToSlash(basePath))}
+	base, err := filepath.Abs(basePath)
+	if err != nil {
+		panic(err)
+	}
+	return &osFile{path: base, base: base}
 }
 
 func (f *osFile) Name() string {
-	return f.rel
+	rel, err := filepath.Rel(f.base, f.path)
+	if err != nil {
+		panic(err)
+	}
+	return filepath.ToSlash(rel)
 }
 
 func (f *osFile) BaseName() string {
-	return filepath.Base(f.rel)
+	return filepath.Base(f.path)
 }
 
 func (f *osFile) FullPath() string {
-	return filepath.FromSlash(path.Join(f.base, f.rel))
+	return f.path
 }
 
 func (f *osFile) GoTo(name string) File {
-	return &osFile{rel: cleanRel(path.Join(f.rel, name)), base: f.base}
+	newPath := filepath.Join(f.path, name)
+	_, err := filepath.Rel(f.base, newPath)
+	if err != nil {
+		newPath = f.base
+	}
+	return &osFile{path: newPath, base: f.base}
 }
 
 func (f *osFile) Create() (Output, error) {
@@ -96,11 +104,11 @@ func (f *osFile) ForAllFiles(fn ForAllFilesFunc) error {
 		if d.IsDir() {
 			return nil
 		}
-		suffix, nerr := filepath.Rel(f.base, filepath.ToSlash(name))
+		_, nerr := filepath.Rel(f.base, name)
 		if nerr != nil {
 			return nerr
 		}
-		return fn(f.GoTo(suffix), err)
+		return fn(&osFile{path: name, base: f.base}, err)
 	})
 	if err == SkipRemaining {
 		return nil

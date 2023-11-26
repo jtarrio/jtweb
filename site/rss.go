@@ -5,13 +5,12 @@ import (
 	"strings"
 
 	"jacobo.tarrio.org/jtweb/page"
-	"jacobo.tarrio.org/jtweb/renderer/templates"
 	"jacobo.tarrio.org/jtweb/uri"
 
 	"github.com/gorilla/feeds"
 )
 
-func (c *Contents) outputRss(w io.Writer, t *templates.Templates, lang string) error {
+func (c *Contents) outputRss(w io.Writer, lang string) error {
 	toc := c.Toc[lang]
 	pages := make([]*page.Page, 0, 5)
 	if len(toc.All) > 0 {

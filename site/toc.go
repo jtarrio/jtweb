@@ -6,7 +6,11 @@ import (
 	"jacobo.tarrio.org/jtweb/renderer/templates"
 )
 
-func (c *Contents) outputToc(w goio.Writer, t *templates.Templates, lang string, names []string, tag string) error {
+func (c *Contents) outputToc(w goio.Writer, lang string, names []string, tag string) error {
+	t, err := templates.GetTemplates(c.Config, lang)
+	if err != nil {
+		return err
+	}
 	tmpl, err := t.GetTocTemplate(lang)
 	if err != nil {
 		return err

@@ -9,7 +9,6 @@ import (
 
 	"jacobo.tarrio.org/jtweb/languages"
 	"jacobo.tarrio.org/jtweb/page"
-	"jacobo.tarrio.org/jtweb/renderer/templates"
 	"jacobo.tarrio.org/jtweb/site/config"
 	"jacobo.tarrio.org/jtweb/site/io"
 	"jacobo.tarrio.org/jtweb/uri"
@@ -132,36 +131,20 @@ func (c *Contents) Write() error {
 		}
 	}
 	for _, page := range c.Pages {
-		t := &templates.Templates{
-			TemplateBase: c.Config.GetTemplateBase(),
-			WebRoot:      c.Config.GetWebRoot(page.Header.Language),
-			Site: templates.LinkData{
-				Name: c.Config.GetSiteName(page.Header.Language),
-				URI:  c.Config.GetSiteURI(page.Header.Language),
-			},
-		}
 		err := c.makeFile(
 			page.Name+".html",
 			func(w io.Output) error {
-				return c.OutputAsPage(w, t, page)
+				return c.OutputAsPage(w, page)
 			})
 		if err != nil {
 			return fmt.Errorf("error rendering page %s: %v", page.Name, err)
 		}
 	}
 	for lang, languageToc := range c.Toc {
-		t := &templates.Templates{
-			TemplateBase: c.Config.GetTemplateBase(),
-			WebRoot:      c.Config.GetWebRoot(lang),
-			Site: templates.LinkData{
-				Name: c.Config.GetSiteName(lang),
-				URI:  c.Config.GetSiteURI(lang),
-			},
-		}
 		err := c.makeFile(
 			fmt.Sprintf("toc/toc-%s.html", lang),
 			func(w io.Output) error {
-				return c.outputToc(w, t, lang, languageToc.All, "")
+				return c.outputToc(w, lang, languageToc.All, "")
 			})
 		if err != nil {
 			return err
@@ -170,7 +153,7 @@ func (c *Contents) Write() error {
 			err := c.makeFile(
 				fmt.Sprintf("tags/%s-%s.html", tag, lang),
 				func(w io.Output) error {
-					return c.outputToc(w, t, lang, tagToc, c.Tags[tag])
+					return c.outputToc(w, lang, tagToc, c.Tags[tag])
 				})
 			if err != nil {
 				return err
@@ -179,7 +162,7 @@ func (c *Contents) Write() error {
 		err = c.makeFile(
 			fmt.Sprintf("rss/%s.xml", lang),
 			func(w io.Output) error {
-				return c.outputRss(w, t, lang)
+				return c.outputRss(w, lang)
 			})
 		if err != nil {
 			return err

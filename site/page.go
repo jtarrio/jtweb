@@ -22,37 +22,50 @@ func parsePage(file io.File) (*page.Page, error) {
 	return page.Parse(name, input)
 }
 
-func (c *Contents) OutputAsPage(w goio.Writer, t *templates.Templates, page *page.Page) error {
+func (c *Contents) OutputAsPage(w goio.Writer, page *page.Page) error {
+	t, err := templates.GetTemplates(c.Config, page.Header.Language)
+	if err != nil {
+		return err
+	}
 	tmpl, err := t.GetPageTemplate(page.Header.Language)
 	if err != nil {
 		return err
 	}
-	return c.runTemplate(tmpl, w, page)
+	sb := strings.Builder{}
+	err = tmpl.Execute(&sb, c.makePageData(page))
+	if err != nil {
+		return err
+	}
+	return templates.MakeUrisAbsolute(strings.NewReader(sb.String()), w, c.Config.GetWebRoot(page.Header.Language), page.Name)
 }
 
-func (c *Contents) OutputAsEmail(w goio.Writer, t *templates.Templates, page *page.Page) error {
+func (c *Contents) OutputAsEmail(w goio.Writer, page *page.Page) error {
+	t, err := templates.GetTemplates(c.Config, page.Header.Language)
+	if err != nil {
+		return err
+	}
 	tmpl, err := t.GetEmailTemplate(page.Header.Language)
 	if err != nil {
 		return err
 	}
-	return c.runTemplate(tmpl, w, page)
+	sb := strings.Builder{}
+	err = tmpl.Execute(&sb, c.makePageData(page))
+	if err != nil {
+		return err
+	}
+	return templates.MakeUrisAbsolute(strings.NewReader(sb.String()), w, c.Config.GetWebRoot(page.Header.Language), page.Name)
 }
 
-func (c *Contents) OutputAsPlainEmail(w goio.Writer, t *templates.Templates, page *page.Page) error {
+func (c *Contents) OutputAsPlainEmail(w goio.Writer, page *page.Page) error {
+	t, err := templates.GetTemplates(c.Config, page.Header.Language)
+	if err != nil {
+		return err
+	}
 	tmpl, err := t.GetPlainEmailTemplate(page.Header.Language)
 	if err != nil {
 		return err
 	}
 	return tmpl.Execute(w, c.makePageData(page))
-}
-
-func (c *Contents) runTemplate(tmpl *template.Template, w goio.Writer, page *page.Page) error {
-	sb := strings.Builder{}
-	err := tmpl.Execute(&sb, c.makePageData(page))
-	if err != nil {
-		return err
-	}
-	return templates.MakeUrisAbsolute(strings.NewReader(sb.String()), w, c.Config.GetWebRoot(page.Header.Language), page.Name)
 }
 
 func (c *Contents) makePageData(page *page.Page) templates.PageData {
