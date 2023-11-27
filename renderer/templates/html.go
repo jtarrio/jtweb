@@ -17,9 +17,23 @@ func makeAbsolute(base *url.URL, path *url.URL, uri string) string {
 	if err != nil {
 		return uri
 	}
+	if lastPath.Scheme == "" &&
+		lastPath.Host == "" &&
+		lastPath.User == nil &&
+		lastPath.Path != "" &&
+		lastPath.Path[0] == '/' {
+		lastPath.Path = lastPath.Path[1:]
+		return base.ResolveReference(lastPath).String()
+	}
 	return base.ResolveReference(path).ResolveReference(lastPath).String()
 }
 
+// MakeUrisAbsolute reads an HTML document from `i`, replaces all relative URIs
+// with absolute, and writes the result to `o`.
+//
+// Relative URIs are referenced to the concatenation of `base` and `path`;
+// site-relative URIs are referenced to `base` as if they were relative;
+// absolute URIs are passed as-is.
 func MakeUrisAbsolute(i io.Reader, o io.Writer, base string, path string) error {
 	baseUri, err := url.Parse(base)
 	if err != nil {
@@ -59,51 +73,71 @@ func MakeUrisAbsolute(i io.Reader, o io.Writer, base string, path string) error 
 	return html.Render(o, doc)
 }
 
+const textWrapColumns = 79
+const zeroWidthSpace rune = '\u200b'
+
 type text struct {
-	lines []string
-	line  *string
-}
-
-func (t *text) isLastLineEmpty() bool {
-	return t.line == nil || *t.line == ""
-}
-
-func (t *text) trimLastLine() {
-	if !t.isLastLineEmpty() {
-		*t.line = strings.TrimSpace(*t.line)
-	}
+	lines     []string
+	line      *string
+	lineLen   int
+	separator rune
 }
 
 func (t *text) addLine() {
 	t.lines = append(t.lines, "")
-	t.line = &(t.lines[len(t.lines)-1])
+	t.lineLen = 0
+	t.line = &t.lines[len(t.lines)-1]
+	t.separator = 0
 }
 
-func (t *text) trimAndAddLine() {
-	t.trimLastLine()
-	t.addLine()
+func (t *text) startParagraph() {
+	if t.line != nil && *t.line != "" {
+		t.addLine()
+		t.addLine()
+	}
 }
 
-func wordWrap(input []string, columns int) []string {
-	var t text
-	for _, in := range input {
-		t.trimAndAddLine()
-		for {
-			first, rest, found := strings.Cut(in, " ")
-			if len(*t.line)+1+len(first) > columns {
-				t.trimAndAddLine()
-				*t.line = first
-			} else {
-				*t.line = *t.line + " " + first
-			}
-			in = rest
-			if !found {
-				break
-			}
+func (t *text) append(n string) {
+	if t.line == nil {
+		t.addLine()
+	}
+	*t.line += n
+	t.lineLen += len([]rune(n))
+	t.separator = 0
+}
+
+func cutSeparators(s string) (first string, rest string, sep rune) {
+	for i, c := range s {
+		if c == ' ' || c == '\n' || c == zeroWidthSpace {
+			return s[:i], s[i+len(string(c)):], c
 		}
 	}
-	t.trimLastLine()
-	return t.lines
+	return s, "", 0
+}
+
+func (t *text) appendWrapping(n string) {
+	for n != "" {
+		first, rest, sep := cutSeparators(n)
+		n = rest
+		if first != "" {
+			if t.line == nil {
+				t.addLine()
+			}
+			firstLen := len([]rune(first))
+			if t.lineLen > 0 && t.lineLen+1+firstLen > textWrapColumns {
+				t.addLine()
+				*t.line = first
+				t.lineLen = firstLen
+			} else if t.lineLen == 0 || sep == zeroWidthSpace || t.separator == 0 || t.separator == zeroWidthSpace {
+				*t.line += first
+				t.lineLen += firstLen
+			} else {
+				*t.line += " " + first
+				t.lineLen += firstLen + 1
+			}
+		}
+		t.separator = sep
+	}
 }
 
 func HtmlToText(i io.Reader, o io.Writer, linksTitle string, pictureTitle string) error {
@@ -113,56 +147,59 @@ func HtmlToText(i io.Reader, o io.Writer, linksTitle string, pictureTitle string
 	if err != nil {
 		return err
 	}
-	var processNode func(*html.Node, bool)
-	processNode = func(n *html.Node, inPara bool) {
+	var processNode func(*html.Node, bool, bool)
+	processNode = func(n *html.Node, inPara, inPre bool) {
 		if n.Type == html.ElementNode {
 			if n.Data == "p" {
-				if !t.isLastLineEmpty() {
-					t.trimAndAddLine()
-				}
-				t.trimAndAddLine()
+				t.startParagraph()
 				inPara = true
+			} else if n.Data == "pre" {
+				t.startParagraph()
+				inPre = true
 			} else if n.Data == "img" {
+				caption := ""
 				for _, a := range n.Attr {
-					if a.Key == "alt" {
-						if !t.isLastLineEmpty() {
-							t.trimAndAddLine()
-						}
-						*t.line = "(" + pictureTitle + ": " + a.Val + ")"
-						t.trimAndAddLine()
+					if a.Key == "alt" || (a.Key == "src" && caption == "") {
+						caption = a.Val
 					}
 				}
+				if caption != "" {
+					if !inPara {
+						t.startParagraph()
+					}
+					t.appendWrapping("(" + pictureTitle + ": " + caption + ")")
+				}
 			}
-		} else if n.Type == html.TextNode && inPara {
-			*t.line = *t.line + n.Data
+		} else if n.Type == html.TextNode {
+			if inPara {
+				t.appendWrapping(n.Data)
+			} else if inPre {
+				t.append(n.Data)
+			}
 		}
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			processNode(c, inPara)
+			processNode(c, inPara, inPre)
 		}
 		if n.Type == html.ElementNode {
 			if n.Data == "a" {
 				for _, a := range n.Attr {
 					if a.Key == "href" {
 						links = append(links, a.Val)
-						*t.line = *t.line + "[" + fmt.Sprint(len(links)) + "]"
+						t.appendWrapping(string(zeroWidthSpace) + "[" + fmt.Sprint(len(links)) + "]")
 					}
 				}
 			}
 		}
 	}
-	processNode(doc, false)
-	t.trimLastLine()
-	t.lines = wordWrap(t.lines, 79)
+	processNode(doc, false, false)
 
 	if len(links) > 0 {
-		t.trimAndAddLine()
 		t.addLine()
 		t.addLine()
-		*t.line = linksTitle + ":"
-		t.addLine()
+		t.appendWrapping(linksTitle + ":")
 		for i, l := range links {
 			t.addLine()
-			*t.line = fmt.Sprintf("  [%d] %s", i+1, l)
+			t.append(fmt.Sprintf("  [%d] %s", i+1, l))
 		}
 	}
 
