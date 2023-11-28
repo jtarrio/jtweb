@@ -39,12 +39,12 @@ var markdown goldmark.Markdown = goldmark.New(
 var sanitizer = func() *bluemonday.Policy {
 	p := bluemonday.UGCPolicy()
 	p.AllowAttrs("class").Matching(bluemonday.SpaceSeparatedTokens).OnElements("div", "span")
-	p.AllowAttrs("class", "name").Matching(bluemonday.SpaceSeparatedTokens).OnElements("a")
-	p.AllowAttrs("rel").Matching(regexp.MustCompile(`^nofollow$`)).OnElements("a")
-	p.AllowAttrs("aria-hidden").Matching(regexp.MustCompile(`^true$`)).OnElements("a")
-	p.AllowAttrs("type").Matching(regexp.MustCompile(`^checkbox$`)).OnElements("input")
-	p.AllowAttrs("checked", "disabled").Matching(regexp.MustCompile(`^$`)).OnElements("input")
-	p.AllowDataURIImages()
+	p.AllowAttrs("title").OnElements("a", "img")
+	p.AllowAttrs("alt").OnElements("img")
+	p.AllowAttrs("style").Globally()
+	p.AllowAttrs("src", "class", "width", "height", "sandbox").OnElements("iframe")
+	p.AllowAttrs("frameborder").Matching(regexp.MustCompile(`^0$`)).OnElements("iframe")
+	p.RequireNoFollowOnLinks(false)
 	return p
 }()
 
@@ -79,10 +79,6 @@ func findHeader(root ast.Node, src []byte) []byte {
 func RenderMarkdown(w io.Writer, source []byte, root ast.Node) error {
 	buf := &bytes.Buffer{}
 	err := markdown.Renderer().Render(buf, source, root)
-	if err != nil {
-		return err
-	}
-	_, err = buf.WriteTo(w)
 	if err != nil {
 		return err
 	}
