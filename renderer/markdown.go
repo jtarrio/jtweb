@@ -82,10 +82,5 @@ func RenderMarkdown(w io.Writer, source []byte, root ast.Node) error {
 	if err != nil {
 		return err
 	}
-	_, err = sanitizer.SanitizeReader(buf).WriteTo(w)
-	return err
-}
-
-func Sanitizer() *bluemonday.Policy {
-	return sanitizer
+	return sanitizer.SanitizeReaderToWriter(buf, w)
 }
