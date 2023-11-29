@@ -7,18 +7,18 @@ import (
 )
 
 func (c *Contents) outputToc(w goio.Writer, lang string, names []string, tag string) error {
-	t, err := templates.GetTemplates(c.Config, lang)
-	if err != nil {
-		return err
-	}
-	tmpl, err := t.GetTocTemplate(lang)
+	tmpl, err := templates.GetTemplates(c.Config, lang).Toc()
 	if err != nil {
 		return err
 	}
 
-	stories := make([]templates.PageData, len(names))
+	stories := make([]*templates.PageData, len(names))
 	for i, name := range names {
-		stories[i] = c.makePageData(c.Pages[name])
+		pageData, err := c.makePageData(c.Pages[name])
+		if err != nil {
+			return err
+		}
+		stories[i] = pageData
 	}
 
 	tocData := templates.TocData{

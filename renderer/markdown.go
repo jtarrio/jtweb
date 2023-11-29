@@ -3,13 +3,10 @@ package renderer
 import (
 	"bytes"
 	"io"
-	"regexp"
 
 	"jacobo.tarrio.org/jtweb/renderer/extensions"
 
-	htmlformatter "github.com/alecthomas/chroma/formatters/html"
 	mathjax "github.com/litao91/goldmark-mathjax"
-	"github.com/microcosm-cc/bluemonday"
 	"github.com/yuin/goldmark"
 	highlighting "github.com/yuin/goldmark-highlighting"
 	"github.com/yuin/goldmark/ast"
@@ -29,24 +26,10 @@ var markdown goldmark.Markdown = goldmark.New(
 		extensions.ImageCaptionExtension,
 		extension.GFM,
 		extension.Typographer,
-		highlighting.NewHighlighting(
-			highlighting.WithStyle("igor"),
-			highlighting.WithFormatOptions(htmlformatter.TabWidth(2))),
+		highlighting.NewHighlighting(highlighting.WithStyle("igor")),
 		mathjax.MathJax,
 	),
 )
-
-var sanitizer = func() *bluemonday.Policy {
-	p := bluemonday.UGCPolicy()
-	p.AllowAttrs("class").Matching(bluemonday.SpaceSeparatedTokens).OnElements("div", "span")
-	p.AllowAttrs("title").OnElements("a", "img")
-	p.AllowAttrs("alt").OnElements("img")
-	p.AllowAttrs("style").Globally()
-	p.AllowAttrs("src", "class", "width", "height", "sandbox").OnElements("iframe")
-	p.AllowAttrs("frameborder").Matching(regexp.MustCompile(`^0$`)).OnElements("iframe")
-	p.RequireNoFollowOnLinks(false)
-	return p
-}()
 
 type PageMarkdown struct {
 	Root   ast.Node
@@ -77,10 +60,5 @@ func findHeader(root ast.Node, src []byte) []byte {
 
 // Render renders the page in HTML format.
 func RenderMarkdown(w io.Writer, source []byte, root ast.Node) error {
-	buf := &bytes.Buffer{}
-	err := markdown.Renderer().Render(buf, source, root)
-	if err != nil {
-		return err
-	}
-	return sanitizer.SanitizeReaderToWriter(buf, w)
+	return markdown.Renderer().Render(w, source, root)
 }

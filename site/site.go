@@ -137,7 +137,7 @@ func (c *Contents) Write() error {
 				return c.OutputAsPage(w, page)
 			})
 		if err != nil {
-			return fmt.Errorf("error rendering page %s: %v", page.Name, err)
+			return fmt.Errorf("error rendering page %s: %w", page.Name, err)
 		}
 	}
 	for lang, languageToc := range c.Toc {

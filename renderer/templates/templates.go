@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"html/template"
 	"strings"
-	text_template "text/template"
+	textTemplate "text/template"
 	"time"
 
 	"jacobo.tarrio.org/jtweb/languages"
@@ -15,14 +15,12 @@ import (
 
 // Templates holds the configuration for the template system.
 type Templates struct {
-	config             config.Config
-	locale             languages.Language
-	templateBase       io.File
-	tocTemplate        *template.Template
-	pageTemplate       *template.Template
-	emailTemplate      *template.Template
-	plainEmailTemplate *text_template.Template
-	indexTocTemplate   *template.Template
+	err           error
+	config        config.Config
+	locale        languages.Language
+	templateBase  io.File
+	templates     map[string]*template.Template
+	textTemplates map[string]*textTemplate.Template
 }
 
 // LinkData holds information about a link.
@@ -43,7 +41,7 @@ type PageData struct {
 	Content      template.HTML
 	NewerPage    LinkData
 	OlderPage    LinkData
-	Translations []TranslationData
+	Translations []*TranslationData
 	Draft        bool
 }
 
@@ -58,93 +56,62 @@ type TranslationData struct {
 type TocData struct {
 	Tag        string
 	TotalCount int
-	Stories    []PageData
+	Stories    []*PageData
 }
 
-func GetTemplates(c config.Config, lang string) (*Templates, error) {
+// GetTemplates returns a loader for templates for a particular language.
+func GetTemplates(c config.Config, lang string) *Templates {
 	locale, err := languages.FindByCode(lang)
-	if err != nil {
-		return nil, err
-	}
 	return &Templates{
-		config:             c,
-		locale:             locale,
-		templateBase:       c.GetTemplateBase(),
-		tocTemplate:        nil,
-		pageTemplate:       nil,
-		emailTemplate:      nil,
-		plainEmailTemplate: nil,
-		indexTocTemplate:   nil,
-	}, nil
+		err:           err,
+		config:        c,
+		locale:        locale,
+		templateBase:  c.GetTemplateBase(),
+		templates:     make(map[string]*template.Template),
+		textTemplates: make(map[string]*textTemplate.Template),
+	}
 }
 
-// GetTocTemplate loads the table-of-contents template for a particular language.
-func (t *Templates) GetTocTemplate(lang string) (*template.Template, error) {
-	if t.tocTemplate == nil {
-		template, err := t.getTemplate("toc")
-		if err != nil {
-			return nil, err
-		}
-		t.tocTemplate = template
-	}
-	return t.tocTemplate, nil
+// Toc loads the table-of-contents template.
+func (t *Templates) Toc() (*template.Template, error) {
+	return t.getTemplate("toc")
 }
 
-// GetPageTemplate loads the page template for a particular language.
-func (t *Templates) GetPageTemplate(lang string) (*template.Template, error) {
-	if t.pageTemplate == nil {
-		template, err := t.getTemplate("page")
-		if err != nil {
-			return nil, err
-		}
-		t.pageTemplate = template
-	}
-	return t.pageTemplate, nil
+// Page loads the page template.
+func (t *Templates) Page() (*template.Template, error) {
+	return t.getTemplate("page")
 }
 
-// GetPageTemplate loads the email template for a particular language.
-func (t *Templates) GetEmailTemplate(lang string) (*template.Template, error) {
-	if t.emailTemplate == nil {
-		template, err := t.getTemplate("email")
-		if err != nil {
-			return nil, err
-		}
-		t.emailTemplate = template
-	}
-	return t.emailTemplate, nil
+// GetPageTemplate loads the email template.
+func (t *Templates) Email() (*template.Template, error) {
+	return t.getTemplate("email")
 }
 
-// GetPageTemplate loads the plain-txt email template for a particular language.
-func (t Templates) GetPlainEmailTemplate(lang string) (tmpl *text_template.Template, err error) {
-	if t.plainEmailTemplate == nil {
-		template, err := t.getTextTemplate("email-plain")
-		if err != nil {
-			return nil, err
-		}
-		t.plainEmailTemplate = template
-	}
-	return t.plainEmailTemplate, nil
+// GetPageTemplate loads the plain-txt email template.
+func (t Templates) PlainEmail() (*textTemplate.Template, error) {
+	return t.getTextTemplate("email-plain")
 }
 
-// GetIndexTocTemplate loads the story index template for a particular language.
-func (t Templates) GetIndexTocTemplate(lang string) (tmpl *template.Template, err error) {
-	if t.indexTocTemplate == nil {
-		template, err := t.getTemplate("index-toc")
-		if err != nil {
-			return nil, err
-		}
-		t.indexTocTemplate = template
-	}
-	return t.indexTocTemplate, nil
+// IndexToc loads the story index template.
+func (t Templates) IndexToc() (*template.Template, error) {
+	return t.getTemplate("index-toc")
 }
 
 func (t *Templates) getTemplate(name string) (*template.Template, error) {
+	if t.err != nil {
+		return nil, t.err
+	}
+	out, ok := t.templates[name]
+	if ok {
+		return out, nil
+	}
+
 	fileName := name + "-" + t.locale.Code() + ".tmpl"
 	tmpl, err := t.templateBase.GoTo(fileName).ReadBytes()
 	if err != nil {
 		return nil, err
 	}
-	return template.New(fileName).Funcs(template.FuncMap{
+	out, err = template.New(fileName).Funcs(template.FuncMap{
 		"formatDate": t.formatDate,
 		"getTagURI":  t.getTagURI,
 		"getTocURI":  t.getTocURI,
@@ -154,15 +121,28 @@ func (t *Templates) getTemplate(name string) (*template.Template, error) {
 		"site":       t.getSite,
 		"webRoot":    t.getWebroot,
 	}).Parse(string(tmpl))
+	if err != nil {
+		return nil, err
+	}
+	t.templates[name] = out
+	return out, nil
 }
 
-func (t *Templates) getTextTemplate(name string) (*text_template.Template, error) {
+func (t *Templates) getTextTemplate(name string) (*textTemplate.Template, error) {
+	if t.err != nil {
+		return nil, t.err
+	}
+	out, ok := t.textTemplates[name]
+	if ok {
+		return out, nil
+	}
+
 	fileName := name + "-" + t.locale.Code() + ".tmpl"
 	tmpl, err := t.templateBase.GoTo(fileName).ReadBytes()
 	if err != nil {
 		return nil, err
 	}
-	return text_template.New(fileName).Funcs(text_template.FuncMap{
+	out, err = textTemplate.New(fileName).Funcs(textTemplate.FuncMap{
 		"formatDate": t.formatDate,
 		"getTagURI":  t.getTagURI,
 		"getTocURI":  t.getTocURI,
@@ -173,6 +153,11 @@ func (t *Templates) getTextTemplate(name string) (*text_template.Template, error
 		"site":       t.getSite,
 		"webRoot":    t.getWebroot,
 	}).ParseFiles(string(tmpl))
+	if err != nil {
+		return nil, err
+	}
+	t.textTemplates[name] = out
+	return out, nil
 }
 
 // FormatDate renders the given time as a date.
