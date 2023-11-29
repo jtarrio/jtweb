@@ -7,34 +7,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestMakeUrisAbsolute(t *testing.T) {
-	r := strings.NewReader(`<!DOCTYPE html><html><head></head><body>
-<p><a href="relative.html">Relative</a></p>
-<p><a href="/site-absolute.html">Site absolute</a></p>
-<p><a href="https://absolute/path.html">Absolute</a></p>
-<img src="relative.jpg"/>
-<img src="/site-absolute.jpg"/>
-<img src="https://absolute/image.jpg"/>
-</body></html>`)
-
-	w := strings.Builder{}
-
-	err := MakeUrisAbsolute(r, &w, "http://site/base/", "path/index.html")
-	if err != nil {
-		panic(err)
-	}
-
-	expected := `<!DOCTYPE html><html><head></head><body>
-<p><a href="http://site/base/path/relative.html">Relative</a></p>
-<p><a href="http://site/base/site-absolute.html">Site absolute</a></p>
-<p><a href="https://absolute/path.html">Absolute</a></p>
-<img src="http://site/base/path/relative.jpg"/>
-<img src="http://site/base/site-absolute.jpg"/>
-<img src="https://absolute/image.jpg"/>
-</body></html>`
-	assert.Equal(t, expected, w.String())
-}
-
 func TestConvertToTextLineBreaks(t *testing.T) {
 	r := strings.NewReader(`<!DOCTYPE html><html><body>
 <p>En un lugar de la Mancha, de cuyo nombre no quiero acordarme, no ha mucho tiempo que vivía un hidalgo de los de lanza en astillero, adarga antigua, rocín flaco y galgo corredor.</p>
@@ -44,7 +16,7 @@ func TestConvertToTextLineBreaks(t *testing.T) {
 <p>    y una sobrina que no llegaba a los veinte,
 y un mozo de campo y plaza, que así    ensillaba el rocín como tomaba la podadera.   </p>
 <p>Frisaba la edad de nuestro hidalgo conloscincuentaañoseradecomplexiónreciasecodecarnesenjutoderostrogranmadrugadoryamigodelacaza.
-Quieren decir que tenía el sobrenombre de Quijada, o Quesada, que en esto hay alguna​diferencia​en​los​autores​que​deste​caso​escriben;​aunque​por​conjeturas​verosímiles​se​deja​entender​que​se​llamaba​Quijana.</p>
+Quieren decir que tenía el sobrenombre de Quijada, o Quesada, que en esto hay alguna&ZeroWidthSpace;diferencia&ZeroWidthSpace;en&ZeroWidthSpace;los&ZeroWidthSpace;autores&ZeroWidthSpace;que&ZeroWidthSpace;deste&ZeroWidthSpace;caso&ZeroWidthSpace;escriben;&ZeroWidthSpace;aunque&ZeroWidthSpace;por&ZeroWidthSpace;conjeturas&ZeroWidthSpace;verosímiles&ZeroWidthSpace;se&ZeroWidthSpace;deja&ZeroWidthSpace;entender&ZeroWidthSpace;que&ZeroWidthSpace;se&ZeroWidthSpace;llamaba&ZeroWidthSpace;Quijana.</p>
 <p>Pero esto importa poco a nuestro cuento: basta que en la narración dél no se salga un punto de la verdad.</p>
 </body></html>`)
 

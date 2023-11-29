@@ -3,75 +3,10 @@ package templates
 import (
 	"fmt"
 	"io"
-	"net/url"
 	"strings"
 
 	"golang.org/x/net/html"
 )
-
-func makeAbsolute(base *url.URL, path *url.URL, uri string) string {
-	if strings.HasPrefix(uri, "{$") {
-		return uri
-	}
-	lastPath, err := url.Parse(uri)
-	if err != nil {
-		return uri
-	}
-	if lastPath.Scheme == "" &&
-		lastPath.Host == "" &&
-		lastPath.User == nil &&
-		lastPath.Path != "" &&
-		lastPath.Path[0] == '/' {
-		lastPath.Path = lastPath.Path[1:]
-		return base.ResolveReference(lastPath).String()
-	}
-	return base.ResolveReference(path).ResolveReference(lastPath).String()
-}
-
-// MakeUrisAbsolute reads an HTML document from `i`, replaces all relative URIs
-// with absolute, and writes the result to `o`.
-//
-// Relative URIs are referenced to the concatenation of `base` and `path`;
-// site-relative URIs are referenced to `base` as if they were relative;
-// absolute URIs are passed as-is.
-func MakeUrisAbsolute(i io.Reader, o io.Writer, base string, path string) error {
-	baseUri, err := url.Parse(base)
-	if err != nil {
-		return err
-	}
-	pathUri, err := url.Parse(path)
-	if err != nil {
-		return err
-	}
-	doc, err := html.Parse(i)
-	if err != nil {
-		return err
-	}
-	var processNode func(*html.Node)
-	processNode = func(n *html.Node) {
-		if n.Type == html.ElementNode {
-			wantedAttr := ""
-			if n.Data == "a" {
-				wantedAttr = "href"
-			} else if n.Data == "img" {
-				wantedAttr = "src"
-			}
-			if wantedAttr != "" {
-				for i, a := range n.Attr {
-					if a.Key == wantedAttr {
-						n.Attr[i].Val = makeAbsolute(baseUri, pathUri, a.Val)
-						break
-					}
-				}
-			}
-		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			processNode(c)
-		}
-	}
-	processNode(doc)
-	return html.Render(o, doc)
-}
 
 const textWrapColumns = 79
 const zeroWidthSpace rune = '\u200b'

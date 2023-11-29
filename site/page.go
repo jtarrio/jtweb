@@ -1,11 +1,13 @@
 package site
 
 import (
+	"bytes"
 	"html/template"
 	goio "io"
-	"strings"
+	textTemplate "text/template"
 
 	"jacobo.tarrio.org/jtweb/page"
+	"jacobo.tarrio.org/jtweb/renderer"
 	"jacobo.tarrio.org/jtweb/renderer/templates"
 	"jacobo.tarrio.org/jtweb/site/io"
 	"jacobo.tarrio.org/jtweb/uri"
@@ -23,63 +25,70 @@ func parsePage(file io.File) (*page.Page, error) {
 }
 
 func (c *Contents) OutputAsPage(w goio.Writer, page *page.Page) error {
-	t, err := templates.GetTemplates(c.Config, page.Header.Language)
+	tmpl, err := templates.GetTemplates(c.Config, page.Header.Language).Page()
 	if err != nil {
 		return err
 	}
-	tmpl, err := t.GetPageTemplate(page.Header.Language)
-	if err != nil {
-		return err
-	}
-	sb := strings.Builder{}
-	err = tmpl.Execute(&sb, c.makePageData(page))
-	if err != nil {
-		return err
-	}
-	return templates.MakeUrisAbsolute(strings.NewReader(sb.String()), w, c.Config.GetWebRoot(page.Header.Language), page.Name)
+	return c.outputPageFromTemplate(w, tmpl, page)
 }
 
 func (c *Contents) OutputAsEmail(w goio.Writer, page *page.Page) error {
-	t, err := templates.GetTemplates(c.Config, page.Header.Language)
+	tmpl, err := templates.GetTemplates(c.Config, page.Header.Language).Email()
 	if err != nil {
 		return err
 	}
-	tmpl, err := t.GetEmailTemplate(page.Header.Language)
-	if err != nil {
-		return err
-	}
-	sb := strings.Builder{}
-	err = tmpl.Execute(&sb, c.makePageData(page))
-	if err != nil {
-		return err
-	}
-	return templates.MakeUrisAbsolute(strings.NewReader(sb.String()), w, c.Config.GetWebRoot(page.Header.Language), page.Name)
+	return c.outputPageFromTemplate(w, tmpl, page)
 }
 
 func (c *Contents) OutputAsPlainEmail(w goio.Writer, page *page.Page) error {
-	t, err := templates.GetTemplates(c.Config, page.Header.Language)
+	tmpl, err := templates.GetTemplates(c.Config, page.Header.Language).PlainEmail()
 	if err != nil {
 		return err
 	}
-	tmpl, err := t.GetPlainEmailTemplate(page.Header.Language)
-	if err != nil {
-		return err
-	}
-	return tmpl.Execute(w, c.makePageData(page))
+	return c.outputPageFromTextTemplate(w, tmpl, page)
 }
 
-func (c *Contents) makePageData(page *page.Page) templates.PageData {
-	sb := strings.Builder{}
-	page.Render(&sb)
+func (c *Contents) outputPageFromTemplate(w goio.Writer, tmpl *template.Template, page *page.Page) error {
+	pageData, err := c.makePageData(page)
+	if err != nil {
+		return err
+	}
+	buf := bytes.Buffer{}
+	err = tmpl.Execute(&buf, pageData)
+	if err != nil {
+		return err
+	}
+	return renderer.NormalizeOutput(w, &buf)
+}
 
-	pageData := templates.PageData{
+func (c *Contents) outputPageFromTextTemplate(w goio.Writer, tmpl *textTemplate.Template, page *page.Page) error {
+	pageData, err := c.makePageData(page)
+	if err != nil {
+		return err
+	}
+	return tmpl.Execute(w, pageData)
+}
+
+func (c *Contents) makePageData(page *page.Page) (*templates.PageData, error) {
+	buf := bytes.Buffer{}
+	err := page.Render(&buf)
+	if err != nil {
+		return nil, err
+	}
+	content := bytes.Buffer{}
+	err = renderer.SanitizePost(&content, &buf, c.Config.GetWebRoot(page.Header.Language), page.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	pageData := &templates.PageData{
 		Title:     page.Header.Title,
 		Permalink: c.makePageURI(page),
 		Author:    templates.LinkData{},
 		Summary:   page.Header.Summary,
 		Episode:   page.Header.Episode,
 		Tags:      page.Header.Tags,
-		Content:   template.HTML(sb.String()),
+		Content:   template.HTML(content.String()),
 		Draft:     page.Header.Draft,
 	}
 	if !page.Header.HidePublishDate {
@@ -114,13 +123,13 @@ func (c *Contents) makePageData(page *page.Page) templates.PageData {
 		translation := c.Pages[t.Name]
 		pageData.Translations = append(
 			pageData.Translations,
-			templates.TranslationData{
+			&templates.TranslationData{
 				Name:     translation.Header.Title,
 				URI:      c.makePageURI(translation),
 				Language: t.Language,
 			})
 	}
-	return pageData
+	return pageData, nil
 }
 
 func (c *Contents) makePageURI(p *page.Page) string {
