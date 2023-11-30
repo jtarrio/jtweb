@@ -12,6 +12,7 @@ import (
 	"time"
 
 	email "jacobo.tarrio.org/jtweb/email"
+	"jacobo.tarrio.org/jtweb/languages"
 )
 
 const baseUri = "https://api.mailerlite.com/api/"
@@ -23,11 +24,11 @@ type Mailerlite struct {
 	utcTz  int
 }
 
-func mapLanguage(language string) string {
-	switch language {
+func mapLanguage(language languages.Language) string {
+	switch language.Code() {
 	case "en":
 	case "es":
-		return language
+		return language.Code()
 	case "gl":
 		return "pt"
 	default:

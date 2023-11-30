@@ -4,13 +4,14 @@ import (
 	"io"
 	"strings"
 
+	"jacobo.tarrio.org/jtweb/languages"
 	"jacobo.tarrio.org/jtweb/page"
 	"jacobo.tarrio.org/jtweb/uri"
 
 	"github.com/gorilla/feeds"
 )
 
-func (c *Contents) outputRss(w io.Writer, lang string) error {
+func (c *Contents) outputRss(w io.Writer, lang languages.Language) error {
 	toc := c.Toc[lang]
 	pages := make([]*page.Page, 0, 5)
 	if len(toc.All) > 0 {
@@ -34,7 +35,7 @@ func (c *Contents) outputRss(w io.Writer, lang string) error {
 		}
 		feed.Items[i] = &feeds.Item{
 			Title:       p.Header.Title,
-			Link:        &feeds.Link{Href: uri.Concat(c.Config.GetWebRoot(lang), p.Name) + ".html"},
+			Link:        &feeds.Link{Href: uri.Concat(c.Config.GetWebRoot(lang), string(p.Name)) + ".html"},
 			Author:      &feeds.Author{Name: p.Header.AuthorName},
 			Created:     p.Header.PublishDate,
 			Description: sb.String(),

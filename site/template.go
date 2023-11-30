@@ -3,6 +3,7 @@ package site
 import (
 	"html/template"
 
+	"jacobo.tarrio.org/jtweb/languages"
 	"jacobo.tarrio.org/jtweb/page"
 	"jacobo.tarrio.org/jtweb/site/io"
 )
@@ -16,14 +17,14 @@ func (c *Contents) renderTemplate(name string) error {
 	templateName := source.BaseName()
 	tmpl, err := template.New(templateName).Funcs(template.FuncMap{
 		"hasContent": func(lang string) bool {
-			toc, ok := c.Toc[lang]
+			toc, ok := c.Toc[languages.FindByCodeWithFallback(lang, languages.LanguageEn)]
 			if !ok {
 				return false
 			}
 			return len(toc.All) > 0
 		},
 		"latestPage": func(lang string) *page.Page {
-			toc, ok := c.Toc[lang]
+			toc, ok := c.Toc[languages.FindByCodeWithFallback(lang, languages.LanguageEn)]
 			if !ok {
 				return nil
 			}
@@ -31,7 +32,7 @@ func (c *Contents) renderTemplate(name string) error {
 			return c.Pages[name]
 		},
 		"webRoot": func(lang string) string {
-			return c.Config.GetWebRoot(lang)
+			return c.Config.GetWebRoot(languages.FindByCodeWithFallback(lang, languages.LanguageEn))
 		},
 	}).Parse(string(content))
 	if err != nil {

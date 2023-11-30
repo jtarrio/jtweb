@@ -76,7 +76,7 @@ func (c *Contents) makePageData(page *page.Page) (*templates.PageData, error) {
 		return nil, err
 	}
 	content := bytes.Buffer{}
-	err = renderer.SanitizePost(&content, &buf, c.Config.GetWebRoot(page.Header.Language), page.Name)
+	err = renderer.SanitizePost(&content, &buf, c.Config.GetWebRoot(page.Header.Language), string(page.Name))
 	if err != nil {
 		return nil, err
 	}
@@ -126,12 +126,12 @@ func (c *Contents) makePageData(page *page.Page) (*templates.PageData, error) {
 			&templates.TranslationData{
 				Name:     translation.Header.Title,
 				URI:      c.makePageURI(translation),
-				Language: t.Language,
+				Language: t.Language.Code(),
 			})
 	}
 	return pageData, nil
 }
 
 func (c *Contents) makePageURI(p *page.Page) string {
-	return uri.Concat(c.Config.GetWebRoot(p.Header.Language), p.Name+".html")
+	return uri.Concat(c.Config.GetWebRoot(p.Header.Language), string(p.Name)+".html")
 }

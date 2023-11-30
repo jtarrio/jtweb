@@ -60,12 +60,10 @@ type TocData struct {
 }
 
 // GetTemplates returns a loader for templates for a particular language.
-func GetTemplates(c config.Config, lang string) *Templates {
-	locale, err := languages.FindByCode(lang)
+func GetTemplates(c config.Config, lang languages.Language) *Templates {
 	return &Templates{
-		err:           err,
 		config:        c,
-		locale:        locale,
+		locale:        lang,
 		templateBase:  c.GetTemplateBase(),
 		templates:     make(map[string]*template.Template),
 		textTemplates: make(map[string]*textTemplate.Template),
@@ -204,11 +202,11 @@ func (t *Templates) htmlToText(content template.HTML, linksTitle string, picture
 
 func (t *Templates) getSite() LinkData {
 	return LinkData{
-		Name: t.config.GetSiteName(t.locale.Code()),
-		URI:  t.config.GetSiteURI(t.locale.Code()),
+		Name: t.config.GetSiteName(t.locale),
+		URI:  t.config.GetSiteURI(t.locale),
 	}
 }
 
 func (t *Templates) getWebroot() string {
-	return t.config.GetWebRoot(t.locale.Code())
+	return t.config.GetWebRoot(t.locale)
 }

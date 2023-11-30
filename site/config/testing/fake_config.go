@@ -3,6 +3,7 @@ package testing
 import (
 	"time"
 
+	"jacobo.tarrio.org/jtweb/languages"
 	"jacobo.tarrio.org/jtweb/site/io"
 	"jacobo.tarrio.org/jtweb/site/io/testing"
 )
@@ -47,24 +48,24 @@ func (c *FakeConfig) GetOutputBase() io.File {
 	return c.OutputBase
 }
 
-func (c *FakeConfig) GetWebRoot(lang string) string {
-	v, ok := c.WebRoots[lang]
+func (c *FakeConfig) GetWebRoot(lang languages.Language) string {
+	v, ok := c.WebRoots[lang.Code()]
 	if !ok {
 		return c.WebRoots[""]
 	}
 	return v
 }
 
-func (c *FakeConfig) GetSiteName(lang string) string {
-	v, ok := c.SiteNames[lang]
+func (c *FakeConfig) GetSiteName(lang languages.Language) string {
+	v, ok := c.SiteNames[lang.Code()]
 	if !ok {
 		return c.SiteNames[""]
 	}
 	return v
 }
 
-func (c *FakeConfig) GetSiteURI(lang string) string {
-	v, ok := c.SiteURIs[lang]
+func (c *FakeConfig) GetSiteURI(lang languages.Language) string {
+	v, ok := c.SiteURIs[lang.Code()]
 	if !ok {
 		return c.SiteURIs[""]
 	}

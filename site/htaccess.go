@@ -107,7 +107,7 @@ func (c *Contents) writeRedirects(bw *bufio.Writer) error {
 func (c *Contents) makeRedirectPatterns(p *page.Page) ([]redirectPattern, error) {
 	out := make([]redirectPattern, 0)
 
-	parsed, err := url.Parse(uri.Concat(c.Config.GetWebRoot(p.Header.Language), p.Name+".html"))
+	parsed, err := url.Parse(uri.Concat(c.Config.GetWebRoot(p.Header.Language), string(p.Name)+".html"))
 	if err != nil {
 		return nil, err
 	}

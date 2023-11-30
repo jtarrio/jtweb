@@ -8,12 +8,16 @@ import (
 
 	"github.com/yuin/goldmark/ast"
 	"gopkg.in/yaml.v2"
+	"jacobo.tarrio.org/jtweb/languages"
 	"jacobo.tarrio.org/jtweb/renderer"
 )
 
+// Name is a custom type for a page's identifier.
+type Name string
+
 // Page contains all the information about a parsed page.
 type Page struct {
-	Name   string
+	Name   Name
 	Source []byte
 	Root   ast.Node
 	Header HeaderData
@@ -22,7 +26,7 @@ type Page struct {
 // HeaderData contains the information held in the page's header.
 type HeaderData struct {
 	Title           string
-	Language        string
+	Language        languages.Language
 	Summary         string
 	Episode         string
 	PublishDate     time.Time
@@ -33,7 +37,7 @@ type HeaderData struct {
 	Tags            []string
 	NoIndex         bool
 	OldURI          []string
-	TranslationOf   string
+	TranslationOf   Name
 	Draft           bool
 }
 
@@ -50,7 +54,7 @@ func Parse(name string, r io.Reader) (*Page, error) {
 	if err != nil {
 		return nil, err
 	}
-	page := &Page{Name: name, Source: src, Root: md.Root, Header: header}
+	page := &Page{Name: Name(name), Source: src, Root: md.Root, Header: header}
 	return page, nil
 }
 
@@ -92,9 +96,14 @@ func parseHeader(hdr []byte) (HeaderData, error) {
 	}
 
 	out.Title = rawHeader.Title
-	out.Language = rawHeader.Language
-	if out.Language == "" {
-		out.Language = "en"
+	if rawHeader.Language == "" {
+		out.Language = languages.LanguageEn
+	} else {
+		l, err := languages.FindByCode(rawHeader.Language)
+		if err != nil {
+			return out, err
+		}
+		out.Language = l
 	}
 	out.Summary = rawHeader.Summary
 	if rawHeader.PublishDate != "" {
@@ -112,7 +121,7 @@ func parseHeader(hdr []byte) (HeaderData, error) {
 	out.Tags = rawHeader.Tags
 	out.NoIndex = rawHeader.NoIndex
 	out.OldURI = rawHeader.OldURI
-	out.TranslationOf = rawHeader.TranslationOf
+	out.TranslationOf = Name(rawHeader.TranslationOf)
 	out.Draft = rawHeader.Draft
 	return out, nil
 }

@@ -14,7 +14,8 @@ type Language interface {
 	// FormatDate formats the given time as a date, in "September 2, 2020" format.
 	FormatDate(t time.Time) string
 	// PreferredLanguage takes a list of languages and returns which one is often preferred by speakers of this language.
-	PreferredLanguage(languages []string) string
+	// If none of them is preferred, the first language is returned.
+	PreferredLanguage(languages []Language) Language
 }
 
 type languageBase struct {
@@ -36,7 +37,7 @@ var languages map[string]Language = map[string]Language{
 func FindByCode(code string) (Language, error) {
 	l, ok := languages[code]
 	if !ok {
-		return nil, fmt.Errorf("No language available for \"%s\"", code)
+		return nil, fmt.Errorf("no language available for \"%s\"", code)
 	}
 	return l, nil
 }
@@ -50,26 +51,42 @@ func FindByCodeWithFallback(name string, fallback Language) Language {
 	return lang
 }
 
-func (l languageBase) Name() string {
+func (l *languageBase) Name() string {
 	return l.name
 }
 
-func (l languageBase) Code() string {
+func (l *languageBase) Code() string {
 	return l.code
 }
 
-func (l languageBase) PreferredLanguage(languages []string) string {
-	langSet := make(map[string]bool)
+func (l *languageBase) PreferredLanguage(languages []Language) Language {
+	langSet := make(map[string]Language)
 	for _, lang := range languages {
-		langSet[lang] = true
+		langSet[lang.Code()] = lang
 	}
-	if langSet[l.Code()] {
-		return l.Code()
+	lang, ok := langSet[l.Code()]
+	if ok {
+		return lang
 	}
-	for _, lang := range l.preferredLanguages {
-		if langSet[lang] {
+	for _, code := range l.preferredLanguages {
+		lang, ok := langSet[code]
+		if ok {
 			return lang
 		}
 	}
-	return ""
+	return languages[0]
+}
+
+type LanguageSlice []Language
+
+func (s LanguageSlice) Len() int {
+	return len(s)
+}
+
+func (s LanguageSlice) Less(i, j int) bool {
+	return s[i].Code() < s[j].Code()
+}
+
+func (s LanguageSlice) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
 }

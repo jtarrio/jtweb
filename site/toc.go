@@ -3,10 +3,12 @@ package site
 import (
 	goio "io"
 
+	"jacobo.tarrio.org/jtweb/languages"
+	"jacobo.tarrio.org/jtweb/page"
 	"jacobo.tarrio.org/jtweb/renderer/templates"
 )
 
-func (c *Contents) outputToc(w goio.Writer, lang string, names []string, tag string) error {
+func (c *Contents) outputToc(w goio.Writer, lang languages.Language, names []page.Name, tag string) error {
 	tmpl, err := templates.GetTemplates(c.Config, lang).Toc()
 	if err != nil {
 		return err

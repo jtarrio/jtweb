@@ -9,6 +9,7 @@ import (
 	"jacobo.tarrio.org/jtweb/email"
 	mailerlite "jacobo.tarrio.org/jtweb/email/mailerlite"
 	"jacobo.tarrio.org/jtweb/email/mailerlitev2"
+	"jacobo.tarrio.org/jtweb/languages"
 	"jacobo.tarrio.org/jtweb/page"
 	"jacobo.tarrio.org/jtweb/site"
 	"jacobo.tarrio.org/jtweb/site/config"
@@ -33,7 +34,7 @@ type emailData struct {
 	html      string
 }
 
-func gatherEmails(language string, sendAfter time.Time, subjectPrefix string, content *site.Contents, mailer email.Mailer) ([]emailData, error) {
+func gatherEmails(language languages.Language, sendAfter time.Time, subjectPrefix string, content *site.Contents, mailer email.Mailer) ([]emailData, error) {
 	toc, ok := content.Toc[language]
 	if !ok {
 		return nil, fmt.Errorf("no table of contents for language: %s", language)
@@ -93,7 +94,7 @@ func gatherEmails(language string, sendAfter time.Time, subjectPrefix string, co
 	return emails, nil
 }
 
-func draftEmail(m email.Mailer, language string, data *emailData) (string, error) {
+func draftEmail(m email.Mailer, language languages.Language, data *emailData) (string, error) {
 	name, _, _ := strings.Cut(data.subject, ":")
 	id, err := m.DraftEmail(email.Email{Name: name, Language: language, Subject: data.subject, Plaintext: data.plaintext, Html: data.html})
 	if err != nil {
@@ -106,9 +107,13 @@ func draftEmail(m email.Mailer, language string, data *emailData) (string, error
 func main() {
 	flag.Parse()
 
-	var language string
+	var language languages.Language
+	var err error
 	if *flagLanguage != "" {
-		language = *flagLanguage
+		language, err = languages.FindByCode(*flagLanguage)
+		if err != nil {
+			panic(err)
+		}
 	} else {
 		panic(fmt.Errorf("--language was not specified"))
 	}

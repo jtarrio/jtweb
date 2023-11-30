@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"gopkg.in/yaml.v2"
+	"jacobo.tarrio.org/jtweb/languages"
 	"jacobo.tarrio.org/jtweb/site/io"
 )
 
@@ -161,24 +162,24 @@ func (c *config) GetOutputBase() io.File {
 	return io.OsFile(c.OutputPath)
 }
 
-func (c *config) GetWebRoot(lang string) string {
-	val, ok := c.WebRootLanguages[lang]
+func (c *config) GetWebRoot(lang languages.Language) string {
+	val, ok := c.WebRootLanguages[lang.Code()]
 	if ok {
 		return val
 	}
 	return c.WebRoot
 }
 
-func (c *config) GetSiteName(lang string) string {
-	val, ok := c.SiteNameLanguages[lang]
+func (c *config) GetSiteName(lang languages.Language) string {
+	val, ok := c.SiteNameLanguages[lang.Code()]
 	if ok {
 		return val
 	}
 	return c.SiteName
 }
 
-func (c *config) GetSiteURI(lang string) string {
-	val, ok := c.SiteURILanguages[lang]
+func (c *config) GetSiteURI(lang languages.Language) string {
+	val, ok := c.SiteURILanguages[lang.Code()]
 	if ok {
 		return val
 	}

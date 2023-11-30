@@ -1,6 +1,10 @@
 package email
 
-import "time"
+import (
+	"time"
+
+	"jacobo.tarrio.org/jtweb/languages"
+)
 
 type ScheduledEmail struct {
 	Id   string
@@ -10,7 +14,7 @@ type ScheduledEmail struct {
 
 type Email struct {
 	Name      string
-	Language  string
+	Language  languages.Language
 	Subject   string
 	Plaintext string
 	Html      string

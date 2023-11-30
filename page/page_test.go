@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/text"
+	"jacobo.tarrio.org/jtweb/languages"
 )
 
 func TestParseEmpty(t *testing.T) {
@@ -31,7 +32,7 @@ func TestParseMinimalHeader(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, HeaderData{
 		Title:    "The title",
-		Language: "en",
+		Language: languages.LanguageEn,
 	}, p.Header)
 }
 
@@ -60,7 +61,7 @@ func TestParseFullHeader(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, HeaderData{
 		Title:           "The title",
-		Language:        "gl",
+		Language:        languages.LanguageGl,
 		Summary:         "The summary",
 		Episode:         "The episode",
 		PublishDate:     time.Date(2021, 8, 15, 1, 23, 0, 0, time.FixedZone("", 3600)),

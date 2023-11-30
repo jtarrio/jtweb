@@ -14,47 +14,50 @@ import (
 	"jacobo.tarrio.org/jtweb/uri"
 )
 
+// TagId is a custom type for a tag's identifier.
+type TagId string
+
 // Contents contains the parsed and indexed content of the site.
 type Contents struct {
 	Config       config.Config
 	Files        []string
 	Templates    []string
-	Pages        map[string]*page.Page
-	Tags         map[string]string
+	Pages        map[page.Name]*page.Page
+	Tags         map[TagId]string
 	Toc          GlobalTableOfContents
-	Translations map[string][]Translation
+	Translations map[page.Name][]Translation
 }
 
 // GlobalTableOfContents contains the tables of contents for every language.
-type GlobalTableOfContents map[string]LanguageTableOfContents
+type GlobalTableOfContents map[languages.Language]LanguageTableOfContents
 
 // LanguageTableOfContents contains the tables of contents for every year in a language.
 type LanguageTableOfContents struct {
 	// TOC for all pages.
 	All TableOfContents
 	// TOC for each tag.
-	ByTag map[string]TableOfContents
+	ByTag map[TagId]TableOfContents
 	// Map from each page name to the immediately newer page's name.
-	NewerPages map[string]string
+	NewerPages map[page.Name]page.Name
 	// Map from each page name to the immediately older page's name.
-	OlderPages map[string]string
+	OlderPages map[page.Name]page.Name
 }
 
 // TableOfContents contains a list of pages.
-type TableOfContents []string
+type TableOfContents []page.Name
 
 // Translation contains information about a page translation.
 type Translation struct {
-	Name     string
-	Language string
+	Name     page.Name
+	Language languages.Language
 }
 
 // Read parses the whole site contents.
 func Read(s config.Config) (*Contents, error) {
 	files := make([]string, 0)
 	templates := make([]string, 0)
-	pagesByName := make(map[string]*page.Page)
-	tagNames := make(map[string]string)
+	pagesByName := make(map[page.Name]*page.Page)
+	tagIds := make(map[TagId]string)
 	err := s.GetInputBase().ForAllFiles(func(file io.File, err error) error {
 		if err != nil {
 			return err
@@ -70,7 +73,7 @@ func Read(s config.Config) (*Contents, error) {
 			}
 			pagesByName[page.Name] = page
 			for _, tag := range page.Header.Tags {
-				tagNames[uri.GetTagPath(tag)] = tag
+				tagIds[tagId(tag)] = tag
 			}
 		} else if strings.HasSuffix(name, ".tmpl") {
 			templates = append(templates, name[:len(name)-5])
@@ -98,11 +101,16 @@ func Read(s config.Config) (*Contents, error) {
 		Files:        files,
 		Templates:    templates,
 		Pages:        pagesByName,
-		Tags:         tagNames,
+		Tags:         tagIds,
 		Toc:          tocByLanguage,
 		Translations: translationsByName,
 	}
 	return &c, nil
+}
+
+// tagId returns a TagId for the given tag.
+func tagId(tag string) TagId {
+	return TagId(uri.GetTagPath(tag))
 }
 
 type filePopulator func(w io.Output) error
@@ -132,7 +140,7 @@ func (c *Contents) Write() error {
 	}
 	for _, page := range c.Pages {
 		err := c.makeFile(
-			page.Name+".html",
+			string(page.Name)+".html",
 			func(w io.Output) error {
 				return c.OutputAsPage(w, page)
 			})
@@ -142,7 +150,7 @@ func (c *Contents) Write() error {
 	}
 	for lang, languageToc := range c.Toc {
 		err := c.makeFile(
-			fmt.Sprintf("toc/toc-%s.html", lang),
+			fmt.Sprintf("toc/toc-%s.html", lang.Code()),
 			func(w io.Output) error {
 				return c.outputToc(w, lang, languageToc.All, "")
 			})
@@ -151,7 +159,7 @@ func (c *Contents) Write() error {
 		}
 		for tag, tagToc := range languageToc.ByTag {
 			err := c.makeFile(
-				fmt.Sprintf("tags/%s-%s.html", tag, lang),
+				fmt.Sprintf("tags/%s-%s.html", tag, lang.Code()),
 				func(w io.Output) error {
 					return c.outputToc(w, lang, tagToc, c.Tags[tag])
 				})
@@ -160,7 +168,7 @@ func (c *Contents) Write() error {
 			}
 		}
 		err = c.makeFile(
-			fmt.Sprintf("rss/%s.xml", lang),
+			fmt.Sprintf("rss/%s.xml", lang.Code()),
 			func(w io.Output) error {
 				return c.outputRss(w, lang)
 			})
@@ -207,33 +215,33 @@ func (c *Contents) makeFile(path string, populator filePopulator) error {
 	return err
 }
 
-func getTranslationsByName(pages map[string]*page.Page) (map[string][]Translation, error) {
-	translationsByName := make(map[string]map[string]string)
-	for _, page := range pages {
-		if page.Header.Draft {
+func getTranslationsByName(pages map[page.Name]*page.Page) (map[page.Name][]Translation, error) {
+	translationsByName := make(map[page.Name]map[languages.Language]page.Name)
+	for _, pg := range pages {
+		if pg.Header.Draft {
 			continue
 		}
-		translations := translationsByName[page.Name]
+		translations := translationsByName[pg.Name]
 		if translations == nil {
-			translations = make(map[string]string)
-			translationsByName[page.Name] = translations
+			translations = make(map[languages.Language]page.Name)
+			translationsByName[pg.Name] = translations
 		}
-		if translations[page.Header.Language] != "" && translations[page.Header.Language] != page.Name {
+		if translations[pg.Header.Language] != "" && translations[pg.Header.Language] != pg.Name {
 			return nil, fmt.Errorf(
 				"two pages claim language [%s] for the same content: [%s] and [%s]",
-				page.Header.Language,
-				translations[page.Header.Language],
-				page.Name,
+				pg.Header.Language,
+				translations[pg.Header.Language],
+				pg.Name,
 			)
 		}
-		translations[page.Header.Language] = page.Name
-		if page.Header.TranslationOf != "" {
-			otherTranslations := translationsByName[page.Header.TranslationOf]
+		translations[pg.Header.Language] = pg.Name
+		if pg.Header.TranslationOf != "" {
+			otherTranslations := translationsByName[pg.Header.TranslationOf]
 			for l, p := range otherTranslations {
 				if translations[l] != "" && translations[l] != p {
 					return nil, fmt.Errorf(
 						"translation of [%s] to language [%s] has two conflicting values: [%s] and [%s]",
-						page.Name,
+						pg.Name,
 						l,
 						translations[l],
 						p,
@@ -241,10 +249,10 @@ func getTranslationsByName(pages map[string]*page.Page) (map[string][]Translatio
 				}
 				translations[l] = p
 			}
-			translationsByName[page.Header.TranslationOf] = translations
+			translationsByName[pg.Header.TranslationOf] = translations
 		}
 	}
-	translations := make(map[string][]Translation)
+	translations := make(map[page.Name][]Translation)
 	for name, trans := range translationsByName {
 		for code, page := range trans {
 			if code != pages[name].Header.Language {
@@ -255,19 +263,18 @@ func getTranslationsByName(pages map[string]*page.Page) (map[string][]Translatio
 	return translations, nil
 }
 
-func indexPages(pages map[string]*page.Page, translationsByName map[string][]Translation, hideUntranslated bool) (GlobalTableOfContents, error) {
-	langs := make(map[string]bool)
+func indexPages(pages map[page.Name]*page.Page, translationsByName map[page.Name][]Translation, hideUntranslated bool) (GlobalTableOfContents, error) {
+	langs := make(map[languages.Language]bool)
 	for _, page := range pages {
 		langs[page.Header.Language] = true
 	}
 	toc := make(GlobalTableOfContents)
 	for lang := range langs {
 		languageToc := LanguageTableOfContents{
-			NewerPages: make(map[string]string),
-			OlderPages: make(map[string]string),
+			NewerPages: make(map[page.Name]page.Name),
+			OlderPages: make(map[page.Name]page.Name),
 		}
-		language := languages.FindByCodeWithFallback(lang, languages.LanguageEn)
-		allNames := makeNameIndex(pages, language, translationsByName, hideUntranslated)
+		allNames := makeNameIndex(pages, lang, translationsByName, hideUntranslated)
 		for i, name := range allNames {
 			if i > 0 {
 				languageToc.NewerPages[name] = allNames[i-1]
@@ -278,7 +285,7 @@ func indexPages(pages map[string]*page.Page, translationsByName map[string][]Tra
 		}
 		languageToc.All = allNames
 		allNamesByTag := groupByTag(allNames, pages)
-		languageToc.ByTag = make(map[string]TableOfContents)
+		languageToc.ByTag = make(map[TagId]TableOfContents)
 		for tag, allNamesOfTag := range allNamesByTag {
 			languageToc.ByTag[tag] = allNamesOfTag
 		}
@@ -288,13 +295,13 @@ func indexPages(pages map[string]*page.Page, translationsByName map[string][]Tra
 	return toc, nil
 }
 
-func makeNameIndex(pages map[string]*page.Page, language languages.Language, translationsByName map[string][]Translation, hideUntranslated bool) []string {
-	allNames := make([]string, 0, len(pages))
+func makeNameIndex(pages map[page.Name]*page.Page, language languages.Language, translationsByName map[page.Name][]Translation, hideUntranslated bool) []page.Name {
+	allNames := make([]page.Name, 0, len(pages))
 	for name, page := range pages {
 		if page.Header.NoIndex || page.Header.Draft {
 			continue
 		}
-		if page.Header.Language == language.Code() {
+		if page.Header.Language == language {
 			// If the page is in the index language, add it.
 			allNames = append(allNames, name)
 			continue
@@ -309,24 +316,21 @@ func makeNameIndex(pages map[string]*page.Page, language languages.Language, tra
 			continue
 		}
 		// If the index language is among the translations, skip it.
-		translations := make(map[string]bool)
+		translations := make(map[languages.Language]bool)
 		translations[page.Header.Language] = true
 		for _, tl := range translationsByName[name] {
 			translations[tl.Language] = true
 		}
-		if translations[language.Code()] {
+		if translations[language] {
 			continue
 		}
 		// We want to show only the preferred translation.
-		wanted := make([]string, 0, len(translations))
+		wanted := make([]languages.Language, 0, len(translations))
 		for lang := range translations {
 			wanted = append(wanted, lang)
 		}
-		sort.Strings(wanted)
+		sort.Sort(languages.LanguageSlice(wanted))
 		preferred := language.PreferredLanguage(wanted)
-		if preferred == "" {
-			preferred = wanted[0]
-		}
 		if preferred == page.Header.Language {
 			allNames = append(allNames, name)
 		}
@@ -345,12 +349,12 @@ func makeNameIndex(pages map[string]*page.Page, language languages.Language, tra
 	return allNames
 }
 
-func groupByTag(names []string, pages map[string]*page.Page) map[string]TableOfContents {
-	byTag := make(map[string]TableOfContents)
+func groupByTag(names []page.Name, pages map[page.Name]*page.Page) map[TagId]TableOfContents {
+	byTag := make(map[TagId]TableOfContents)
 	for _, name := range names {
 		for _, tag := range pages[name].Header.Tags {
-			tagPath := uri.GetTagPath(tag)
-			byTag[tagPath] = append(byTag[tagPath], name)
+			id := tagId(tag)
+			byTag[id] = append(byTag[id], name)
 		}
 	}
 	return byTag

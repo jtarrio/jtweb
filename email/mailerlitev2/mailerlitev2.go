@@ -10,6 +10,7 @@ import (
 	"github.com/aymerick/douceur/inliner"
 	mlgo "github.com/mailerlite/mailerlite-go"
 	email "jacobo.tarrio.org/jtweb/email"
+	"jacobo.tarrio.org/jtweb/languages"
 )
 
 type Mailerlite struct {
@@ -54,7 +55,7 @@ func (m *Mailerlite) getUtcTimezone() (int, error) {
 	return -1, fmt.Errorf("UTC timezone not found")
 }
 
-func (m *Mailerlite) getLanguageId(language string) (int, error) {
+func (m *Mailerlite) getLanguageId(language languages.Language) (int, error) {
 	if len(m.languageIds) == 0 {
 		ctx := context.TODO()
 		lids, _, err := m.client.Campaign.Languages(ctx)
@@ -70,13 +71,14 @@ func (m *Mailerlite) getLanguageId(language string) (int, error) {
 	}
 	var id int
 	ok := false
-	for !ok && language != "" {
-		id, ok = m.languageIds[language]
+	code := language.Code()
+	for !ok && code != "" {
+		id, ok = m.languageIds[code]
 		if !ok {
-			if language == "gl" {
-				language = "pt"
+			if code == "gl" {
+				code = "pt"
 			} else {
-				language = ""
+				code = ""
 			}
 		}
 	}
