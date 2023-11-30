@@ -80,6 +80,9 @@ func TestParsesMarkdown(t *testing.T) {
 	}
 	err = config.TemplateBase.GoTo("toc-en.tmpl").
 		CreateBytes([]byte("<html><body>{{range .Stories}}<p>{{.Title}}</p>{{end}}</body></html>"))
+	if err != nil {
+		panic(err)
+	}
 	err = config.InputBase.GoTo("markdown.md").CreateBytes([]byte("<!--HEADER\n" +
 		"title: The Title\n" +
 		"-->\n" +
