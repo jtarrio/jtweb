@@ -3,14 +3,13 @@ package main
 import (
 	"flag"
 	"fmt"
-	"strings"
+	"log"
 	"time"
 
 	"jacobo.tarrio.org/jtweb/email"
-	mailerlite "jacobo.tarrio.org/jtweb/email/mailerlite"
+	"jacobo.tarrio.org/jtweb/email/mailerlite"
 	"jacobo.tarrio.org/jtweb/email/mailerlitev2"
 	"jacobo.tarrio.org/jtweb/languages"
-	"jacobo.tarrio.org/jtweb/page"
 	"jacobo.tarrio.org/jtweb/site"
 	"jacobo.tarrio.org/jtweb/site/config"
 )
@@ -27,104 +26,78 @@ var flagSendFirstEmail = flag.Bool("send_first_email", false, "Instead of schedu
 var flagLeaveAsDraft = flag.Bool("leave_as_draft", false, "Prepare the emails but don't schedule or send them.")
 var flagDryRun = flag.Bool("dry_run", false, "Does not send or schedule emails.")
 
-type emailData struct {
-	subject   string
-	date      time.Time
-	plaintext string
-	html      string
+func getLanguage() (languages.Language, error) {
+	if *flagLanguage == "" {
+		return nil, fmt.Errorf("flag --language was not specified")
+	}
+	return languages.FindByCode(*flagLanguage)
 }
 
-func gatherEmails(language languages.Language, sendAfter time.Time, subjectPrefix string, content *site.Contents, mailer email.Mailer) ([]emailData, error) {
-	toc, ok := content.Toc[language]
-	if !ok {
-		return nil, fmt.Errorf("no table of contents for language: %s", language)
+func getEngine() (email.Engine, error) {
+	if !*flagUseV2 {
+		return mailerlite.ConnectMailerlite(*flagApikey, *flagGroup, *flagDryRun)
 	}
 
-	scheduled, err := mailer.GetScheduledEmailDates()
+	if *flagSenderName == "" || *flagSenderEmail == "" {
+		return nil, fmt.Errorf("must specify a sender name and email")
+	}
+	return mailerlitev2.ConnectMailerliteV2(*flagApikey, *flagSenderName, *flagSenderEmail, fmt.Sprint(*flagGroup), *flagDryRun)
+}
+
+func getSendAfter() (time.Time, error) {
+	if *flagSendAfter == "" {
+		return time.Now(), nil
+	}
+
+	parsed, err := time.Parse(time.RFC3339, *flagSendAfter)
 	if err != nil {
-		return nil, err
+		return time.Time{}, err
+	}
+	return parsed, nil
+}
+
+func sendMails(emails []*email.Email, engine email.Engine) error {
+	if *flagSendFirstEmail {
+		emails = []*email.Email{emails[len(emails)-1]}
 	}
 
-	seen := make(map[int64]string)
-	for _, e := range scheduled {
-		seen[e.When.Unix()] = e.Name
-	}
-
-	var pages []*page.Page
-	for _, name := range toc.All {
-		page := content.Pages[name]
-		if page.Header.PublishDate.After(sendAfter) {
-			_, ok := seen[page.Header.PublishDate.Unix()]
-			if !ok {
-				pages = append(pages, page)
-			}
+	for _, email := range emails {
+		campaign, err := engine.CreateCampaign(email)
+		if err != nil {
+			return err
 		}
-	}
-
-	var emails []emailData
-	for _, page := range pages {
-		var email emailData
-		if subjectPrefix == "" {
-			email.subject = page.Header.Title
-		} else if page.Header.Episode == "" {
-			email.subject = subjectPrefix + ": " + page.Header.Title
+		log.Printf("Created draft for [%s] as id %s", email.Name, campaign.Id())
+		if *flagLeaveAsDraft {
+			continue
+		}
+		if *flagSendFirstEmail {
+			err = campaign.Send()
+			if err != nil {
+				return err
+			}
+			log.Printf("Sent id %s", campaign.Id())
 		} else {
-			email.subject = subjectPrefix + " " + page.Header.Episode + ": " + page.Header.Title
-		}
-		email.date = page.Header.PublishDate
-		{
-			sb := strings.Builder{}
-			err := content.OutputAsEmail(&sb, page)
+			err = campaign.Schedule()
 			if err != nil {
-				return nil, err
+				return err
 			}
-			email.html = sb.String()
+			log.Printf("Scheduled id %s for %s", campaign.Id(), email.Date.String())
 		}
-		{
-			sb := strings.Builder{}
-			err = content.OutputAsPlainEmail(&sb, page)
-			if err != nil {
-				return nil, err
-			}
-			email.plaintext = sb.String()
-		}
-		emails = append(emails, email)
 	}
-
-	return emails, nil
-}
-
-func draftEmail(m email.Mailer, language languages.Language, data *emailData) (string, error) {
-	name, _, _ := strings.Cut(data.subject, ":")
-	id, err := m.DraftEmail(email.Email{Name: name, Language: language, Subject: data.subject, Plaintext: data.plaintext, Html: data.html})
-	if err != nil {
-		return "", err
-	}
-	fmt.Printf("Created draft for [%s] as id %s\n", name, id)
-	return id, nil
+	return nil
 }
 
 func main() {
 	flag.Parse()
 
-	var language languages.Language
-	var err error
-	if *flagLanguage != "" {
-		language, err = languages.FindByCode(*flagLanguage)
-		if err != nil {
-			panic(err)
-		}
-	} else {
-		panic(fmt.Errorf("--language was not specified"))
+	language, err := getLanguage()
+	if err != nil {
+		panic(err)
 	}
 
-	sendAfter := time.Now()
-	if *flagSendAfter != "" {
-		parsed, err := time.Parse(time.RFC3339, *flagSendAfter)
-		if err != nil {
-			panic(err)
-		}
-		sendAfter = parsed
+	sendAfter, err := getSendAfter()
+	if err != nil {
+		panic(err)
 	}
 
 	cfg, err := config.GetConfig()
@@ -136,58 +109,38 @@ func main() {
 		panic(err)
 	}
 
-	var mailer email.Mailer
+	engine, err := getEngine()
+	if err != nil {
+		panic(err)
+	}
 
-	if *flagUseV2 {
-		if *flagSenderName == "" || *flagSenderEmail == "" {
-			panic("Must specify a sender name and email")
+	generator := email.NewEmailGenerator(content, language).
+		WithOptions(
+			email.NotBefore(sendAfter),
+			email.NotScheduled(engine),
+			email.NamePrefix(*flagSubjectPrefix),
+			email.SubjectPrefix(*flagSubjectPrefix),
+		)
+	emails, err := generator.CreateMails()
+	if err != nil {
+		panic(err)
+	}
+
+	if *flagDryRun {
+		log.Print("Emails:")
+		for _, email := range emails {
+			log.Printf("%s\n"+"*** Language: %s\n"+"*** Date: %s\n"+"*** Subject: %s\n"+"*** HTML:\n%s\n"+"*** Text:\n%s",
+				email.Name, email.Language.Code(), email.Date.String(), email.Subject, email.Html, email.Plaintext)
 		}
-		mailer, err = mailerlitev2.ConnectMailerliteV2(*flagApikey, *flagSenderName, *flagSenderEmail, fmt.Sprint(*flagGroup), *flagDryRun)
-	} else {
-		mailer, err = mailerlite.ConnectMailerlite(*flagApikey, *flagGroup, *flagDryRun)
-	}
-	if err != nil {
-		panic(err)
-	}
-
-	emails, err := gatherEmails(language, sendAfter, *flagSubjectPrefix, content, mailer)
-	if err != nil {
-		panic(err)
 	}
 
 	if len(emails) == 0 {
-		fmt.Printf("No emails to be scheduled, exiting\n")
+		log.Print("No emails to be scheduled, exiting")
 		return
 	}
 
-	if *flagSendFirstEmail {
-		id, err := draftEmail(mailer, language, &emails[len(emails)-1])
-		if err != nil {
-			panic(err)
-		}
-		if *flagLeaveAsDraft {
-			return
-		}
-		err = mailer.Send(id)
-		if err != nil {
-			panic(err)
-		}
-		fmt.Printf("Sent id %s\n", id)
-		return
-	}
-
-	for _, email := range emails {
-		id, err := draftEmail(mailer, language, &email)
-		if err != nil {
-			panic(err)
-		}
-		if *flagLeaveAsDraft {
-			continue
-		}
-		err = mailer.Schedule(id, email.date)
-		if err != nil {
-			panic(err)
-		}
-		fmt.Printf("Scheduled id %s for %s\n", id, email.date.String())
+	err = sendMails(emails, engine)
+	if err != nil {
+		panic(err)
 	}
 }

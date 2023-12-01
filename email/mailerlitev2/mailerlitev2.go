@@ -13,7 +13,20 @@ import (
 	"jacobo.tarrio.org/jtweb/languages"
 )
 
-type Mailerlite struct {
+func ConnectMailerliteV2(apikey string, senderName string, senderEmail string, group string, dryRun bool) (*mailerlite, error) {
+	return &mailerlite{
+		apikey:      apikey,
+		senderName:  senderName,
+		senderEmail: senderEmail,
+		group:       group,
+		dryRun:      dryRun,
+		utcTz:       -1,
+		client:      mlgo.NewClient(apikey),
+		languageIds: make(map[string]int),
+	}, nil
+}
+
+type mailerlite struct {
 	apikey      string
 	senderName  string
 	senderEmail string
@@ -24,11 +37,17 @@ type Mailerlite struct {
 	languageIds map[string]int
 }
 
-func (m *Mailerlite) parseUtcTime(t string) (time.Time, error) {
+type campaign struct {
+	id   string
+	when time.Time
+	ml   *mailerlite
+}
+
+func (m *mailerlite) parseUtcTime(t string) (time.Time, error) {
 	return time.Parse("2006-01-02 15:04:05", t)
 }
 
-func (m *Mailerlite) getUtcTimezone() (int, error) {
+func (m *mailerlite) getUtcTimezone() (int, error) {
 	if m.utcTz != -1 {
 		return m.utcTz, nil
 	}
@@ -55,7 +74,7 @@ func (m *Mailerlite) getUtcTimezone() (int, error) {
 	return -1, fmt.Errorf("UTC timezone not found")
 }
 
-func (m *Mailerlite) getLanguageId(language languages.Language) (int, error) {
+func (m *mailerlite) getLanguageId(language languages.Language) (int, error) {
 	if len(m.languageIds) == 0 {
 		ctx := context.TODO()
 		lids, _, err := m.client.Campaign.Languages(ctx)
@@ -88,20 +107,7 @@ func (m *Mailerlite) getLanguageId(language languages.Language) (int, error) {
 	return id, nil
 }
 
-func ConnectMailerliteV2(apikey string, senderName string, senderEmail string, group string, dryRun bool) (*Mailerlite, error) {
-	return &Mailerlite{
-		apikey:      apikey,
-		senderName:  senderName,
-		senderEmail: senderEmail,
-		group:       group,
-		dryRun:      dryRun,
-		utcTz:       -1,
-		client:      mlgo.NewClient(apikey),
-		languageIds: make(map[string]int),
-	}, nil
-}
-
-func (m *Mailerlite) GetScheduledEmailDates() ([]email.ScheduledEmail, error) {
+func (m *mailerlite) ScheduledCampaigns() ([]email.ScheduledCampaign, error) {
 	ctx := context.TODO()
 	campaigns, _, err := m.client.Campaign.List(ctx, &mlgo.ListCampaignOptions{
 		Filters: &[]mlgo.Filter{
@@ -115,13 +121,13 @@ func (m *Mailerlite) GetScheduledEmailDates() ([]email.ScheduledEmail, error) {
 		return nil, err
 	}
 
-	var ret []email.ScheduledEmail
+	var ret []email.ScheduledCampaign
 	for _, c := range campaigns.Data {
 		dt, err := m.parseUtcTime(c.ScheduledFor)
 		if err != nil {
 			return nil, err
 		}
-		ret = append(ret, email.ScheduledEmail{Id: c.ID, Name: c.Name, When: dt})
+		ret = append(ret, email.ScheduledCampaign{Name: c.Name, When: dt})
 	}
 
 	return ret, nil
@@ -129,15 +135,15 @@ func (m *Mailerlite) GetScheduledEmailDates() ([]email.ScheduledEmail, error) {
 
 var fakeId int
 
-func (m *Mailerlite) DraftEmail(email email.Email) (string, error) {
+func (m *mailerlite) CreateCampaign(email *email.Email) (email.Campaign, error) {
 	html, err := inliner.Inline(email.Html)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	language, err := m.getLanguageId(email.Language)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	request := &mlgo.CreateCampaign{
@@ -145,34 +151,35 @@ func (m *Mailerlite) DraftEmail(email email.Email) (string, error) {
 		Type:       mlgo.CampaignTypeRegular,
 		LanguageID: language,
 		Groups:     []string{m.group},
-		Emails: []mlgo.Emails{
-			{FromName: m.senderName,
-				From:      m.senderEmail,
-				Subject:   email.Subject,
-				Content:   html,
-				PlainText: email.Plaintext,
-			},
-		},
+		Emails: []mlgo.Emails{{
+			FromName:  m.senderName,
+			From:      m.senderEmail,
+			Subject:   email.Subject,
+			Content:   html,
+			PlainText: email.Plaintext,
+		}},
 	}
 
 	if m.dryRun {
 		fakeId++
-		// fmt.Println(*request)
-		return fmt.Sprint(fakeId), nil
+		return &campaign{id: fmt.Sprint(fakeId), when: email.Date, ml: m}, nil
 	}
 
 	ctx := context.TODO()
-	campaign, _, err := m.client.Campaign.Create(ctx, request)
+	c, _, err := m.client.Campaign.Create(ctx, request)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	id := campaign.Data.ID
-	return id, nil
+	return &campaign{id: c.Data.ID, when: email.Date, ml: m}, nil
 }
 
-func (m *Mailerlite) sendOrSchedule(id string, date *time.Time) error {
-	tzid, err := m.getUtcTimezone()
+func (c *campaign) sendOrSchedule(date *time.Time) error {
+	if c.ml.dryRun {
+		return nil
+	}
+
+	tzid, err := c.ml.getUtcTimezone()
 	if err != nil {
 		return err
 	}
@@ -193,21 +200,18 @@ func (m *Mailerlite) sendOrSchedule(id string, date *time.Time) error {
 			Delivery: mlgo.CampaignScheduleTypeInstant,
 		}
 	}
-	if m.dryRun {
-		if schedule.Delivery == mlgo.CampaignScheduleTypeScheduled {
-			fmt.Println(*schedule.Schedule)
-		}
-		return nil
-	} else {
-		_, _, err = m.client.Campaign.Schedule(ctx, id, schedule)
-		return err
-	}
+	_, _, err = c.ml.client.Campaign.Schedule(ctx, c.id, schedule)
+	return err
 }
 
-func (m *Mailerlite) Schedule(id string, date time.Time) error {
-	return m.sendOrSchedule(id, &date)
+func (c *campaign) Id() string {
+	return c.id
 }
 
-func (m *Mailerlite) Send(id string) error {
-	return m.sendOrSchedule(id, nil)
+func (c *campaign) Schedule() error {
+	return c.sendOrSchedule(&c.when)
+}
+
+func (c *campaign) Send() error {
+	return c.sendOrSchedule(nil)
 }

@@ -150,7 +150,7 @@ func (t *Templates) getTextTemplate(name string) (*textTemplate.Template, error)
 		"plural":     t.plural,
 		"site":       t.getSite,
 		"webRoot":    t.getWebroot,
-	}).ParseFiles(string(tmpl))
+	}).Parse(string(tmpl))
 	if err != nil {
 		return nil, err
 	}

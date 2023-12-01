@@ -7,21 +7,30 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
-	email "jacobo.tarrio.org/jtweb/email"
+	"jacobo.tarrio.org/jtweb/email"
 	"jacobo.tarrio.org/jtweb/languages"
 )
 
+func ConnectMailerlite(apikey string, group int, dryRun bool) (*mailerlite, error) {
+	return &mailerlite{apikey: apikey, group: group, dryRun: dryRun, utcTz: -1}, nil
+}
+
 const baseUri = "https://api.mailerlite.com/api/"
 
-type Mailerlite struct {
+type mailerlite struct {
 	apikey string
 	group  int
 	dryRun bool
 	utcTz  int
+}
+
+type campaign struct {
+	id   int
+	when time.Time
+	ml   *mailerlite
 }
 
 func mapLanguage(language languages.Language) string {
@@ -37,13 +46,13 @@ func mapLanguage(language languages.Language) string {
 	return "en"
 }
 
-func query[R any](m *Mailerlite, path string, method string, response *R) error {
+func query[R any](m *mailerlite, path string, method string, response *R) error {
 	var dummy *string = nil
 
 	return queryPayload(m, path, method, dummy, response)
 }
 
-func queryPayload[Q any, R any](m *Mailerlite, path string, method string, request *Q, response *R) error {
+func queryPayload[Q any, R any](m *mailerlite, path string, method string, request *Q, response *R) error {
 	url := baseUri + path
 
 	var payload io.Reader
@@ -89,11 +98,11 @@ func queryPayload[Q any, R any](m *Mailerlite, path string, method string, reque
 	return nil
 }
 
-func (m *Mailerlite) parseUtcTime(t string) (time.Time, error) {
+func (m *mailerlite) parseUtcTime(t string) (time.Time, error) {
 	return time.Parse("2006-01-02 15:04:05", t)
 }
 
-func (m *Mailerlite) getUtcTimezone() (int, error) {
+func (m *mailerlite) getUtcTimezone() (int, error) {
 	if m.utcTz >= 0 {
 		return m.utcTz, nil
 	}
@@ -126,13 +135,8 @@ func (m *Mailerlite) getUtcTimezone() (int, error) {
 	return -1, fmt.Errorf("UTC timezone not found")
 }
 
-func ConnectMailerlite(apikey string, group int, dryRun bool) (*Mailerlite, error) {
-	return &Mailerlite{apikey: apikey, group: group, dryRun: dryRun, utcTz: -1}, nil
-}
-
-func (m *Mailerlite) GetScheduledEmailDates() ([]email.ScheduledEmail, error) {
+func (m *mailerlite) ScheduledCampaigns() ([]email.ScheduledCampaign, error) {
 	type campaign struct {
-		Id       int    `json:"id"`
 		DateSend string `json:"date_send"`
 		Name     string `json:"name"`
 	}
@@ -143,13 +147,16 @@ func (m *Mailerlite) GetScheduledEmailDates() ([]email.ScheduledEmail, error) {
 		return nil, err
 	}
 
-	var ret []email.ScheduledEmail
+	var ret []email.ScheduledCampaign
 	for _, c := range campaigns {
 		dt, err := m.parseUtcTime(c.DateSend)
 		if err != nil {
 			return nil, err
 		}
-		ret = append(ret, email.ScheduledEmail{Id: fmt.Sprint(c.Id), Name: c.Name, When: dt})
+		ret = append(ret, email.ScheduledCampaign{
+			Name: c.Name,
+			When: dt,
+		})
 	}
 
 	return ret, nil
@@ -157,10 +164,10 @@ func (m *Mailerlite) GetScheduledEmailDates() ([]email.ScheduledEmail, error) {
 
 var fakeId int
 
-func (m *Mailerlite) DraftEmail(email email.Email) (string, error) {
+func (m *mailerlite) CreateCampaign(e *email.Email) (email.Campaign, error) {
 	if m.dryRun {
 		fakeId++
-		return fmt.Sprint(fakeId), nil
+		return &campaign{id: fakeId, when: e.Date, ml: m}, nil
 	}
 
 	var id int
@@ -178,11 +185,17 @@ func (m *Mailerlite) DraftEmail(email email.Email) (string, error) {
 			Id int `json:"id"`
 		}
 
-		req := campaignReq{Type: "regular", Name: email.Name, Groups: []int{m.group}, Subject: email.Subject, Language: mapLanguage(email.Language)}
+		req := campaignReq{
+			Type:     "regular",
+			Name:     e.Name,
+			Groups:   []int{m.group},
+			Subject:  e.Subject,
+			Language: mapLanguage(e.Language),
+		}
 		var resp campaignResp
 		err := queryPayload(m, "v2/campaigns", "POST", &req, &resp)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 		id = resp.Id
 	}
@@ -198,22 +211,26 @@ func (m *Mailerlite) DraftEmail(email email.Email) (string, error) {
 			Success bool `json:"success"`
 		}
 
-		req := contentReq{Plain: email.Plaintext, Html: email.Html, AutoInline: true}
+		req := contentReq{
+			Plain:      e.Plaintext,
+			Html:       e.Html,
+			AutoInline: false,
+		}
 		var resp contentResp
 		err := queryPayload(m, fmt.Sprintf("v2/campaigns/%d/content", id), "PUT", &req, &resp)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 		if !resp.Success {
-			return "", fmt.Errorf("Mailerlite returned a non-success state for id %d", id)
+			return nil, fmt.Errorf("non-success state returned by Mailerlite for id %d", id)
 		}
 	}
 
-	return fmt.Sprint(id), nil
+	return &campaign{id: id, when: e.Date, ml: m}, nil
 }
 
-func (m *Mailerlite) sendOrSchedule(id int, date *time.Time) error {
-	if m.dryRun {
+func (c *campaign) sendOrSchedule(date *time.Time) error {
+	if c.ml.dryRun {
 		return nil
 	}
 
@@ -228,7 +245,7 @@ func (m *Mailerlite) sendOrSchedule(id int, date *time.Time) error {
 		Id int `json:"id"`
 	}
 
-	tzid, err := m.getUtcTimezone()
+	tzid, err := c.ml.getUtcTimezone()
 	if err != nil {
 		return err
 	}
@@ -242,21 +259,17 @@ func (m *Mailerlite) sendOrSchedule(id int, date *time.Time) error {
 		req.TzId = tzid
 	}
 	var resp actionResp
-	return queryPayload(m, fmt.Sprintf("v2/campaigns/%d/actions/send", id), "POST", &req, &resp)
+	return queryPayload(c.ml, fmt.Sprintf("v2/campaigns/%d/actions/send", c.id), "POST", &req, &resp)
 }
 
-func (m *Mailerlite) Schedule(id string, date time.Time) error {
-	idint, err := strconv.Atoi(id)
-	if err != nil {
-		return err
-	}
-	return m.sendOrSchedule(idint, &date)
+func (c *campaign) Id() string {
+	return fmt.Sprint(c.id)
 }
 
-func (m *Mailerlite) Send(id string) error {
-	idint, err := strconv.Atoi(id)
-	if err != nil {
-		return err
-	}
-	return m.sendOrSchedule(idint, nil)
+func (c *campaign) Schedule() error {
+	return c.sendOrSchedule(&c.when)
+}
+
+func (c *campaign) Send() error {
+	return c.sendOrSchedule(nil)
 }

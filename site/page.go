@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"html/template"
 	goio "io"
+	"strings"
 	textTemplate "text/template"
 
+	"github.com/aymerick/douceur/inliner"
 	"jacobo.tarrio.org/jtweb/page"
 	"jacobo.tarrio.org/jtweb/renderer"
 	"jacobo.tarrio.org/jtweb/renderer/templates"
@@ -37,7 +39,17 @@ func (c *Contents) OutputAsEmail(w goio.Writer, page *page.Page) error {
 	if err != nil {
 		return err
 	}
-	return c.outputPageFromTemplate(w, tmpl, page)
+	sb := strings.Builder{}
+	err = c.outputPageFromTemplate(&sb, tmpl, page)
+	if err != nil {
+		return err
+	}
+	out, err := inliner.Inline(sb.String())
+	if err != nil {
+		return err
+	}
+	_, err = strings.NewReader(out).WriteTo(w)
+	return err
 }
 
 func (c *Contents) OutputAsPlainEmail(w goio.Writer, page *page.Page) error {
