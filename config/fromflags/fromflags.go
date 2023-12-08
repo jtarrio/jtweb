@@ -38,8 +38,8 @@ type yamlConfig struct {
 	}
 	Generator *struct {
 		Output           string
-		HideUntranslated bool      `yaml:"hide_untranslated"`
-		PublishUntil     time.Time `yaml:"publish_until"`
+		HideUntranslated bool       `yaml:"hide_untranslated"`
+		PublishUntil     *time.Time `yaml:"publish_until"`
 	}
 }
 
@@ -72,7 +72,8 @@ type authorConfig struct {
 type generatorConfig struct {
 	output           io.File
 	hideUntranslated bool
-	publishUntil     time.Time
+	publishUntil     *time.Time
+	now              time.Time
 }
 
 func readConfig(fileName string) (*yamlConfig, error) {
@@ -87,11 +88,16 @@ func readConfig(fileName string) (*yamlConfig, error) {
 }
 
 func convertConfig(cfg *yamlConfig) (config.Config, error) {
+	var out = &parsedConfig{}
 	if cfg.Files.Templates == "" {
 		return nil, fmt.Errorf("the template path has not been set")
 	}
 	if cfg.Files.Content == "" {
 		return nil, fmt.Errorf("the content path has not been set")
+	}
+	out.files = fileConfig{
+		templates: io.OsFile(cfg.Files.Templates),
+		content:   io.OsFile(cfg.Files.Content),
 	}
 	if cfg.Site.Webroot == "" {
 		return nil, fmt.Errorf("the web root has not been set")
@@ -101,36 +107,6 @@ func convertConfig(cfg *yamlConfig) (config.Config, error) {
 	}
 	if cfg.Site.Uri == "" {
 		cfg.Site.Uri = cfg.Site.Webroot
-	}
-	if cfg.Author.Name == "" {
-		return nil, fmt.Errorf("the author's name has not been set")
-	}
-	if cfg.Author.Uri == "" {
-		cfg.Author.Uri = cfg.Site.Uri
-	}
-	if cfg.Generator != nil && cfg.Generator.Output == "" {
-		return nil, fmt.Errorf("the output path has not been set")
-	}
-	if cfg.Generator != nil && cfg.Generator.PublishUntil.IsZero() {
-		cfg.Generator.PublishUntil = time.Now()
-	}
-
-	for _, siteCfg := range cfg.Site.ByLanguage {
-		if siteCfg.Webroot == "" {
-			siteCfg.Webroot = cfg.Site.Webroot
-		}
-		if siteCfg.Name == "" {
-			siteCfg.Name = cfg.Site.Name
-		}
-		if siteCfg.Uri == "" {
-			siteCfg.Uri = cfg.Site.Uri
-		}
-	}
-
-	var out = &parsedConfig{}
-	out.files = fileConfig{
-		templates: io.OsFile(cfg.Files.Templates),
-		content:   io.OsFile(cfg.Files.Content),
 	}
 	out.site.defaultSite = siteConfig{
 		webroot: cfg.Site.Webroot,
@@ -142,6 +118,15 @@ func convertConfig(cfg *yamlConfig) (config.Config, error) {
 		if err != nil {
 			return nil, err
 		}
+		if siteCfg.Webroot == "" {
+			siteCfg.Webroot = cfg.Site.Webroot
+		}
+		if siteCfg.Name == "" {
+			siteCfg.Name = cfg.Site.Name
+		}
+		if siteCfg.Uri == "" {
+			siteCfg.Uri = cfg.Site.Uri
+		}
 		out.site.byLanguage = make(map[languages.Language]siteConfig)
 		out.site.byLanguage[language] = siteConfig{
 			webroot: siteCfg.Webroot,
@@ -149,15 +134,25 @@ func convertConfig(cfg *yamlConfig) (config.Config, error) {
 			uri:     siteCfg.Uri,
 		}
 	}
+	if cfg.Author.Name == "" {
+		return nil, fmt.Errorf("the author's name has not been set")
+	}
+	if cfg.Author.Uri == "" {
+		cfg.Author.Uri = cfg.Site.Uri
+	}
 	out.author = authorConfig{
 		name: cfg.Author.Name,
 		uri:  cfg.Author.Uri,
 	}
 	if cfg.Generator != nil {
+		if cfg.Generator.Output == "" {
+			return nil, fmt.Errorf("the output path has not been set")
+		}
 		out.generator = &generatorConfig{
 			output:           io.OsFile(cfg.Generator.Output),
 			hideUntranslated: cfg.Generator.HideUntranslated,
 			publishUntil:     cfg.Generator.PublishUntil,
+			now:              time.Now(),
 		}
 	}
 
@@ -183,17 +178,21 @@ func GetConfig() (config.Config, error) {
 		return nil, err
 	}
 
-	if *flagOutputPath != "" {
-		cfg.Generator.Output = *flagOutputPath
-	}
 	if *flagWebroot != "" {
 		cfg.Site.Webroot = *flagWebroot
-		for _, langCfg := range cfg.Site.ByLanguage {
+		for lang, langCfg := range cfg.Site.ByLanguage {
 			langCfg.Webroot = *flagWebroot
+			cfg.Site.ByLanguage[lang] = langCfg
 		}
 	}
-	if !flagPublishUntil.IsZero() {
-		cfg.Generator.PublishUntil = *flagPublishUntil
+	if *flagOutputPath != "" {
+		if cfg.Generator == nil {
+			return nil, fmt.Errorf("the --output flag has been specified but no 'generator' field is present in the configuration")
+		}
+		cfg.Generator.Output = *flagOutputPath
+	}
+	if !flagPublishUntil.IsZero() && cfg.Generator != nil {
+		cfg.Generator.PublishUntil = flagPublishUntil
 	}
 
 	return convertConfig(cfg)
@@ -265,5 +264,8 @@ func (gc *generatorConfig) HideUntranslated() bool {
 }
 
 func (gc *generatorConfig) PublishUntil() time.Time {
-	return gc.publishUntil
+	if gc.publishUntil == nil {
+		return gc.now
+	}
+	return *gc.publishUntil
 }
