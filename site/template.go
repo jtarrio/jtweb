@@ -9,7 +9,7 @@ import (
 )
 
 func (c *Contents) renderTemplate(name string) error {
-	source := c.Config.Files().Input().GoTo(name + ".tmpl")
+	source := c.Config.Files().Content().GoTo(name + ".tmpl")
 	content, err := source.ReadBytes()
 	if err != nil {
 		return err

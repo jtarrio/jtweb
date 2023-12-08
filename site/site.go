@@ -58,7 +58,7 @@ func Read(s config.Config) (*Contents, error) {
 	templates := make([]string, 0)
 	pagesByName := make(map[page.Name]*page.Page)
 	tagIds := make(map[TagId]string)
-	err := s.Files().Input().ForAllFiles(func(file io.File, err error) error {
+	err := s.Files().Content().ForAllFiles(func(file io.File, err error) error {
 		if err != nil {
 			return err
 		}
@@ -180,7 +180,7 @@ func (c *Contents) Write() error {
 }
 
 func (c *Contents) copyFile(name string) error {
-	in := c.Config.Files().Input().GoTo(name)
+	in := c.Config.Files().Content().GoTo(name)
 	out := c.Config.Generator().Output().GoTo(name)
 	stat, err := in.Stat()
 	if err != nil {

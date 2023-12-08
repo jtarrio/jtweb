@@ -49,7 +49,7 @@ func (fc *fileConfig) Templates() io.File {
 	return fc.cfg.TemplateBase
 }
 
-func (fc *fileConfig) Input() io.File {
+func (fc *fileConfig) Content() io.File {
 	return fc.cfg.InputBase
 }
 

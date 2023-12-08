@@ -16,7 +16,7 @@ type Config interface {
 
 type FileConfig interface {
 	Templates() io.File
-	Input() io.File
+	Content() io.File
 }
 
 type SiteConfig interface {

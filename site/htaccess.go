@@ -17,7 +17,7 @@ import (
 const redirectPlaceholder = "### REDIRECTS ###"
 
 func (c *Contents) outputHtaccess(name string) error {
-	source := c.Config.Files().Input().GoTo(name)
+	source := c.Config.Files().Content().GoTo(name)
 	target := c.Config.Generator().Output().GoTo(name)
 	input, err := source.Read()
 	if err != nil {

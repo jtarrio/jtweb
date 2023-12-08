@@ -13,229 +13,257 @@ import (
 )
 
 var flagConfigFile = flag.String("config_file", "", "The name of the file containing the site's configuration.")
-var flagTemplatePath = flag.String("template_path", "", "The full pathname where the templates are located.")
-var flagInputPath = flag.String("input_path", "", "The full pathname where the input files are located.")
 var flagOutputPath = flag.String("output_path", "", "The full pathname where the rendered HTML files will be output.")
 var flagWebroot = flag.String("webroot", "", "The URI where the generated content will live.")
-var flagSiteName = flag.String("site_name", "", "The site's name.")
-var flagSiteURI = flag.String("site_uri", "", "The site's URI.")
-var flagHideUntranslated = flag.Bool("hide_untranslated", false, "Hide pages only available in a different language.")
-var flagWebrootLanguages = ByLanguageFlag("webroot_languages", "Per-language webroots in lang=root format, repeated.")
-var flagSiteNameLanguages = ByLanguageFlag("site_name_languages", "Per-language site names in lang=name format, repeated.")
-var flagSiteURILanguages = ByLanguageFlag("site_uri_languages", "Per-language site URIs in lang=uri format, repeated.")
-var flagAuthorName = flag.String("author_name", "", "The default author's name.")
-var flagAuthorURI = flag.String("author_uri", "", "The default author's website URI.")
 var flagPublishUntil = TimeFlag("publish_until", "Publish all posts older than the given date/time.")
 
-type configFromFlags struct {
-	TemplatePath      string            `yaml:"template_path"`
-	InputPath         string            `yaml:"input_path"`
-	OutputPath        string            `yaml:"output_path"`
-	WebRoot           string            `yaml:"webroot"`
-	SiteName          string            `yaml:"site_name"`
-	SiteURI           string            `yaml:"site_uri"`
-	HideUntranslated  bool              `yaml:"hide_untranslated"`
-	WebRootLanguages  map[string]string `yaml:"webroot_languages"`
-	SiteNameLanguages map[string]string `yaml:"site_name_languages"`
-	SiteURILanguages  map[string]string `yaml:"site_uri_languages"`
-	AuthorName        string            `yaml:"author_name"`
-	AuthorURI         string            `yaml:"author_uri"`
-	PublishUntil      time.Time         `yaml:"publish_until"`
-}
-
-func newConfig() *configFromFlags {
-	return &configFromFlags{
-		PublishUntil: time.Now(),
+type yamlConfig struct {
+	Files struct {
+		Templates string
+		Content   string
+	}
+	Site struct {
+		Webroot    string
+		Name       string
+		Uri        string
+		ByLanguage map[string]struct {
+			Webroot string
+			Name    string
+			Uri     string
+		} `yaml:"by_language"`
+	}
+	Author struct {
+		Name string
+		Uri  string
+	}
+	Generator *struct {
+		Output           string
+		HideUntranslated bool      `yaml:"hide_untranslated"`
+		PublishUntil     time.Time `yaml:"publish_until"`
 	}
 }
 
-func (c *configFromFlags) mergeYaml(b []byte) error {
-	return yaml.UnmarshalStrict(b, c)
+type parsedConfig struct {
+	files     fileConfig
+	site      allSiteConfig
+	author    authorConfig
+	generator *generatorConfig
 }
 
-func (c *configFromFlags) mergeFlags() error {
-	if *flagTemplatePath != "" {
-		c.TemplatePath = *flagTemplatePath
-	}
-	if *flagInputPath != "" {
-		c.InputPath = *flagInputPath
-	}
-	if *flagOutputPath != "" {
-		c.OutputPath = *flagOutputPath
-	}
-	if *flagWebroot != "" {
-		c.WebRoot = *flagWebroot
-	}
-	if *flagSiteName != "" {
-		c.SiteName = *flagSiteName
-	}
-	if *flagSiteURI != "" {
-		c.SiteURI = *flagSiteURI
-	}
-	if *flagHideUntranslated {
-		c.HideUntranslated = true
-	}
-	for k, v := range *flagWebrootLanguages {
-		c.WebRootLanguages[k] = v
-	}
-	for k, v := range *flagSiteNameLanguages {
-		c.SiteNameLanguages[k] = v
-	}
-	for k, v := range *flagSiteURILanguages {
-		c.SiteURILanguages[k] = v
-	}
-	if *flagAuthorName != "" {
-		c.AuthorName = *flagAuthorName
-	}
-	if *flagAuthorURI != "" {
-		c.AuthorURI = *flagAuthorURI
-	}
-	if !flagPublishUntil.IsZero() {
-		c.PublishUntil = *flagPublishUntil
-	}
-	return nil
+type fileConfig struct {
+	templates io.File
+	content   io.File
 }
 
-// Normalize checks that the configuration is valid and fills any missing optional values.
-func (c *configFromFlags) normalize() error {
-	if c.TemplatePath == "" {
-		return fmt.Errorf("the template path has not been set")
-	}
-	if c.InputPath == "" {
-		return fmt.Errorf("the input path has not been set")
-	}
-	if c.OutputPath == "" {
-		return fmt.Errorf("the output path has not been set")
-	}
-	if c.WebRoot == "" {
-		return fmt.Errorf("the web root has not been set")
-	}
-	if c.SiteName == "" {
-		return fmt.Errorf("the site name has not been set")
-	}
-	if c.AuthorName == "" {
-		return fmt.Errorf("the default author's name has not been set")
-	}
-	if c.SiteURI == "" {
-		c.SiteURI = c.WebRoot
-	}
-	if c.AuthorURI == "" {
-		c.AuthorURI = c.SiteURI
-	}
-	if c.PublishUntil.IsZero() {
-		c.PublishUntil = time.Now()
-	}
-	return nil
+type allSiteConfig struct {
+	defaultSite siteConfig
+	byLanguage  map[languages.Language]siteConfig
 }
 
-func GetConfig() (config.Config, error) {
-	cfg := newConfig()
+type siteConfig struct {
+	webroot string
+	name    string
+	uri     string
+}
+type authorConfig struct {
+	name string
+	uri  string
+}
+type generatorConfig struct {
+	output           io.File
+	hideUntranslated bool
+	publishUntil     time.Time
+}
 
-	if *flagConfigFile != "" {
-		file, err := ioutil.ReadFile(*flagConfigFile)
-		if err != nil {
-			return nil, err
-		}
-		err = cfg.mergeYaml(file)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	err := cfg.mergeFlags()
+func readConfig(fileName string) (*yamlConfig, error) {
+	file, err := ioutil.ReadFile(fileName)
 	if err != nil {
 		return nil, err
 	}
 
-	err = cfg.normalize()
+	var cfg = &yamlConfig{}
+	err = yaml.UnmarshalStrict(file, cfg)
 	return cfg, err
 }
 
-type fileConfig struct {
-	cfg *configFromFlags
+func convertConfig(cfg *yamlConfig) (config.Config, error) {
+	if cfg.Files.Templates == "" {
+		return nil, fmt.Errorf("the template path has not been set")
+	}
+	if cfg.Files.Content == "" {
+		return nil, fmt.Errorf("the content path has not been set")
+	}
+	if cfg.Site.Webroot == "" {
+		return nil, fmt.Errorf("the web root has not been set")
+	}
+	if cfg.Site.Name == "" {
+		return nil, fmt.Errorf("the site name has not been set")
+	}
+	if cfg.Site.Uri == "" {
+		cfg.Site.Uri = cfg.Site.Webroot
+	}
+	if cfg.Author.Name == "" {
+		return nil, fmt.Errorf("the author's name has not been set")
+	}
+	if cfg.Author.Uri == "" {
+		cfg.Author.Uri = cfg.Site.Uri
+	}
+	if cfg.Generator != nil && cfg.Generator.Output == "" {
+		return nil, fmt.Errorf("the output path has not been set")
+	}
+	if cfg.Generator != nil && cfg.Generator.PublishUntil.IsZero() {
+		cfg.Generator.PublishUntil = time.Now()
+	}
+
+	for _, siteCfg := range cfg.Site.ByLanguage {
+		if siteCfg.Webroot == "" {
+			siteCfg.Webroot = cfg.Site.Webroot
+		}
+		if siteCfg.Name == "" {
+			siteCfg.Name = cfg.Site.Name
+		}
+		if siteCfg.Uri == "" {
+			siteCfg.Uri = cfg.Site.Uri
+		}
+	}
+
+	var out = &parsedConfig{}
+	out.files = fileConfig{
+		templates: io.OsFile(cfg.Files.Templates),
+		content:   io.OsFile(cfg.Files.Content),
+	}
+	out.site.defaultSite = siteConfig{
+		webroot: cfg.Site.Webroot,
+		name:    cfg.Site.Name,
+		uri:     cfg.Site.Uri,
+	}
+	for lang, siteCfg := range cfg.Site.ByLanguage {
+		language, err := languages.FindByCode(lang)
+		if err != nil {
+			return nil, err
+		}
+		out.site.byLanguage = make(map[languages.Language]siteConfig)
+		out.site.byLanguage[language] = siteConfig{
+			webroot: siteCfg.Webroot,
+			name:    siteCfg.Name,
+			uri:     siteCfg.Uri,
+		}
+	}
+	out.author = authorConfig{
+		name: cfg.Author.Name,
+		uri:  cfg.Author.Uri,
+	}
+	if cfg.Generator != nil {
+		out.generator = &generatorConfig{
+			output:           io.OsFile(cfg.Generator.Output),
+			hideUntranslated: cfg.Generator.HideUntranslated,
+			publishUntil:     cfg.Generator.PublishUntil,
+		}
+	}
+
+	return out, nil
 }
 
-func (c *configFromFlags) Files() config.FileConfig {
-	return &fileConfig{c}
+func ReadConfig(fileName string) (config.Config, error) {
+	cfg, err := readConfig(fileName)
+	if err != nil {
+		return nil, err
+	}
+
+	return convertConfig(cfg)
+}
+
+func GetConfig() (config.Config, error) {
+	if *flagConfigFile == "" {
+		return nil, fmt.Errorf("the --config_file flag has not been specified")
+	}
+
+	cfg, err := readConfig(*flagConfigFile)
+	if err != nil {
+		return nil, err
+	}
+
+	if *flagOutputPath != "" {
+		cfg.Generator.Output = *flagOutputPath
+	}
+	if *flagWebroot != "" {
+		cfg.Site.Webroot = *flagWebroot
+		for _, langCfg := range cfg.Site.ByLanguage {
+			langCfg.Webroot = *flagWebroot
+		}
+	}
+	if !flagPublishUntil.IsZero() {
+		cfg.Generator.PublishUntil = *flagPublishUntil
+	}
+
+	return convertConfig(cfg)
+}
+
+func (c *parsedConfig) Files() config.FileConfig {
+	return &c.files
 }
 
 func (fc *fileConfig) Templates() io.File {
-	return io.OsFile(fc.cfg.TemplatePath)
+	return fc.templates
 }
 
-func (fc *fileConfig) Input() io.File {
-	return io.OsFile(fc.cfg.InputPath)
+func (fc *fileConfig) Content() io.File {
+	return fc.content
 }
 
-type siteConfig struct {
-	cfg  *configFromFlags
+type foundSiteConfig struct {
+	cfg  *siteConfig
 	lang languages.Language
 }
 
-func (c *configFromFlags) Site(lang languages.Language) config.SiteConfig {
-	return &siteConfig{c, lang}
-}
-
-func (sc *siteConfig) WebRoot() string {
-	val, ok := sc.cfg.WebRootLanguages[sc.lang.Code()]
-	if ok {
-		return val
+func (c *parsedConfig) Site(lang languages.Language) config.SiteConfig {
+	cfg, ok := c.site.byLanguage[lang]
+	if !ok {
+		cfg = c.site.defaultSite
 	}
-	return sc.cfg.WebRoot
+	return &foundSiteConfig{&cfg, lang}
 }
 
-func (sc *siteConfig) Name() string {
-	val, ok := sc.cfg.SiteNameLanguages[sc.lang.Code()]
-	if ok {
-		return val
-	}
-	return sc.cfg.SiteName
+func (sc *foundSiteConfig) WebRoot() string {
+	return sc.cfg.webroot
 }
 
-func (sc *siteConfig) Uri() string {
-	val, ok := sc.cfg.SiteURILanguages[sc.lang.Code()]
-	if ok {
-		return val
-	}
-	return sc.cfg.SiteURI
+func (sc *foundSiteConfig) Name() string {
+	return sc.cfg.name
 }
 
-func (sc *siteConfig) Language() languages.Language {
+func (sc *foundSiteConfig) Uri() string {
+	return sc.cfg.uri
+}
+
+func (sc *foundSiteConfig) Language() languages.Language {
 	return sc.lang
 }
 
-type authorConfig struct {
-	cfg *configFromFlags
-}
-
-func (c *configFromFlags) Author() config.AuthorConfig {
-	return &authorConfig{c}
+func (c *parsedConfig) Author() config.AuthorConfig {
+	return &c.author
 }
 
 func (ac *authorConfig) Name() string {
-	return ac.cfg.AuthorName
+	return ac.name
 }
 
 func (ac *authorConfig) Uri() string {
-	return ac.cfg.AuthorURI
+	return ac.uri
 }
 
-type generatorConfig struct {
-	cfg *configFromFlags
-}
-
-func (c *configFromFlags) Generator() config.GeneratorConfig {
-	return &generatorConfig{c}
+func (c *parsedConfig) Generator() config.GeneratorConfig {
+	return c.generator
 }
 
 func (gc *generatorConfig) Output() io.File {
-	return io.OsFile(gc.cfg.OutputPath)
+	return gc.output
 }
 
 func (gc *generatorConfig) HideUntranslated() bool {
-	return gc.cfg.HideUntranslated
+	return gc.hideUntranslated
 }
 
 func (gc *generatorConfig) PublishUntil() time.Time {
-	return gc.cfg.PublishUntil
+	return gc.publishUntil
 }
