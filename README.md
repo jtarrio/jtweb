@@ -14,55 +14,76 @@ override the configuration file settings.
 You can specify the name of the configuration file with the `--config_file`
 command-line option.
 
-These configuration options are available:
-
-* `input_path` --- The full pathname where the input files are located.
-* `output_path` --- The full pathname where the generated site will be written.
-* `template_path` --- The full pathname for the templates used to convert Markdown files.
-* `webroot` --- The base URI for the generated site. I recommend not including a trailing slash.
-* `site_name` --- The site's name.
-* `site_uri` --- The site's URI, if different from the webroot.
-* `author_name` --- The default author's name.
-* `author_uri` --- The default author's website URI, if different from the site URI.
-* `hide_untranslated` --- Show only links to posts that are available in the same language.
-* `webroot_languages` --- Alternative values of `webroot` for different languages.
-* `site_name_languages` --- Alternative values of `site_name` for different languages.
-* `site_uri_languages` --- Alternative values of `site_uri` for different languages.
-
-The configuration file will look like this:
+The configuration file is YAML with the following format:
 
 ```yaml
-template_path: "src/templates"
-input_path: "src/content"
-webroot: "https://jacobo.tarrio.org"
-site_name: "Jacobo Tarrío"
-site_uri: "https://jacobo.tarrio.org/"
-author_name: "Jacobo Tarrío"
-```
+# Source file configuration.
+files:
+  # Location of the site content files.
+  content: "src/content"
+  # Location of the templates for rendering Markdown files.
+  templates: "src/templates"
 
-The command-line options will look like this:
+# Site configuration.
+site:
+  # Base for all internal links.
+  # May be overridden through the --webroot flag.
+  webroot: "http://example.com/"
+  # Name of the site.
+  name: "My example site"
+  # URI of the site. Optional. If omitted, defaults to the value of `webroot`
+  uri: "https://example.com"
+  # Language-dependent variants of the website. Optional. One per language.
+  by_language:
+    # Spanish.
+    es:
+      webroot: "http://example.com/es/"
+      name: "Sitio de ejemplo"
+      uri: "http://example.com/es"
+    # Galician
+    gl:
+      name: "Sitio de exemplo"
+      # Unspecified values are copied from the default (even `uri`, so beware).
 
-```
---output_path="/var/www/jacobo.tarrio.org/website"
+# Author configuration.
+author:
+  # The site's author's name.
+  name: "John Doe"
+  # The site's author's webpage. Optional. If omitted, defaults to `site.uri`.
+  uri: "https://example.com/johndoe"
+
+# Website generator configuration. Only required to run the generator.
+generator:
+  # Path where the website will be written to.
+  # May be overridden through the --output_path flag.
+  output: "rendered"
+  # If true, tables of contents in each language will only show content in
+  # that language. If false, tables of contents will show content in other
+  # languages if it is not available in the same language. Default: false.
+  hide_untranslated: false
+  # Only output content with publish-dates up to this date and time.
+  # If unspecified, the current date and time will be used.
+  # May be overridden through the --publish_until flag.
+  publish_until: "2060-01-01T00:00"
 ```
 
 # How different files are handled
 
-In general, the site generator will copy any files found in the `input_path`
-under the corresponding path in the `output_path`. The exceptions are Markdown
-files, Go template files, and `.htaccess` files.
+In general, the site generator will copy any files found in `files.content`
+under the corresponding path in the `generator.output`. The exceptions are
+Markdown files, Go template files, and `.htaccess` files.
 
 ## Markdown files
 
 Markdown files have an `.md` extension. Their syntax is GitHub-Flavored
 Markdown, with a few extensions.
 
-The name of a Markdown file is its path relative to the `input_path`, minus
+The name of a Markdown file is its path relative to `files.content`, minus
 its `.md` extension. The output file name its formed by adding the `.html`
 extension to the Markdown file's name.
 
-Markdown files are rendered through the template files found in the
-`template_path`. There must be a set of `page-LANG.tmpl` and `toc-LANG.tmpl`
+Markdown files are rendered through the template files found in 
+`files.templates`. There must be a set of `page-LANG.tmpl` and `toc-LANG.tmpl`
 files for each language that you have pages in.
 
 ### Extensions
@@ -70,36 +91,47 @@ files for each language that you have pages in.
 #### Header
 
 There must be a comment block including the header data. This comment block
-starts with the `<!--HEADER` pseudo-tag and contains a YAML definition for
-all the header data.
+starts with the `<!--HEADER` pseudo-tag and contains a YAML block.
 
-```html
+```yaml
 <!--HEADER
-title: The page's title
-publish_date: 2020-04-01
-language: en
+# The page's title
+title: "A nice article"
+# A short summary of the page, shown in the table of contents.
+summary: "A brief discussion of beautiful and calming things."
+# (Optional) An episode number, for serial publications.
+episode: "43"
+# The language the page is written in. The default is `en` (English).
+language: "es"
+# The publication date for the page. Used to sort the table of contents.
+publish_date: "2020-04-01 01:23"
+# (Optional) If true, do not show the publication date. Default: false..
+no_publish_date: true
+# (Optional) The name of the page's author, to override the site-wide setting.
+author_name: "John Doe"
+# (Optional) The URI of the page's author's website, to override the site-wide setting.
+author_uri: "http://example.com/johndoe"
+# (Optional) If true, do not show the author's name in the page. Default: false.
+hide_author: true
+# (Optional) If true, do not add this page in tables of contents. Default: false.
+no_index: true
+# (Optional) The name of the page this is a translation of.
+translation_of: "textos/bonito-articulo"
+# (Optional) A list of tags for this page. This page will appear in those tag's tables of contents.
 tags:
-- website
-- humor
+  - "Tag 1"
+  - "Another tag"
+  - "And yet another one"
+# (Optional) A list of old URIs, relative to the site's webroot, where this article used to be.
+# If provided, the old URIs will redirect to this page.
+old_uris:
+  - "texts/a-nice-article.html"
+  - "a-beautiful-post.html"
+  - "posts/id/1234"
+# (Optional) If true, this page will not be indexed and a "draft" marker will appear. Default: false.
+draft: true
 -->
 ```
-
-These are the fields that are available for the header:
-
-* `title` --- the page's title. This field is mandatory.
-* `summary` --- a one-line summary for use in indices.
-* `language` --- the ISO code for the page's language. "en" is assumed if omitted.
-* `episode` --- an episode number or name.
-* `publish_date` --- the date (and, optionally, time) when the page was posted.
-* `hide_publish_date` --- boolean; if true, the publish date is not shown.
-* `draft` --- boolean; if true, the page is not indexed and it's marked as a draft.
-* `author_name` --- the author's name. If omitted, the default author name is used.
-* `author_uri` --- the author's website URI. If omitted, the default author URI is used.
-* `hide_author` --- boolean; if true, the author's name and URI are not shown.
-* `tags` --- a list of strings containing tags to index the page under.
-* `no_index` --- boolean; if true, the page is not indexed.
-* `old_uri` --- a list of strings containing old URIs for this page that should be redirected to its new location. Those URIs must be relative to the webroot.
-* `translation_of` --- the name of another page this page is a translation of.
 
 #### Image captions and grouping
 
