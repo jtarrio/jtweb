@@ -3,9 +3,9 @@ package testing
 import (
 	"time"
 
+	"jacobo.tarrio.org/jtweb/io"
+	"jacobo.tarrio.org/jtweb/io/testing"
 	"jacobo.tarrio.org/jtweb/languages"
-	"jacobo.tarrio.org/jtweb/site/io"
-	"jacobo.tarrio.org/jtweb/site/io/testing"
 )
 
 type FakeConfig struct {

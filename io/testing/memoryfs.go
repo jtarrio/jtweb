@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"jacobo.tarrio.org/jtweb/site/io"
+	"jacobo.tarrio.org/jtweb/io"
 )
 
 var DefaultMtime = time.Date(2023, 1, 1, 12, 34, 56, 0, time.UTC)

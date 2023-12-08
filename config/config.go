@@ -3,8 +3,8 @@ package config
 import (
 	"time"
 
+	"jacobo.tarrio.org/jtweb/io"
 	"jacobo.tarrio.org/jtweb/languages"
-	"jacobo.tarrio.org/jtweb/site/io"
 )
 
 type Config interface {

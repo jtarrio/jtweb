@@ -3,8 +3,8 @@ package main
 import (
 	"flag"
 
+	"jacobo.tarrio.org/jtweb/config"
 	"jacobo.tarrio.org/jtweb/site"
-	"jacobo.tarrio.org/jtweb/site/config"
 )
 
 func main() {

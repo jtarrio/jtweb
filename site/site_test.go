@@ -3,8 +3,8 @@ package site
 import (
 	"testing"
 
-	configtesting "jacobo.tarrio.org/jtweb/site/config/testing"
-	iotesting "jacobo.tarrio.org/jtweb/site/io/testing"
+	configtesting "jacobo.tarrio.org/jtweb/config/testing"
+	iotesting "jacobo.tarrio.org/jtweb/io/testing"
 
 	"github.com/stretchr/testify/assert"
 )

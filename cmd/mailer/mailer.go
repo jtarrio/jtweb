@@ -6,12 +6,12 @@ import (
 	"log"
 	"time"
 
+	"jacobo.tarrio.org/jtweb/config"
 	"jacobo.tarrio.org/jtweb/email"
 	"jacobo.tarrio.org/jtweb/email/mailerlite"
 	"jacobo.tarrio.org/jtweb/email/mailerlitev2"
 	"jacobo.tarrio.org/jtweb/languages"
 	"jacobo.tarrio.org/jtweb/site"
-	"jacobo.tarrio.org/jtweb/site/config"
 )
 
 var flagLanguage = flag.String("language", "", "The language to send mail for.")

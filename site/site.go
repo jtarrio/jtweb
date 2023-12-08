@@ -7,10 +7,10 @@ import (
 	"sort"
 	"strings"
 
+	"jacobo.tarrio.org/jtweb/config"
+	"jacobo.tarrio.org/jtweb/io"
 	"jacobo.tarrio.org/jtweb/languages"
 	"jacobo.tarrio.org/jtweb/page"
-	"jacobo.tarrio.org/jtweb/site/config"
-	"jacobo.tarrio.org/jtweb/site/io"
 	"jacobo.tarrio.org/jtweb/uri"
 )
 

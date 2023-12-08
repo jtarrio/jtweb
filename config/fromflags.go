@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"gopkg.in/yaml.v2"
+	"jacobo.tarrio.org/jtweb/io"
 	"jacobo.tarrio.org/jtweb/languages"
-	"jacobo.tarrio.org/jtweb/site/io"
 )
 
 var flagConfigFile = flag.String("config_file", "", "The name of the file containing the site's configuration.")

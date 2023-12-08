@@ -3,9 +3,9 @@ package site
 import (
 	"html/template"
 
+	"jacobo.tarrio.org/jtweb/io"
 	"jacobo.tarrio.org/jtweb/languages"
 	"jacobo.tarrio.org/jtweb/page"
-	"jacobo.tarrio.org/jtweb/site/io"
 )
 
 func (c *Contents) renderTemplate(name string) error {

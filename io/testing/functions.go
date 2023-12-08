@@ -1,6 +1,6 @@
 package testing
 
-import "jacobo.tarrio.org/jtweb/site/io"
+import "jacobo.tarrio.org/jtweb/io"
 
 func GetFileNames(base io.File) []string {
 	out := []string{}

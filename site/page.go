@@ -8,10 +8,10 @@ import (
 	textTemplate "text/template"
 
 	"github.com/aymerick/douceur/inliner"
+	"jacobo.tarrio.org/jtweb/io"
 	"jacobo.tarrio.org/jtweb/page"
 	"jacobo.tarrio.org/jtweb/renderer"
 	"jacobo.tarrio.org/jtweb/renderer/templates"
-	"jacobo.tarrio.org/jtweb/site/io"
 	"jacobo.tarrio.org/jtweb/uri"
 )
 
