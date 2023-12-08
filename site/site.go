@@ -58,7 +58,7 @@ func Read(s config.Config) (*Contents, error) {
 	templates := make([]string, 0)
 	pagesByName := make(map[page.Name]*page.Page)
 	tagIds := make(map[TagId]string)
-	err := s.GetInputBase().ForAllFiles(func(file io.File, err error) error {
+	err := s.Files().Input().ForAllFiles(func(file io.File, err error) error {
 		if err != nil {
 			return err
 		}
@@ -68,7 +68,7 @@ func Read(s config.Config) (*Contents, error) {
 			if err != nil {
 				return fmt.Errorf("error parsing page %s: %v", file.Name(), err)
 			}
-			if page.Header.PublishDate.After(s.GetPublishUntil()) {
+			if page.Header.PublishDate.After(s.Generator().PublishUntil()) {
 				return nil
 			}
 			pagesByName[page.Name] = page
@@ -91,7 +91,7 @@ func Read(s config.Config) (*Contents, error) {
 		return nil, err
 	}
 
-	tocByLanguage, err := indexPages(pagesByName, translationsByName, s.GetHideUntranslated())
+	tocByLanguage, err := indexPages(pagesByName, translationsByName, s.Generator().HideUntranslated())
 	if err != nil {
 		return nil, err
 	}
@@ -180,8 +180,8 @@ func (c *Contents) Write() error {
 }
 
 func (c *Contents) copyFile(name string) error {
-	in := c.Config.GetInputBase().GoTo(name)
-	out := c.Config.GetOutputBase().GoTo(name)
+	in := c.Config.Files().Input().GoTo(name)
+	out := c.Config.Generator().Output().GoTo(name)
 	stat, err := in.Stat()
 	if err != nil {
 		return err
@@ -205,7 +205,7 @@ func (c *Contents) copyFile(name string) error {
 }
 
 func (c *Contents) makeFile(path string, populator filePopulator) error {
-	file := c.Config.GetOutputBase().GoTo(path)
+	file := c.Config.Generator().Output().GoTo(path)
 	output, err := file.Create()
 	if err != nil {
 		return err

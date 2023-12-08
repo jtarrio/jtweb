@@ -1,4 +1,4 @@
-package config
+package fromflags
 
 import (
 	"flag"
@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"gopkg.in/yaml.v2"
+	"jacobo.tarrio.org/jtweb/config"
 	"jacobo.tarrio.org/jtweb/io"
 	"jacobo.tarrio.org/jtweb/languages"
 )
@@ -26,7 +27,7 @@ var flagAuthorName = flag.String("author_name", "", "The default author's name."
 var flagAuthorURI = flag.String("author_uri", "", "The default author's website URI.")
 var flagPublishUntil = TimeFlag("publish_until", "Publish all posts older than the given date/time.")
 
-type config struct {
+type configFromFlags struct {
 	TemplatePath      string            `yaml:"template_path"`
 	InputPath         string            `yaml:"input_path"`
 	OutputPath        string            `yaml:"output_path"`
@@ -42,17 +43,17 @@ type config struct {
 	PublishUntil      time.Time         `yaml:"publish_until"`
 }
 
-func newConfig() *config {
-	return &config{
+func newConfig() *configFromFlags {
+	return &configFromFlags{
 		PublishUntil: time.Now(),
 	}
 }
 
-func (c *config) mergeYaml(b []byte) error {
+func (c *configFromFlags) mergeYaml(b []byte) error {
 	return yaml.UnmarshalStrict(b, c)
 }
 
-func (c *config) mergeFlags() error {
+func (c *configFromFlags) mergeFlags() error {
 	if *flagTemplatePath != "" {
 		c.TemplatePath = *flagTemplatePath
 	}
@@ -96,7 +97,7 @@ func (c *config) mergeFlags() error {
 }
 
 // Normalize checks that the configuration is valid and fills any missing optional values.
-func (c *config) normalize() error {
+func (c *configFromFlags) normalize() error {
 	if c.TemplatePath == "" {
 		return fmt.Errorf("the template path has not been set")
 	}
@@ -127,7 +128,7 @@ func (c *config) normalize() error {
 	return nil
 }
 
-func GetConfig() (*config, error) {
+func GetConfig() (config.Config, error) {
 	cfg := newConfig()
 
 	if *flagConfigFile != "" {
@@ -150,54 +151,91 @@ func GetConfig() (*config, error) {
 	return cfg, err
 }
 
-func (c *config) GetTemplateBase() io.File {
-	return io.OsFile(c.TemplatePath)
+type fileConfig struct {
+	cfg *configFromFlags
 }
 
-func (c *config) GetInputBase() io.File {
-	return io.OsFile(c.InputPath)
+func (c *configFromFlags) Files() config.FileConfig {
+	return &fileConfig{c}
 }
 
-func (c *config) GetOutputBase() io.File {
-	return io.OsFile(c.OutputPath)
+func (fc *fileConfig) Templates() io.File {
+	return io.OsFile(fc.cfg.TemplatePath)
 }
 
-func (c *config) GetWebRoot(lang languages.Language) string {
-	val, ok := c.WebRootLanguages[lang.Code()]
+func (fc *fileConfig) Input() io.File {
+	return io.OsFile(fc.cfg.InputPath)
+}
+
+type siteConfig struct {
+	cfg  *configFromFlags
+	lang languages.Language
+}
+
+func (c *configFromFlags) Site(lang languages.Language) config.SiteConfig {
+	return &siteConfig{c, lang}
+}
+
+func (sc *siteConfig) WebRoot() string {
+	val, ok := sc.cfg.WebRootLanguages[sc.lang.Code()]
 	if ok {
 		return val
 	}
-	return c.WebRoot
+	return sc.cfg.WebRoot
 }
 
-func (c *config) GetSiteName(lang languages.Language) string {
-	val, ok := c.SiteNameLanguages[lang.Code()]
+func (sc *siteConfig) Name() string {
+	val, ok := sc.cfg.SiteNameLanguages[sc.lang.Code()]
 	if ok {
 		return val
 	}
-	return c.SiteName
+	return sc.cfg.SiteName
 }
 
-func (c *config) GetSiteURI(lang languages.Language) string {
-	val, ok := c.SiteURILanguages[lang.Code()]
+func (sc *siteConfig) Uri() string {
+	val, ok := sc.cfg.SiteURILanguages[sc.lang.Code()]
 	if ok {
 		return val
 	}
-	return c.SiteURI
+	return sc.cfg.SiteURI
 }
 
-func (c *config) GetAuthorName() string {
-	return c.AuthorName
+func (sc *siteConfig) Language() languages.Language {
+	return sc.lang
 }
 
-func (c *config) GetAuthorURI() string {
-	return c.AuthorURI
+type authorConfig struct {
+	cfg *configFromFlags
 }
 
-func (c *config) GetHideUntranslated() bool {
-	return c.HideUntranslated
+func (c *configFromFlags) Author() config.AuthorConfig {
+	return &authorConfig{c}
 }
 
-func (c *config) GetPublishUntil() time.Time {
-	return c.PublishUntil
+func (ac *authorConfig) Name() string {
+	return ac.cfg.AuthorName
+}
+
+func (ac *authorConfig) Uri() string {
+	return ac.cfg.AuthorURI
+}
+
+type generatorConfig struct {
+	cfg *configFromFlags
+}
+
+func (c *configFromFlags) Generator() config.GeneratorConfig {
+	return &generatorConfig{c}
+}
+
+func (gc *generatorConfig) Output() io.File {
+	return io.OsFile(gc.cfg.OutputPath)
+}
+
+func (gc *generatorConfig) HideUntranslated() bool {
+	return gc.cfg.HideUntranslated
+}
+
+func (gc *generatorConfig) PublishUntil() time.Time {
+	return gc.cfg.PublishUntil
 }

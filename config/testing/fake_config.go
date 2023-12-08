@@ -3,6 +3,7 @@ package testing
 import (
 	"time"
 
+	"jacobo.tarrio.org/jtweb/config"
 	"jacobo.tarrio.org/jtweb/io"
 	"jacobo.tarrio.org/jtweb/io/testing"
 	"jacobo.tarrio.org/jtweb/languages"
@@ -36,54 +37,91 @@ func NewFakeConfig() *FakeConfig {
 	}
 }
 
-func (c *FakeConfig) GetTemplateBase() io.File {
-	return c.TemplateBase
+type fileConfig struct {
+	cfg *FakeConfig
 }
 
-func (c *FakeConfig) GetInputBase() io.File {
-	return c.InputBase
+func (c *FakeConfig) Files() config.FileConfig {
+	return &fileConfig{c}
 }
 
-func (c *FakeConfig) GetOutputBase() io.File {
-	return c.OutputBase
+func (fc *fileConfig) Templates() io.File {
+	return fc.cfg.TemplateBase
 }
 
-func (c *FakeConfig) GetWebRoot(lang languages.Language) string {
-	v, ok := c.WebRoots[lang.Code()]
+func (fc *fileConfig) Input() io.File {
+	return fc.cfg.InputBase
+}
+
+type siteConfig struct {
+	cfg  *FakeConfig
+	lang languages.Language
+}
+
+func (c *FakeConfig) Site(lang languages.Language) config.SiteConfig {
+	return &siteConfig{c, lang}
+}
+
+func (sc *siteConfig) WebRoot() string {
+	v, ok := sc.cfg.WebRoots[sc.lang.Code()]
 	if !ok {
-		return c.WebRoots[""]
+		return sc.cfg.WebRoots[""]
 	}
 	return v
 }
 
-func (c *FakeConfig) GetSiteName(lang languages.Language) string {
-	v, ok := c.SiteNames[lang.Code()]
+func (sc *siteConfig) Name() string {
+	v, ok := sc.cfg.SiteNames[sc.lang.Code()]
 	if !ok {
-		return c.SiteNames[""]
+		return sc.cfg.SiteNames[""]
 	}
 	return v
 }
 
-func (c *FakeConfig) GetSiteURI(lang languages.Language) string {
-	v, ok := c.SiteURIs[lang.Code()]
+func (sc *siteConfig) Uri() string {
+	v, ok := sc.cfg.SiteURIs[sc.lang.Code()]
 	if !ok {
-		return c.SiteURIs[""]
+		return sc.cfg.SiteURIs[""]
 	}
 	return v
 }
 
-func (c *FakeConfig) GetAuthorName() string {
-	return c.AuthorName
+func (sc *siteConfig) Language() languages.Language {
+	return sc.lang
 }
 
-func (c *FakeConfig) GetAuthorURI() string {
-	return c.AuthorURI
+type authorConfig struct {
+	cfg *FakeConfig
 }
 
-func (c *FakeConfig) GetHideUntranslated() bool {
-	return c.HideUntranslated
+func (c *FakeConfig) Author() config.AuthorConfig {
+	return &authorConfig{c}
 }
 
-func (c *FakeConfig) GetPublishUntil() time.Time {
-	return c.PublishUntil
+func (ac *authorConfig) Name() string {
+	return ac.cfg.AuthorName
+}
+
+func (ac *authorConfig) Uri() string {
+	return ac.cfg.AuthorURI
+}
+
+type generatorConfig struct {
+	cfg *FakeConfig
+}
+
+func (c *FakeConfig) Generator() config.GeneratorConfig {
+	return &generatorConfig{c}
+}
+
+func (gc *generatorConfig) Output() io.File {
+	return gc.cfg.OutputBase
+}
+
+func (gc *generatorConfig) HideUntranslated() bool {
+	return gc.cfg.HideUntranslated
+}
+
+func (gc *generatorConfig) PublishUntil() time.Time {
+	return gc.cfg.PublishUntil
 }

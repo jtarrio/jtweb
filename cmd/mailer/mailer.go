@@ -6,7 +6,7 @@ import (
 	"log"
 	"time"
 
-	"jacobo.tarrio.org/jtweb/config"
+	"jacobo.tarrio.org/jtweb/config/fromflags"
 	"jacobo.tarrio.org/jtweb/email"
 	"jacobo.tarrio.org/jtweb/email/mailerlite"
 	"jacobo.tarrio.org/jtweb/email/mailerlitev2"
@@ -100,7 +100,7 @@ func main() {
 		panic(err)
 	}
 
-	cfg, err := config.GetConfig()
+	cfg, err := fromflags.GetConfig()
 	if err != nil {
 		panic(err)
 	}

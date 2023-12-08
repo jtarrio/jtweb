@@ -9,7 +9,7 @@ import (
 )
 
 func (c *Contents) renderTemplate(name string) error {
-	source := c.Config.GetInputBase().GoTo(name + ".tmpl")
+	source := c.Config.Files().Input().GoTo(name + ".tmpl")
 	content, err := source.ReadBytes()
 	if err != nil {
 		return err
@@ -32,7 +32,7 @@ func (c *Contents) renderTemplate(name string) error {
 			return c.Pages[name]
 		},
 		"webRoot": func(lang string) string {
-			return c.Config.GetWebRoot(languages.FindByCodeWithFallback(lang, languages.LanguageEn))
+			return c.Config.Site(languages.FindByCodeWithFallback(lang, languages.LanguageEn)).WebRoot()
 		},
 	}).Parse(string(content))
 	if err != nil {

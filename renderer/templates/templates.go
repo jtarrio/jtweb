@@ -16,8 +16,7 @@ import (
 // Templates holds the configuration for the template system.
 type Templates struct {
 	err           error
-	config        config.Config
-	locale        languages.Language
+	config        config.SiteConfig
 	templateBase  io.File
 	templates     map[string]*template.Template
 	textTemplates map[string]*textTemplate.Template
@@ -62,9 +61,8 @@ type TocData struct {
 // GetTemplates returns a loader for templates for a particular language.
 func GetTemplates(c config.Config, lang languages.Language) *Templates {
 	return &Templates{
-		config:        c,
-		locale:        lang,
-		templateBase:  c.GetTemplateBase(),
+		config:        c.Site(lang),
+		templateBase:  c.Files().Templates(),
 		templates:     make(map[string]*template.Template),
 		textTemplates: make(map[string]*textTemplate.Template),
 	}
@@ -104,7 +102,7 @@ func (t *Templates) getTemplate(name string) (*template.Template, error) {
 		return out, nil
 	}
 
-	fileName := name + "-" + t.locale.Code() + ".tmpl"
+	fileName := name + "-" + t.getLanguage() + ".tmpl"
 	tmpl, err := t.templateBase.GoTo(fileName).ReadBytes()
 	if err != nil {
 		return nil, err
@@ -135,7 +133,7 @@ func (t *Templates) getTextTemplate(name string) (*textTemplate.Template, error)
 		return out, nil
 	}
 
-	fileName := name + "-" + t.locale.Code() + ".tmpl"
+	fileName := name + "-" + t.getLanguage() + ".tmpl"
 	tmpl, err := t.templateBase.GoTo(fileName).ReadBytes()
 	if err != nil {
 		return nil, err
@@ -163,15 +161,15 @@ func (t *Templates) formatDate(tm time.Time) string {
 	if tm.IsZero() {
 		return ""
 	}
-	return t.locale.FormatDate(tm)
+	return t.config.Language().FormatDate(tm)
 }
 
 func (t *Templates) getTagURI(tag string) string {
-	return t.getURI(fmt.Sprintf("/tags/%s-%s.html", uri.GetTagPath(tag), t.locale.Code()))
+	return t.getURI(fmt.Sprintf("/tags/%s-%s.html", uri.GetTagPath(tag), t.getLanguage()))
 }
 
 func (t *Templates) getTocURI() string {
-	return t.getURI(fmt.Sprintf("/toc/toc-%s.html", t.locale.Code()))
+	return t.getURI(fmt.Sprintf("/toc/toc-%s.html", t.getLanguage()))
 }
 
 // getURI returns a path that's relative to the web root.
@@ -180,7 +178,7 @@ func (t *Templates) getURI(path string) string {
 }
 
 func (t *Templates) getLanguage() string {
-	return t.locale.Code()
+	return t.config.Language().Code()
 }
 
 // plural returns the singular or plural form depending on the value of the count.
@@ -202,11 +200,11 @@ func (t *Templates) htmlToText(content template.HTML, linksTitle string, picture
 
 func (t *Templates) getSite() LinkData {
 	return LinkData{
-		Name: t.config.GetSiteName(t.locale),
-		URI:  t.config.GetSiteURI(t.locale),
+		Name: t.config.Name(),
+		URI:  t.config.Uri(),
 	}
 }
 
 func (t *Templates) getWebroot() string {
-	return t.config.GetWebRoot(t.locale)
+	return t.config.WebRoot()
 }

@@ -88,7 +88,7 @@ func (c *Contents) makePageData(page *page.Page) (*templates.PageData, error) {
 		return nil, err
 	}
 	content := bytes.Buffer{}
-	err = renderer.SanitizePost(&content, &buf, c.Config.GetWebRoot(page.Header.Language), string(page.Name))
+	err = renderer.SanitizePost(&content, &buf, c.Config.Site(page.Header.Language).WebRoot(), string(page.Name))
 	if err != nil {
 		return nil, err
 	}
@@ -112,8 +112,8 @@ func (c *Contents) makePageData(page *page.Page) (*templates.PageData, error) {
 			URI:  page.Header.AuthorURI,
 		}
 		if pageData.Author.Name == "" && pageData.Author.URI == "" {
-			pageData.Author.Name = c.Config.GetAuthorName()
-			pageData.Author.URI = c.Config.GetAuthorURI()
+			pageData.Author.Name = c.Config.Author().Name()
+			pageData.Author.URI = c.Config.Author().Uri()
 		}
 	}
 	newer := c.Toc[page.Header.Language].NewerPages[page.Name]
@@ -145,5 +145,5 @@ func (c *Contents) makePageData(page *page.Page) (*templates.PageData, error) {
 }
 
 func (c *Contents) makePageURI(p *page.Page) string {
-	return uri.Concat(c.Config.GetWebRoot(p.Header.Language), string(p.Name)+".html")
+	return uri.Concat(c.Config.Site(p.Header.Language).WebRoot(), string(p.Name)+".html")
 }

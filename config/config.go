@@ -8,14 +8,31 @@ import (
 )
 
 type Config interface {
-	GetTemplateBase() io.File
-	GetInputBase() io.File
-	GetOutputBase() io.File
-	GetWebRoot(lang languages.Language) string
-	GetSiteName(lang languages.Language) string
-	GetSiteURI(lang languages.Language) string
-	GetAuthorName() string
-	GetAuthorURI() string
-	GetHideUntranslated() bool
-	GetPublishUntil() time.Time
+	Files() FileConfig
+	Site(lang languages.Language) SiteConfig
+	Author() AuthorConfig
+	Generator() GeneratorConfig
+}
+
+type FileConfig interface {
+	Templates() io.File
+	Input() io.File
+}
+
+type SiteConfig interface {
+	WebRoot() string
+	Name() string
+	Uri() string
+	Language() languages.Language
+}
+
+type AuthorConfig interface {
+	Name() string
+	Uri() string
+}
+
+type GeneratorConfig interface {
+	Output() io.File
+	HideUntranslated() bool
+	PublishUntil() time.Time
 }
