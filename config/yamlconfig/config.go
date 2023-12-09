@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"jacobo.tarrio.org/jtweb/config"
+	"jacobo.tarrio.org/jtweb/email"
 	"jacobo.tarrio.org/jtweb/io"
 	"jacobo.tarrio.org/jtweb/languages"
 )
@@ -13,6 +14,7 @@ type parsedConfig struct {
 	site      allSiteConfig
 	author    authorConfig
 	generator *generatorConfig
+	mailers   []config.MailerConfig
 }
 
 type fileConfig struct {
@@ -30,15 +32,24 @@ type siteConfig struct {
 	name    string
 	uri     string
 }
+
 type authorConfig struct {
 	name string
 	uri  string
 }
+
 type generatorConfig struct {
 	output           io.File
 	hideUntranslated bool
 	publishUntil     *time.Time
 	now              time.Time
+}
+
+type mailerConfig struct {
+	language      *languages.Language
+	subjectPrefix string
+	sendAfter     time.Time
+	engine        email.Engine
 }
 
 func (c *parsedConfig) Files() config.FileConfig {
@@ -111,4 +122,24 @@ func (gc *generatorConfig) PublishUntil() time.Time {
 		return gc.now
 	}
 	return *gc.publishUntil
+}
+
+func (c *parsedConfig) Mailers() []config.MailerConfig {
+	return c.mailers
+}
+
+func (mc *mailerConfig) Language() *languages.Language {
+	return mc.language
+}
+
+func (mc *mailerConfig) Engine() email.Engine {
+	return mc.engine
+}
+
+func (mc *mailerConfig) SubjectPrefix() string {
+	return mc.subjectPrefix
+}
+
+func (mc *mailerConfig) SendAfter() time.Time {
+	return mc.sendAfter
 }

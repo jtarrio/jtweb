@@ -6,6 +6,7 @@ import (
 
 	"gopkg.in/yaml.v2"
 	"jacobo.tarrio.org/jtweb/config"
+	"jacobo.tarrio.org/jtweb/email/mailerlite"
 	"jacobo.tarrio.org/jtweb/io"
 	"jacobo.tarrio.org/jtweb/languages"
 	"jacobo.tarrio.org/jtweb/secrets"
@@ -34,6 +35,15 @@ type yamlConfig struct {
 		Output           string
 		HideUntranslated bool       `yaml:"hide_untranslated"`
 		PublishUntil     *time.Time `yaml:"publish_until"`
+	}
+	Mailer []struct {
+		Language      string
+		SubjectPrefix string     `yaml:"subject_prefix"`
+		SendAfter     *time.Time `yaml:"send_after"`
+		Mailerlite    *struct {
+			ApikeySecret string `yaml:"apikey_secret"`
+			Group        int
+		}
 	}
 }
 
@@ -162,6 +172,38 @@ func (r *configParser) Parse() (config.Config, error) {
 			publishUntil:     cfg.Generator.PublishUntil,
 			now:              time.Now(),
 		}
+	}
+	for _, mailer := range cfg.Mailer {
+		outMailer := &mailerConfig{
+			subjectPrefix: mailer.SubjectPrefix,
+		}
+		if mailer.Language != "" {
+			lang, err := languages.FindByCode(mailer.Language)
+			if err != nil {
+				return nil, err
+			}
+			outMailer.language = &lang
+		}
+		if mailer.SendAfter == nil {
+			outMailer.sendAfter = time.Now()
+		} else {
+			outMailer.sendAfter = *mailer.SendAfter
+		}
+		if mailer.Mailerlite != nil {
+			apikey, err := r.secretSupplier.GetSecret(mailer.Mailerlite.ApikeySecret)
+			if err != nil {
+				return nil, err
+			}
+			engine, err := mailerlite.ConnectMailerlite(apikey, mailer.Mailerlite.Group, false)
+			if err != nil {
+				return nil, err
+			}
+			outMailer.engine = engine
+		}
+		if outMailer.engine == nil {
+			return nil, fmt.Errorf("no email engine was defined")
+		}
+		out.mailers = append(out.mailers, outMailer)
 	}
 
 	return out, nil

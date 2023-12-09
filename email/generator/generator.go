@@ -1,10 +1,11 @@
-package email
+package generator
 
 import (
 	"fmt"
 	"strings"
 	"time"
 
+	"jacobo.tarrio.org/jtweb/email"
 	"jacobo.tarrio.org/jtweb/languages"
 	"jacobo.tarrio.org/jtweb/page"
 	"jacobo.tarrio.org/jtweb/site"
@@ -46,7 +47,7 @@ func NotBefore(t time.Time) EmailGeneratorOption {
 }
 
 // Skips pages that already have a corresponding scheduled email using the given engine.
-func NotScheduled(engine Engine) EmailGeneratorOption {
+func NotScheduled(engine email.Engine) EmailGeneratorOption {
 	return func(g *EmailGenerator) {
 		prev := g.filter
 		campaigns, err := engine.ScheduledCampaigns()
@@ -90,7 +91,7 @@ func SubjectPrefix(prefix string) EmailGeneratorOption {
 }
 
 // Scans the pages
-func (g *EmailGenerator) CreateMails() ([]*Email, error) {
+func (g *EmailGenerator) CreateMails() ([]*email.Email, error) {
 	if g.err != nil {
 		return nil, g.err
 	}
@@ -100,13 +101,13 @@ func (g *EmailGenerator) CreateMails() ([]*Email, error) {
 		return nil, fmt.Errorf("no table of contents for language: %s", g.language.Code())
 	}
 
-	var emails []*Email
+	var emails []*email.Email
 	for _, name := range toc.All {
 		page := g.contents.Pages[name]
 		if !g.filter(page) {
 			continue
 		}
-		var e Email
+		var e email.Email
 		e.Name = g.makeName(page)
 		e.Subject = g.makeSubject(page)
 		e.Language = page.Header.Language

@@ -8,6 +8,7 @@ import (
 
 	"jacobo.tarrio.org/jtweb/config/fromflags"
 	"jacobo.tarrio.org/jtweb/email"
+	"jacobo.tarrio.org/jtweb/email/generator"
 	"jacobo.tarrio.org/jtweb/email/mailerlite"
 	"jacobo.tarrio.org/jtweb/email/mailerlitev2"
 	"jacobo.tarrio.org/jtweb/languages"
@@ -114,12 +115,12 @@ func main() {
 		panic(err)
 	}
 
-	generator := email.NewEmailGenerator(content, language).
+	generator := generator.NewEmailGenerator(content, language).
 		WithOptions(
-			email.NotBefore(sendAfter),
-			email.NotScheduled(engine),
-			email.NamePrefix(*flagSubjectPrefix),
-			email.SubjectPrefix(*flagSubjectPrefix),
+			generator.NotBefore(sendAfter),
+			generator.NotScheduled(engine),
+			generator.NamePrefix(*flagSubjectPrefix),
+			generator.SubjectPrefix(*flagSubjectPrefix),
 		)
 	emails, err := generator.CreateMails()
 	if err != nil {

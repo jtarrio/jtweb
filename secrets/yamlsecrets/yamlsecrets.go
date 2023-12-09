@@ -7,7 +7,7 @@ import (
 )
 
 type yamlSecrets struct {
-	secrets map[string]string
+	Secrets map[string]string
 }
 
 func Parse(content []byte) (*yamlSecrets, error) {
@@ -17,7 +17,7 @@ func Parse(content []byte) (*yamlSecrets, error) {
 }
 
 func (s *yamlSecrets) GetSecret(key string) (string, error) {
-	secret, ok := s.secrets[key]
+	secret, ok := s.Secrets[key]
 	if !ok {
 		return "", fmt.Errorf("no secret found for key '%s'", key)
 	}

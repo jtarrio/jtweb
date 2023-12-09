@@ -125,3 +125,7 @@ func (gc *generatorConfig) HideUntranslated() bool {
 func (gc *generatorConfig) PublishUntil() time.Time {
 	return gc.cfg.PublishUntil
 }
+
+func (c *FakeConfig) Mailers() []config.MailerConfig {
+	return []config.MailerConfig{}
+}
