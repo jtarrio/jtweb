@@ -40,6 +40,8 @@ type ScheduledCampaign struct {
 
 // Engine provides methods to create new campaigns and list existing campaigns.
 type Engine interface {
+	// Returns the engine's name.
+	Name() string
 	// Returns a list of scheduled campaigns.
 	ScheduledCampaigns() ([]ScheduledCampaign, error)
 	// Creates a new campaign.

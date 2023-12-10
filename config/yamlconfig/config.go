@@ -46,6 +46,7 @@ type generatorConfig struct {
 }
 
 type mailerConfig struct {
+	name          string
 	language      languages.Language
 	subjectPrefix string
 	sendAfter     time.Time
@@ -126,6 +127,10 @@ func (gc *generatorConfig) PublishUntil() time.Time {
 
 func (c *parsedConfig) Mailers() []config.MailerConfig {
 	return c.mailers
+}
+
+func (mc *mailerConfig) Name() string {
+	return mc.name
 }
 
 func (mc *mailerConfig) Language() languages.Language {

@@ -30,7 +30,6 @@ func (f *dryRunFile) GoTo(name string) File {
 }
 
 func (f *dryRunFile) Create() (Output, error) {
-	log.Printf("[Dry run] Creating file %s", f.FullPath())
 	return &nullOutput{file: f, bytes: 0}, nil
 }
 
@@ -40,7 +39,7 @@ type nullOutput struct {
 }
 
 func (o *nullOutput) Close() error {
-	log.Printf("[Dry run] Wrote %d bytes to %s", o.bytes, o.file.FullPath())
+	log.Printf("[Dry run] Creating file %s with %d bytes", o.file.FullPath(), o.bytes)
 	return nil
 }
 

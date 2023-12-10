@@ -14,6 +14,10 @@ func DryRunEngine(engine Engine) Engine {
 	return &dryRunEngine{engine: engine, lastId: 1000}
 }
 
+func (e *dryRunEngine) Name() string {
+	return e.engine.Name()
+}
+
 func (e *dryRunEngine) ScheduledCampaigns() ([]ScheduledCampaign, error) {
 	return e.engine.ScheduledCampaigns()
 }

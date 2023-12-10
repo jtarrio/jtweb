@@ -107,6 +107,10 @@ func (m *mailerlite) getLanguageId(language languages.Language) (int, error) {
 	return id, nil
 }
 
+func (m *mailerlite) Name() string {
+	return "mailerlitev2"
+}
+
 func (m *mailerlite) ScheduledCampaigns() ([]email.ScheduledCampaign, error) {
 	ctx := context.TODO()
 	campaigns, _, err := m.client.Campaign.List(ctx, &mlgo.ListCampaignOptions{

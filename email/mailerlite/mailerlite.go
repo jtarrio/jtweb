@@ -135,6 +135,10 @@ func (m *mailerlite) getUtcTimezone() (int, error) {
 	return -1, fmt.Errorf("UTC timezone not found")
 }
 
+func (m *mailerlite) Name() string {
+	return "mailerlite"
+}
+
 func (m *mailerlite) ScheduledCampaigns() ([]email.ScheduledCampaign, error) {
 	type campaign struct {
 		DateSend string `json:"date_send"`

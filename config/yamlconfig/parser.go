@@ -38,6 +38,7 @@ type yamlConfig struct {
 		PublishUntil     *time.Time `yaml:"publish_until"`
 	}
 	Mailers []struct {
+		Name          string
 		Language      string
 		SubjectPrefix string     `yaml:"subject_prefix"`
 		SendAfter     *time.Time `yaml:"send_after"`
@@ -187,8 +188,15 @@ func (r *configParser) Parse() (config.Config, error) {
 		}
 	}
 	for _, mailer := range cfg.Mailers {
+		if mailer.Name == "" {
+			return nil, fmt.Errorf("the mailer's name has not been set")
+		}
 		outMailer := &mailerConfig{
+			name:          mailer.Name,
 			subjectPrefix: mailer.SubjectPrefix,
+		}
+		if mailer.Language == "" {
+			return nil, fmt.Errorf("the mailer's language has not been set")
 		}
 		lang, err := languages.FindByCode(mailer.Language)
 		if err != nil {

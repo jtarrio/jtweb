@@ -40,6 +40,7 @@ type GeneratorConfig interface {
 }
 
 type MailerConfig interface {
+	Name() string
 	Language() languages.Language
 	Engine() email.Engine
 	SubjectPrefix() string
