@@ -15,6 +15,7 @@ var flagOutputPath = flag.String("output_path", "", "The full pathname where the
 var flagWebroot = flag.String("webroot", "", "The URI where the generated content will live.")
 var flagPublishUntil = TimeFlag("publish_until", "Publish all posts older than the given date/time.")
 var flagSecretsYaml = flag.String("secrets_yaml", "", "The name of a YAML file containing secrets.")
+var flagDryRun = flag.Bool("dry_run", false, "Do not perform the operations.")
 
 func GetConfig() (config.Config, error) {
 	if *flagConfigFile == "" {
@@ -46,6 +47,9 @@ func GetConfig() (config.Config, error) {
 	}
 	if !flagPublishUntil.IsZero() {
 		reader = reader.WithOptions(yamlconfig.OverridePublishUntil(*flagPublishUntil))
+	}
+	if *flagDryRun {
+		reader = reader.WithOptions(yamlconfig.OverrideDryRun(true))
 	}
 	return reader.Parse()
 }

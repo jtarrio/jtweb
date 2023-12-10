@@ -40,7 +40,7 @@ type GeneratorConfig interface {
 }
 
 type MailerConfig interface {
-	Language() *languages.Language
+	Language() languages.Language
 	Engine() email.Engine
 	SubjectPrefix() string
 	SendAfter() time.Time

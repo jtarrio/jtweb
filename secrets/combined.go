@@ -6,23 +6,28 @@ type combinedSupplier struct {
 	suppliers []SecretSupplier
 }
 
-func NullSupplier() *combinedSupplier {
+func NullSupplier() SecretSupplier {
 	return &combinedSupplier{}
 }
 
-func CombineSuppliers(a SecretSupplier, b SecretSupplier) *combinedSupplier {
-	csa, oka := a.(*combinedSupplier)
-	csb, okb := b.(*combinedSupplier)
-	if oka && okb {
-		return &combinedSupplier{suppliers: append(csa.suppliers, csb.suppliers...)}
+func CombineSuppliers(first SecretSupplier, last SecretSupplier) SecretSupplier {
+	cs_first, ok_first := first.(*combinedSupplier)
+	cs_last, ok_last := last.(*combinedSupplier)
+	var suppliers []SecretSupplier
+	if ok_first && ok_last {
+		suppliers = append(cs_last.suppliers, cs_first.suppliers...)
+	} else if ok_first {
+		suppliers = append([]SecretSupplier{last}, cs_first.suppliers...)
+	} else if ok_last {
+		suppliers = append(cs_last.suppliers, first)
+	} else {
+		suppliers = []SecretSupplier{last, first}
 	}
-	if oka {
-		return &combinedSupplier{suppliers: append(csa.suppliers, b)}
+	if len(suppliers) == 1 {
+		return suppliers[0]
+	} else {
+		return &combinedSupplier{suppliers: suppliers}
 	}
-	if okb {
-		return &combinedSupplier{suppliers: append([]SecretSupplier{a}, csb.suppliers...)}
-	}
-	return &combinedSupplier{suppliers: []SecretSupplier{a, b}}
 }
 
 func (s *combinedSupplier) GetSecret(key string) (string, error) {

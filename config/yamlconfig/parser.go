@@ -6,6 +6,7 @@ import (
 
 	"gopkg.in/yaml.v2"
 	"jacobo.tarrio.org/jtweb/config"
+	"jacobo.tarrio.org/jtweb/email"
 	"jacobo.tarrio.org/jtweb/email/mailerlite"
 	"jacobo.tarrio.org/jtweb/io"
 	"jacobo.tarrio.org/jtweb/languages"
@@ -36,7 +37,7 @@ type yamlConfig struct {
 		HideUntranslated bool       `yaml:"hide_untranslated"`
 		PublishUntil     *time.Time `yaml:"publish_until"`
 	}
-	Mailer []struct {
+	Mailers []struct {
 		Language      string
 		SubjectPrefix string     `yaml:"subject_prefix"`
 		SendAfter     *time.Time `yaml:"send_after"`
@@ -44,6 +45,9 @@ type yamlConfig struct {
 			ApikeySecret string `yaml:"apikey_secret"`
 			Group        int
 		}
+	}
+	Debug struct {
+		DryRun bool `yaml:"dry_run"`
 	}
 }
 
@@ -92,6 +96,12 @@ func OverridePublishUntil(until time.Time) configParserOption {
 		if cfg.Generator != nil {
 			cfg.Generator.PublishUntil = &until
 		}
+	}
+}
+
+func OverrideDryRun(dryRun bool) configParserOption {
+	return func(cfg *yamlConfig) {
+		cfg.Debug.DryRun = dryRun
 	}
 }
 
@@ -172,18 +182,19 @@ func (r *configParser) Parse() (config.Config, error) {
 			publishUntil:     cfg.Generator.PublishUntil,
 			now:              time.Now(),
 		}
+		if cfg.Debug.DryRun {
+			out.generator.output = io.DryRunFile(out.generator.output)
+		}
 	}
-	for _, mailer := range cfg.Mailer {
+	for _, mailer := range cfg.Mailers {
 		outMailer := &mailerConfig{
 			subjectPrefix: mailer.SubjectPrefix,
 		}
-		if mailer.Language != "" {
-			lang, err := languages.FindByCode(mailer.Language)
-			if err != nil {
-				return nil, err
-			}
-			outMailer.language = &lang
+		lang, err := languages.FindByCode(mailer.Language)
+		if err != nil {
+			return nil, err
 		}
+		outMailer.language = lang
 		if mailer.SendAfter == nil {
 			outMailer.sendAfter = time.Now()
 		} else {
@@ -202,6 +213,9 @@ func (r *configParser) Parse() (config.Config, error) {
 		}
 		if outMailer.engine == nil {
 			return nil, fmt.Errorf("no email engine was defined")
+		}
+		if cfg.Debug.DryRun {
+			outMailer.engine = email.DryRunEngine(outMailer.engine)
 		}
 		out.mailers = append(out.mailers, outMailer)
 	}

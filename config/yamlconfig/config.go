@@ -46,7 +46,7 @@ type generatorConfig struct {
 }
 
 type mailerConfig struct {
-	language      *languages.Language
+	language      languages.Language
 	subjectPrefix string
 	sendAfter     time.Time
 	engine        email.Engine
@@ -128,7 +128,7 @@ func (c *parsedConfig) Mailers() []config.MailerConfig {
 	return c.mailers
 }
 
-func (mc *mailerConfig) Language() *languages.Language {
+func (mc *mailerConfig) Language() languages.Language {
 	return mc.language
 }
 

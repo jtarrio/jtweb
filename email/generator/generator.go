@@ -2,6 +2,7 @@ package generator
 
 import (
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 type EmailGenerator struct {
 	contents    *site.Contents
 	language    languages.Language
+	engine      email.Engine
 	filter      func(*page.Page) bool
 	makeName    func(*page.Page) string
 	makeSubject func(*page.Page) string
@@ -24,8 +26,8 @@ type EmailGenerator struct {
 type EmailGeneratorOption func(*EmailGenerator)
 
 // Creates a new EmailGenerator that will generate emails for the pages in the given site and language.
-func NewEmailGenerator(c *site.Contents, language languages.Language) *EmailGenerator {
-	return &EmailGenerator{c, language, defaultFilter, defaultMakeName, defaultMakeSubject, nil}
+func NewEmailGenerator(c *site.Contents, language languages.Language, engine email.Engine) *EmailGenerator {
+	return &EmailGenerator{c, language, engine, defaultFilter, defaultMakeName, defaultMakeSubject, nil}
 }
 
 // Adds options to the EmailGenerator.
@@ -46,11 +48,11 @@ func NotBefore(t time.Time) EmailGeneratorOption {
 	}
 }
 
-// Skips pages that already have a corresponding scheduled email using the given engine.
-func NotScheduled(engine email.Engine) EmailGeneratorOption {
+// Skips pages that already have a corresponding scheduled email.
+func NotScheduled() EmailGeneratorOption {
 	return func(g *EmailGenerator) {
 		prev := g.filter
-		campaigns, err := engine.ScheduledCampaigns()
+		campaigns, err := g.engine.ScheduledCampaigns()
 		if err != nil {
 			g.err = err
 			return
@@ -90,15 +92,14 @@ func SubjectPrefix(prefix string) EmailGeneratorOption {
 	}
 }
 
-// Scans the pages
-func (g *EmailGenerator) CreateMails() ([]*email.Email, error) {
+func (g *EmailGenerator) SendMails() error {
 	if g.err != nil {
-		return nil, g.err
+		return g.err
 	}
 
 	toc, ok := g.contents.Toc[g.language]
 	if !ok {
-		return nil, fmt.Errorf("no table of contents for language: %s", g.language.Code())
+		return fmt.Errorf("no table of contents for language: %s", g.language.Code())
 	}
 
 	var emails []*email.Email
@@ -116,7 +117,7 @@ func (g *EmailGenerator) CreateMails() ([]*email.Email, error) {
 			sb := strings.Builder{}
 			err := g.contents.OutputAsEmail(&sb, page)
 			if err != nil {
-				return nil, err
+				return err
 			}
 			e.Html = sb.String()
 		}
@@ -124,14 +125,26 @@ func (g *EmailGenerator) CreateMails() ([]*email.Email, error) {
 			sb := strings.Builder{}
 			err := g.contents.OutputAsPlainEmail(&sb, page)
 			if err != nil {
-				return nil, err
+				return err
 			}
 			e.Plaintext = sb.String()
 		}
 		emails = append(emails, &e)
 	}
 
-	return emails, nil
+	for _, email := range emails {
+		campaign, err := g.engine.CreateCampaign(email)
+		if err != nil {
+			return err
+		}
+		err = campaign.Schedule()
+		if err != nil {
+			return err
+		}
+		log.Printf("Scheduled [%s] as id %s for %s", email.Name, campaign.Id(), email.Date.String())
+	}
+
+	return nil
 }
 
 func defaultFilter(*page.Page) bool {
