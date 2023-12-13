@@ -16,7 +16,7 @@ in any available language.
 
 This generator can also schedule emails to be sent. You will need an external
 system that will take care of managing subscriptions and sending the emails.
-So far, only Mailerlite is supported. 
+So far, only Mailerlite is supported.
 
 # Usage
 
@@ -342,4 +342,5 @@ your virtual host configuration!
 
 ---
 
-Copyright 2020 Jacobo Tarrío
+Copyright 2020 Jacobo Tarrío.
+Distributed under the terms of the Apache License version 2.0.
