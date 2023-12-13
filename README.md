@@ -14,9 +14,18 @@ language that is present in the website and can be configured to display
 only articles written (or translated) in that language or articles written
 in any available language.
 
+RSS feeds will also be generated.
+
 This generator can also schedule emails to be sent. You will need an external
 system that will take care of managing subscriptions and sending the emails.
 So far, only Mailerlite is supported.
+
+Note: I built this for my personal site,
+[jacobo.tarrio.org](https://jacobo.tarrio.org) and my newsletters,
+[A Folla](https://folla.gal) and [Coding Sheet](https://coding-sheet.org).
+Therefore, it fits my needs even though it is quite limited in many areas.
+If you are looking for a website generator for yourself, please consider
+[Hugo](https://gohugo.io/) and [Lume](https://lume.land/).
 
 # Usage
 
