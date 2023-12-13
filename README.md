@@ -108,7 +108,7 @@ date_filters:
   generate:
     # A hard cutoff date. Defaults to the current date.
     # May be overridden with the --generate_not_after flag.
-    not_after: "2023-08-01T00:00Z"
+    not_after: "2023-08-01T00:00:00Z"
     # A rolling cutoff date, in days after today. May be negative.
     # Only used if not_before is unspecified.
     not_after_days: 14
@@ -118,10 +118,10 @@ date_filters:
   mail:
     # Do not send posts before this date. Defaults to the current date.
     # May be overridden with the --mail_not_before flag.
-    not_before: "2023-08-01T00:00Z"
+    not_before: "2023-08-01T00:00:00Z"
     # Do not send posts after this date. Defaults to the far future.
     # May be overridden with the --mail_not_after flag.
-    not_after: "2023-08-01T00:00Z"
+    not_after: "2023-08-01T00:00:00Z"
     # Do not send posts this many days after today. Optional.
     # Useful to only schedule posts for a few days at a time even if you
     # write content many months in advance.
