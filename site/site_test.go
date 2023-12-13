@@ -11,11 +11,14 @@ import (
 
 func TestEmptySite(t *testing.T) {
 	config := configtesting.NewFakeConfig()
-	content, err := Read(config)
+	rawContent, err := Read(config)
 	if err != nil {
 		panic(err)
 	}
-
+	content, err := rawContent.Index(nil, nil)
+	if err != nil {
+		panic(err)
+	}
 	err = content.Write()
 	if err != nil {
 		panic(err)
@@ -31,7 +34,11 @@ func TestCopiesFiles(t *testing.T) {
 		panic(err)
 	}
 
-	content, err := Read(config)
+	rawContent, err := Read(config)
+	if err != nil {
+		panic(err)
+	}
+	content, err := rawContent.Index(nil, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -55,7 +62,11 @@ func TestAppliesTemplates(t *testing.T) {
 		panic(err)
 	}
 
-	content, err := Read(config)
+	rawContent, err := Read(config)
+	if err != nil {
+		panic(err)
+	}
+	content, err := rawContent.Index(nil, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -91,7 +102,11 @@ func TestParsesMarkdown(t *testing.T) {
 		panic(err)
 	}
 
-	content, err := Read(config)
+	rawContent, err := Read(config)
+	if err != nil {
+		panic(err)
+	}
+	content, err := rawContent.Index(nil, nil)
 	if err != nil {
 		panic(err)
 	}

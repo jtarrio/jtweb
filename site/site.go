@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"jacobo.tarrio.org/jtweb/config"
 	"jacobo.tarrio.org/jtweb/io"
@@ -16,6 +17,14 @@ import (
 
 // TagId is a custom type for a tag's identifier.
 type TagId string
+
+// RawContents contains the unfiltered content of the site.
+type RawContents struct {
+	Config    config.Config
+	Files     []string
+	Templates []string
+	Pages     map[page.Name]*page.Page
+}
 
 // Contents contains the parsed and indexed content of the site.
 type Contents struct {
@@ -53,11 +62,10 @@ type Translation struct {
 }
 
 // Read parses the whole site contents.
-func Read(s config.Config) (*Contents, error) {
+func Read(s config.Config) (*RawContents, error) {
 	files := make([]string, 0)
 	templates := make([]string, 0)
 	pagesByName := make(map[page.Name]*page.Page)
-	tagIds := make(map[TagId]string)
 	err := s.Files().Content().ForAllFiles(func(file io.File, err error) error {
 		if err != nil {
 			return err
@@ -68,13 +76,7 @@ func Read(s config.Config) (*Contents, error) {
 			if err != nil {
 				return fmt.Errorf("error parsing page %s: %v", file.Name(), err)
 			}
-			if page.Header.PublishDate.After(s.Generator().PublishUntil()) {
-				return nil
-			}
 			pagesByName[page.Name] = page
-			for _, tag := range page.Header.Tags {
-				tagIds[tagId(tag)] = tag
-			}
 		} else if strings.HasSuffix(name, ".tmpl") {
 			templates = append(templates, name[:len(name)-5])
 		} else {
@@ -85,27 +87,49 @@ func Read(s config.Config) (*Contents, error) {
 	if err != nil {
 		return nil, err
 	}
+	rawContents := RawContents{
+		Config:    s,
+		Files:     files,
+		Templates: templates,
+		Pages:     pagesByName,
+	}
+	return &rawContents, nil
+}
 
+// Read parses the whole site contents.
+func (c *RawContents) Index(notBefore *time.Time, notAfter *time.Time) (*Contents, error) {
+	pagesByName := make(map[page.Name]*page.Page)
+	tagIds := make(map[TagId]string)
+	for name, page := range c.Pages {
+		if (notBefore != nil && page.Header.PublishDate.Before(*notBefore)) ||
+			(notAfter != nil && page.Header.PublishDate.After(*notAfter)) {
+			continue
+		}
+		pagesByName[name] = page
+		for _, tag := range page.Header.Tags {
+			tagIds[tagId(tag)] = tag
+		}
+	}
 	translationsByName, err := getTranslationsByName(pagesByName)
 	if err != nil {
 		return nil, err
 	}
 
-	tocByLanguage, err := indexPages(pagesByName, translationsByName, s.Generator().HideUntranslated())
+	tocByLanguage, err := indexPages(pagesByName, translationsByName, c.Config.Generator().HideUntranslated())
 	if err != nil {
 		return nil, err
 	}
 
-	c := Contents{
-		Config:       s,
-		Files:        files,
-		Templates:    templates,
+	contents := Contents{
+		Config:       c.Config,
+		Files:        c.Files,
+		Templates:    c.Templates,
 		Pages:        pagesByName,
 		Tags:         tagIds,
 		Toc:          tocByLanguage,
 		Translations: translationsByName,
 	}
-	return &c, nil
+	return &contents, nil
 }
 
 // tagId returns a TagId for the given tag.

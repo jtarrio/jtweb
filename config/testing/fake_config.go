@@ -19,7 +19,8 @@ type FakeConfig struct {
 	AuthorName       string
 	AuthorURI        string
 	HideUntranslated bool
-	PublishUntil     time.Time
+	Now              time.Time
+	GenerateNotAfter *time.Time
 }
 
 func NewFakeConfig() *FakeConfig {
@@ -33,7 +34,8 @@ func NewFakeConfig() *FakeConfig {
 		AuthorName:       "Author",
 		AuthorURI:        "http://author",
 		HideUntranslated: false,
-		PublishUntil:     time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+		Now:              time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+		GenerateNotAfter: nil,
 	}
 }
 
@@ -122,10 +124,53 @@ func (gc *generatorConfig) HideUntranslated() bool {
 	return gc.cfg.HideUntranslated
 }
 
-func (gc *generatorConfig) PublishUntil() time.Time {
-	return gc.cfg.PublishUntil
+func (gc *generatorConfig) Disabled() bool {
+	return false
 }
 
 func (c *FakeConfig) Mailers() []config.MailerConfig {
 	return []config.MailerConfig{}
+}
+
+type dateFilterConfig struct {
+	cfg *FakeConfig
+}
+
+func (c *FakeConfig) DateFilters() config.DateFilterConfig {
+	return &dateFilterConfig{c}
+}
+
+func (dfc *dateFilterConfig) Now() time.Time {
+	return dfc.cfg.Now
+}
+
+type generateFilterConfig struct {
+	cfg *FakeConfig
+}
+
+func (dfc *dateFilterConfig) Generate() config.DateFilter {
+	return &generateFilterConfig{dfc.cfg}
+}
+
+func (gfc *generateFilterConfig) NotBefore() *time.Time {
+	return nil
+}
+
+func (gfc *generateFilterConfig) NotAfter() *time.Time {
+	return gfc.cfg.GenerateNotAfter
+}
+
+type mailFilterConfig struct {
+}
+
+func (dfc *dateFilterConfig) Mail() config.DateFilter {
+	return &mailFilterConfig{}
+}
+
+func (mfc *mailFilterConfig) NotBefore() *time.Time {
+	return nil
+}
+
+func (mfc *mailFilterConfig) NotAfter() *time.Time {
+	return nil
 }

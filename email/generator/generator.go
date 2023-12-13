@@ -1,10 +1,8 @@
 package generator
 
 import (
-	"fmt"
 	"log"
 	"strings"
-	"time"
 
 	"jacobo.tarrio.org/jtweb/email"
 	"jacobo.tarrio.org/jtweb/languages"
@@ -36,16 +34,6 @@ func (g *EmailGenerator) WithOptions(options ...EmailGeneratorOption) *EmailGene
 		option(g)
 	}
 	return g
-}
-
-// Skips pages published before the given time.
-func NotBefore(t time.Time) EmailGeneratorOption {
-	return func(g *EmailGenerator) {
-		prev := g.filter
-		g.filter = func(p *page.Page) bool {
-			return !p.Header.PublishDate.Before(t) && prev(p)
-		}
-	}
 }
 
 // Skips pages that already have a corresponding scheduled email.
@@ -99,7 +87,7 @@ func (g *EmailGenerator) SendMails() error {
 
 	toc, ok := g.contents.Toc[g.language]
 	if !ok {
-		return fmt.Errorf("no table of contents for language: %s", g.language.Code())
+		return nil
 	}
 
 	var emails []*email.Email

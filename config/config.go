@@ -14,6 +14,7 @@ type Config interface {
 	Author() AuthorConfig
 	Generator() GeneratorConfig
 	Mailers() []MailerConfig
+	DateFilters() DateFilterConfig
 }
 
 type FileConfig interface {
@@ -36,7 +37,7 @@ type AuthorConfig interface {
 type GeneratorConfig interface {
 	Output() io.File
 	HideUntranslated() bool
-	PublishUntil() time.Time
+	Disabled() bool
 }
 
 type MailerConfig interface {
@@ -44,5 +45,16 @@ type MailerConfig interface {
 	Language() languages.Language
 	Engine() email.Engine
 	SubjectPrefix() string
-	SendAfter() time.Time
+	Disabled() bool
+}
+
+type DateFilterConfig interface {
+	Now() time.Time
+	Generate() DateFilter
+	Mail() DateFilter
+}
+
+type DateFilter interface {
+	NotBefore() *time.Time
+	NotAfter() *time.Time
 }

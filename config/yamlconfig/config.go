@@ -10,11 +10,12 @@ import (
 )
 
 type parsedConfig struct {
-	files     fileConfig
-	site      allSiteConfig
-	author    authorConfig
-	generator *generatorConfig
-	mailers   []config.MailerConfig
+	files       fileConfig
+	site        allSiteConfig
+	author      authorConfig
+	generator   *generatorConfig
+	mailers     []config.MailerConfig
+	dateFilters dateFilterConfig
 }
 
 type fileConfig struct {
@@ -41,16 +42,26 @@ type authorConfig struct {
 type generatorConfig struct {
 	output           io.File
 	hideUntranslated bool
-	publishUntil     *time.Time
-	now              time.Time
+	disabled         bool
 }
 
 type mailerConfig struct {
 	name          string
 	language      languages.Language
 	subjectPrefix string
-	sendAfter     time.Time
 	engine        email.Engine
+	disabled      bool
+}
+
+type dateFilterConfig struct {
+	now      time.Time
+	generate dateFilter
+	mail     dateFilter
+}
+
+type dateFilter struct {
+	notBefore *time.Time
+	notAfter  *time.Time
 }
 
 func (c *parsedConfig) Files() config.FileConfig {
@@ -118,11 +129,8 @@ func (gc *generatorConfig) HideUntranslated() bool {
 	return gc.hideUntranslated
 }
 
-func (gc *generatorConfig) PublishUntil() time.Time {
-	if gc.publishUntil == nil {
-		return gc.now
-	}
-	return *gc.publishUntil
+func (gc *generatorConfig) Disabled() bool {
+	return gc.disabled
 }
 
 func (c *parsedConfig) Mailers() []config.MailerConfig {
@@ -145,6 +153,30 @@ func (mc *mailerConfig) SubjectPrefix() string {
 	return mc.subjectPrefix
 }
 
-func (mc *mailerConfig) SendAfter() time.Time {
-	return mc.sendAfter
+func (mc *mailerConfig) Disabled() bool {
+	return mc.disabled
+}
+
+func (c *parsedConfig) DateFilters() config.DateFilterConfig {
+	return &c.dateFilters
+}
+
+func (dfc *dateFilterConfig) Now() time.Time {
+	return dfc.now
+}
+
+func (dfc *dateFilterConfig) Generate() config.DateFilter {
+	return &dfc.generate
+}
+
+func (dfc *dateFilterConfig) Mail() config.DateFilter {
+	return &dfc.mail
+}
+
+func (df *dateFilter) NotBefore() *time.Time {
+	return df.notBefore
+}
+
+func (df *dateFilter) NotAfter() *time.Time {
+	return df.notAfter
 }

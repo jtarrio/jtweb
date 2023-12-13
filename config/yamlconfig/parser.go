@@ -34,19 +34,30 @@ type yamlConfig struct {
 	}
 	Generator *struct {
 		Output           string
-		HideUntranslated bool       `yaml:"hide_untranslated"`
-		PublishUntil     *time.Time `yaml:"publish_until"`
+		HideUntranslated bool `yaml:"hide_untranslated"`
+		Disabled         bool
 	}
 	Mailers []struct {
 		Name          string
 		Language      string
-		SubjectPrefix string     `yaml:"subject_prefix"`
-		SendAfter     *time.Time `yaml:"send_after"`
+		SubjectPrefix string `yaml:"subject_prefix"`
+		Disabled      bool
 		Mailerlite    *struct {
 			ApikeySecret string `yaml:"apikey_secret"`
 			Group        int
 		}
 	}
+	DateFilters struct {
+		Generate struct {
+			NotAfter     *time.Time `yaml:"not_after"`
+			NotAfterDays *uint      `yaml:"not_after_days"`
+		}
+		Mail struct {
+			NotBefore    *time.Time `yaml:"not_before"`
+			NotAfter     *time.Time `yaml:"not_after"`
+			NotAfterDays *uint      `yaml:"not_after_days"`
+		}
+	} `yaml:"date_filters"`
 	Debug struct {
 		DryRun bool `yaml:"dry_run"`
 	}
@@ -92,11 +103,23 @@ func OverrideOutput(output string) configParserOption {
 	}
 }
 
-func OverridePublishUntil(until time.Time) configParserOption {
+func OverrideGenerateNotAfter(notAfter time.Time) configParserOption {
 	return func(cfg *yamlConfig) {
-		if cfg.Generator != nil {
-			cfg.Generator.PublishUntil = &until
-		}
+		cfg.DateFilters.Generate.NotAfter = &notAfter
+		cfg.DateFilters.Generate.NotAfterDays = nil
+	}
+}
+
+func OverrideMailNotBefore(notBefore time.Time) configParserOption {
+	return func(cfg *yamlConfig) {
+		cfg.DateFilters.Mail.NotBefore = &notBefore
+	}
+}
+
+func OverrideMailNotAfter(notAfter time.Time) configParserOption {
+	return func(cfg *yamlConfig) {
+		cfg.DateFilters.Mail.NotAfter = &notAfter
+		cfg.DateFilters.Mail.NotAfterDays = nil
 	}
 }
 
@@ -180,8 +203,7 @@ func (r *configParser) Parse() (config.Config, error) {
 		out.generator = &generatorConfig{
 			output:           io.OsFile(cfg.Generator.Output),
 			hideUntranslated: cfg.Generator.HideUntranslated,
-			publishUntil:     cfg.Generator.PublishUntil,
-			now:              time.Now(),
+			disabled:         cfg.Generator.Disabled,
 		}
 		if cfg.Debug.DryRun {
 			out.generator.output = io.DryRunFile(out.generator.output)
@@ -194,6 +216,7 @@ func (r *configParser) Parse() (config.Config, error) {
 		outMailer := &mailerConfig{
 			name:          mailer.Name,
 			subjectPrefix: mailer.SubjectPrefix,
+			disabled:      mailer.Disabled,
 		}
 		if mailer.Language == "" {
 			return nil, fmt.Errorf("the mailer's language has not been set")
@@ -203,11 +226,6 @@ func (r *configParser) Parse() (config.Config, error) {
 			return nil, err
 		}
 		outMailer.language = lang
-		if mailer.SendAfter == nil {
-			outMailer.sendAfter = time.Now()
-		} else {
-			outMailer.sendAfter = *mailer.SendAfter
-		}
 		if mailer.Mailerlite != nil {
 			apikey, err := r.secretSupplier.GetSecret(mailer.Mailerlite.ApikeySecret)
 			if err != nil {
@@ -227,6 +245,30 @@ func (r *configParser) Parse() (config.Config, error) {
 		}
 		out.mailers = append(out.mailers, outMailer)
 	}
+	now := time.Now()
+	out.dateFilters = dateFilterConfig{
+		now: now,
+		generate: dateFilter{
+			notBefore: nil,
+			notAfter:  parseRelDate(cfg.DateFilters.Generate.NotAfter, cfg.DateFilters.Generate.NotAfterDays, now),
+		},
+		mail: dateFilter{
+			notBefore: cfg.DateFilters.Mail.NotBefore,
+			notAfter:  parseRelDate(cfg.DateFilters.Mail.NotAfter, cfg.DateFilters.Mail.NotAfterDays, now),
+		},
+	}
 
 	return out, nil
+}
+
+func parseRelDate(when *time.Time, days *uint, now time.Time) *time.Time {
+	if when != nil {
+		return when
+	}
+	if days != nil {
+		hours := int(*days) * 24
+		moment := now.Add(time.Duration(hours) * time.Hour)
+		return &moment
+	}
+	return nil
 }

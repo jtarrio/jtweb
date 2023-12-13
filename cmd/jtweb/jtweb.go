@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	"jacobo.tarrio.org/jtweb/config"
 	"jacobo.tarrio.org/jtweb/config/fromflags"
@@ -17,12 +18,23 @@ var flagOperations = flag.String("operations", "*",
 		"This is a list of items separated with commas. "+
 		"The asterisk ('*') is a wildcard. "+
 		"Prepend with '-' to remove instead of adding. "+
+		"Disabled operations don't match any wildcards for adding, but they "+
+		"match normally for removing. To add a disabled operation, include its "+
+		"full name without wildcards. "+
 		"Use 'list' to view all available operations.")
 
 type operation struct {
 	name        string
 	description string
-	operate     func(content *site.Contents) error
+	disabled    bool
+	operate     func(content *site.RawContents) error
+}
+
+func getTimeOrDefault(when *time.Time, def time.Time) *time.Time {
+	if when == nil {
+		return &def
+	}
+	return when
 }
 
 func getAvailableOperations(cfg config.Config) []operation {
@@ -31,7 +43,13 @@ func getAvailableOperations(cfg config.Config) []operation {
 		ops = append(ops, operation{
 			name:        "generate",
 			description: "Generate the website",
-			operate: func(content *site.Contents) error {
+			disabled:    cfg.Generator().Disabled(),
+			operate: func(rawContent *site.RawContents) error {
+				notAfter := getTimeOrDefault(rawContent.Config.DateFilters().Generate().NotAfter(), rawContent.Config.DateFilters().Now())
+				content, err := rawContent.Index(nil, notAfter)
+				if err != nil {
+					return err
+				}
 				return content.Write()
 			},
 		})
@@ -40,10 +58,16 @@ func getAvailableOperations(cfg config.Config) []operation {
 		ops = append(ops, operation{
 			name:        fmt.Sprintf("email=%s", mailer.Name()),
 			description: fmt.Sprintf("Send emails for '%s' with language '%s' and engine '%s'", mailer.Name(), mailer.Language().Code(), mailer.Engine().Name()),
-			operate: func(content *site.Contents) error {
+			disabled:    mailer.Disabled(),
+			operate: func(rawContent *site.RawContents) error {
+				notBefore := getTimeOrDefault(rawContent.Config.DateFilters().Mail().NotBefore(), rawContent.Config.DateFilters().Now())
+				notAfter := rawContent.Config.DateFilters().Mail().NotAfter()
+				content, err := rawContent.Index(notBefore, notAfter)
+				if err != nil {
+					return err
+				}
 				return generator.NewEmailGenerator(content, mailer.Language(), mailer.Engine()).
 					WithOptions(
-						generator.NotBefore(mailer.SendAfter()),
 						generator.NotScheduled(),
 						generator.NamePrefix(mailer.SubjectPrefix()),
 						generator.SubjectPrefix(mailer.SubjectPrefix()),
@@ -56,8 +80,12 @@ func getAvailableOperations(cfg config.Config) []operation {
 
 func selectOperations(filter string, operations []operation) []operation {
 	names := make([]string, len(operations))
+	disabled_names := map[string]bool{}
 	for i, op := range operations {
 		names[i] = op.name
+		if op.disabled {
+			disabled_names[op.name] = true
+		}
 	}
 	wanted_names := map[string]bool{}
 	for _, f := range strings.Split(filter, ",") {
@@ -67,7 +95,7 @@ func selectOperations(filter string, operations []operation) []operation {
 			f = f[1:]
 		}
 		for _, name := range names {
-			if match(f, name) {
+			if match(f, name) && (!add || f == name || !disabled_names[name]) {
 				wanted_names[name] = add
 			}
 		}
@@ -79,6 +107,17 @@ func selectOperations(filter string, operations []operation) []operation {
 		}
 	}
 	return ops
+}
+
+func listOperations(operations []operation) {
+	println("Available operations:")
+	for _, op := range operations {
+		if op.disabled {
+			fmt.Printf(" - %s (disabled)\n   %s\n", op.name, op.description)
+		} else {
+			fmt.Printf(" - %s\n   %s\n", op.name, op.description)
+		}
+	}
 }
 
 func match(pattern, name string) (matched bool) {
@@ -121,10 +160,7 @@ func main() {
 
 	operations := getAvailableOperations(cfg)
 	if *flagOperations == "list" {
-		println("Available operations:")
-		for _, op := range operations {
-			fmt.Printf(" - %s\n   %s\n", op.name, op.description)
-		}
+		listOperations(operations)
 		return
 	}
 	operations = selectOperations(*flagOperations, operations)
