@@ -50,12 +50,12 @@ type yamlConfig struct {
 	DateFilters struct {
 		Generate struct {
 			NotAfter     *time.Time `yaml:"not_after"`
-			NotAfterDays *uint      `yaml:"not_after_days"`
+			NotAfterDays *int       `yaml:"not_after_days"`
 		}
 		Mail struct {
 			NotBefore    *time.Time `yaml:"not_before"`
 			NotAfter     *time.Time `yaml:"not_after"`
-			NotAfterDays *uint      `yaml:"not_after_days"`
+			NotAfterDays *int       `yaml:"not_after_days"`
 		}
 	} `yaml:"date_filters"`
 	Debug struct {
@@ -261,12 +261,12 @@ func (r *configParser) Parse() (config.Config, error) {
 	return out, nil
 }
 
-func parseRelDate(when *time.Time, days *uint, now time.Time) *time.Time {
+func parseRelDate(when *time.Time, days *int, now time.Time) *time.Time {
 	if when != nil {
 		return when
 	}
 	if days != nil {
-		hours := int(*days) * 24
+		hours := *days * 24
 		moment := now.Add(time.Duration(hours) * time.Hour)
 		return &moment
 	}

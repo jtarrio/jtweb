@@ -1,18 +1,32 @@
 # Jacobo Tarrío's website generator
 
-This generator can render GitHub-Flavored Markdown files and Go template
-files, and copy any other file type.
+This generator was built for blogs or newsletter websites consisting of a
+series of dated posts that follow a common style.
 
-It can also create chronological and thematic tables of contents.
+It will render posts written in GitHub-Flavored Markdown and Go template files,
+and it will copy any other file type.
+
+Posts may be translated, and the translations for each post will be interlinked.
+
+It will use the information from the posts' headers to build time-based and
+tag-based tables of contents. The tables of contents will appear in every
+language that is present in the website and can be configured to display
+only articles written (or translated) in that language or articles written
+in any available language.
+
+This generator can also schedule emails to be sent. You will need an external
+system that will take care of managing subscriptions and sending the emails.
+So far, only Mailerlite is supported. 
 
 # Usage
 
-You can configure the site generator using a configuration file, a set
-of command-line options, or a combination of them; command-line options
-override the configuration file settings.
+The site generator is configured through a file, though you can override certain
+values from the command line.
 
-You can specify the name of the configuration file with the `--config_file`
+You must specify the name of the configuration file with the `--config_file`
 command-line option.
+
+## Configuration file
 
 The configuration file is YAML with the following format:
 
@@ -61,11 +75,107 @@ generator:
   # that language. If false, tables of contents will show content in other
   # languages if it is not available in the same language. Default: false.
   hide_untranslated: false
-  # Only output content with publish-dates up to this date and time.
-  # If unspecified, the current date and time will be used.
-  # May be overridden through the --publish_until flag.
-  publish_until: "2060-01-01T00:00"
+  # If true, the generator does not run by default though it can be enabled
+  # through the --operations flag. Default: false.
+  disabled: false
+
+# Mail configurations
+mailers:
+  # A name for this configuration.
+  - name: "galego"
+    # If true, this mail configuration will not run by default though it can
+    # be enabled through the --operations flag. You can use this for your
+    # test configurations. Default: false.
+    disabled: false
+    # Send posts available in this language.
+    language: "gl"
+    # The subject line will contain this prefix followed by
+    # the episode number and the page's title. Optional.
+    subject_prefix: "O meu boletín"
+    # Mailerlite configuration.
+    mailerlite:
+      # The name of the secret file containing the API key.
+      apikey_secret: "mailerlite-key"
+      # The group to send email to.
+      group: 12345
+
+# Date filters
+date_filters:
+  # Sets a maximum date for the posts that will be generated.
+  # By default, the maximum date is the current date and time.
+  # You would normally not specify it in your configuration,
+  # and only override it for testing.
+  generate:
+    # A hard cutoff date. Defaults to the current date.
+    # May be overridden with the --generate_not_after flag.
+    not_after: "2023-08-01T00:00Z"
+    # A rolling cutoff date, in days after today. May be negative.
+    # Only used if not_before is unspecified.
+    not_after_days: 14
+  # Sets a minimum and maximum date for the posts that will be emailed.
+  # By default, the minimum date is the current date and time, and there
+  # is no maximum date.
+  mail:
+    # Do not send posts before this date. Defaults to the current date.
+    # May be overridden with the --mail_not_before flag.
+    not_before: "2023-08-01T00:00Z"
+    # Do not send posts after this date. Defaults to the far future.
+    # May be overridden with the --mail_not_after flag.
+    not_after: "2023-08-01T00:00Z"
+    # Do not send posts this many days after today. Optional.
+    # Useful to only schedule posts for a few days at a time even if you
+    # write content many months in advance.
+    not_after_days: 14
 ```
+
+## Secrets
+
+If you use secrets in your configuration (such as in the `apikey_secret` field),
+you must specify a secrets directory using the `--secrets_dir` command-line
+flag.
+
+This directory must contain one file for each secret, with the same name that
+is used in the configuration file, and the content of this file is the secret
+itself.
+
+Be careful with line endings when you create the secret files! For example,
+this command creates a file named `mailerlite-key` with an API key:
+
+```
+$ echo -n 'THE_MAILERLITE_API_KEY' > secrets/mailerlite-key
+```
+
+The `-n` flag to `echo` prevents a newline at the end of the API key.
+
+## Command-line flags
+
+The following command-line flags are available.
+
+* `--config_file` -- The name of the file that contains the configuration.
+* `--secrets_dir` -- The name of the directory containing secrets files.
+* `--operations` -- The names of the operations that must be performed,
+  or the word "list".
+
+  This is a list of items to be added, separated using commas. If an item is
+  prepended with a minus sign (`-`), it is removed instead of added. You may
+  use wildcards to match several operations at once for adding or for removing.
+
+  Some operations appear as "disabled" in the list, and by default they are not
+  added. You can add them by specifying them with their exact name (no
+  wildcards). You can remove them by exact name or by wildcard, though.
+
+  The default value is `*`, which adds all (non-disabled) operations.
+
+  Examples:
+  * `--operations=*,-mail=` -- adds all operations and then removes all the "mail" operations.
+  * `--operations=*,mail=test` -- adds all operations and also the (possibly disabled) operation `mail=test`.
+  * `--operations=` -- no operations (empty list).
+  * `--operations=mail=*,-mail=foo` -- adds all "mail" operations except `mail=foo`.
+* `--webroot` -- Override the `site.webroot` configuration for every language.
+* `--generate_not_after` -- Override the `date_filters.generate.not_after` configuration.
+* `--mail_not_before` -- Override the `date_filters.mail.not_before` configuration.
+* `--mail_not_after` -- Override the `date_filters.mail.not_after` configuration.
+* `--dry_run` -- Simulate the file generation and email scheduling operations, printing out what would happen.
 
 # How different files are handled
 
