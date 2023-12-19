@@ -18,15 +18,15 @@ var flagOperations = flag.String("operations", "*",
 		"This is a list of items separated with commas. "+
 		"The asterisk ('*') is a wildcard. "+
 		"Prepend with '-' to remove instead of adding. "+
-		"Disabled operations don't match any wildcards for adding, but they "+
-		"match normally for removing. To add a disabled operation, include its "+
+		"Skipped operations don't match any wildcards for adding, but they "+
+		"match normally for removing. To add a skipped operation, include its "+
 		"full name without wildcards. "+
 		"Use 'list' to view all available operations.")
 
 type operation struct {
 	name        string
 	description string
-	disabled    bool
+	skipped     bool
 	operate     func(content *site.RawContents) error
 }
 
@@ -43,7 +43,7 @@ func getAvailableOperations(cfg config.Config) []operation {
 		ops = append(ops, operation{
 			name:        "generate",
 			description: "Generate the website",
-			disabled:    cfg.Generator().Disabled(),
+			skipped:     cfg.Generator().SkipOperation(),
 			operate: func(rawContent *site.RawContents) error {
 				notAfter := getTimeOrDefault(rawContent.Config.DateFilters().Generate().NotAfter(), rawContent.Config.DateFilters().Now())
 				content, err := rawContent.Index(nil, notAfter)
@@ -58,7 +58,7 @@ func getAvailableOperations(cfg config.Config) []operation {
 		ops = append(ops, operation{
 			name:        fmt.Sprintf("email=%s", mailer.Name()),
 			description: fmt.Sprintf("Send emails for '%s' with language '%s' and engine '%s'", mailer.Name(), mailer.Language().Code(), mailer.Engine().Name()),
-			disabled:    mailer.Disabled(),
+			skipped:     mailer.SkipOperation(),
 			operate: func(rawContent *site.RawContents) error {
 				notBefore := getTimeOrDefault(rawContent.Config.DateFilters().Mail().NotBefore(), rawContent.Config.DateFilters().Now())
 				notAfter := rawContent.Config.DateFilters().Mail().NotAfter()
@@ -80,11 +80,11 @@ func getAvailableOperations(cfg config.Config) []operation {
 
 func selectOperations(filter string, operations []operation) []operation {
 	names := make([]string, len(operations))
-	disabled_names := map[string]bool{}
+	skipped_names := map[string]bool{}
 	for i, op := range operations {
 		names[i] = op.name
-		if op.disabled {
-			disabled_names[op.name] = true
+		if op.skipped {
+			skipped_names[op.name] = true
 		}
 	}
 	wanted_names := map[string]bool{}
@@ -95,7 +95,7 @@ func selectOperations(filter string, operations []operation) []operation {
 			f = f[1:]
 		}
 		for _, name := range names {
-			if match(f, name) && (!add || f == name || !disabled_names[name]) {
+			if match(f, name) && (!add || f == name || !skipped_names[name]) {
 				wanted_names[name] = add
 			}
 		}
@@ -112,8 +112,8 @@ func selectOperations(filter string, operations []operation) []operation {
 func listOperations(operations []operation) {
 	println("Available operations:")
 	for _, op := range operations {
-		if op.disabled {
-			fmt.Printf(" - %s (disabled)\n   %s\n", op.name, op.description)
+		if op.skipped {
+			fmt.Printf(" - %s (skipped)\n   %s\n", op.name, op.description)
 		} else {
 			fmt.Printf(" - %s\n   %s\n", op.name, op.description)
 		}

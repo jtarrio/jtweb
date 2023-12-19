@@ -35,13 +35,13 @@ type yamlConfig struct {
 	Generator *struct {
 		Output           string
 		HideUntranslated bool `yaml:"hide_untranslated"`
-		Disabled         bool
+		SkipOperation    bool `yaml:"skip_operation"`
 	}
 	Mailers []struct {
 		Name          string
 		Language      string
 		SubjectPrefix string `yaml:"subject_prefix"`
-		Disabled      bool
+		SkipOperation bool   `yaml:"skip_operation"`
 		Mailerlite    *struct {
 			ApikeySecret string `yaml:"apikey_secret"`
 			Group        int
@@ -203,7 +203,7 @@ func (r *configParser) Parse() (config.Config, error) {
 		out.generator = &generatorConfig{
 			output:           io.OsFile(cfg.Generator.Output),
 			hideUntranslated: cfg.Generator.HideUntranslated,
-			disabled:         cfg.Generator.Disabled,
+			skipOperation:    cfg.Generator.SkipOperation,
 		}
 		if cfg.Debug.DryRun {
 			out.generator.output = io.DryRunFile(out.generator.output)
@@ -216,7 +216,7 @@ func (r *configParser) Parse() (config.Config, error) {
 		outMailer := &mailerConfig{
 			name:          mailer.Name,
 			subjectPrefix: mailer.SubjectPrefix,
-			disabled:      mailer.Disabled,
+			skipOperation: mailer.SkipOperation,
 		}
 		if mailer.Language == "" {
 			return nil, fmt.Errorf("the mailer's language has not been set")

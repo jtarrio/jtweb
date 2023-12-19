@@ -124,7 +124,7 @@ func (gc *generatorConfig) HideUntranslated() bool {
 	return gc.cfg.HideUntranslated
 }
 
-func (gc *generatorConfig) Disabled() bool {
+func (gc *generatorConfig) SkipOperation() bool {
 	return false
 }
 

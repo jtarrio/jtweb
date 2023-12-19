@@ -37,7 +37,7 @@ type AuthorConfig interface {
 type GeneratorConfig interface {
 	Output() io.File
 	HideUntranslated() bool
-	Disabled() bool
+	SkipOperation() bool
 }
 
 type MailerConfig interface {
@@ -45,7 +45,7 @@ type MailerConfig interface {
 	Language() languages.Language
 	Engine() email.Engine
 	SubjectPrefix() string
-	Disabled() bool
+	SkipOperation() bool
 }
 
 type DateFilterConfig interface {

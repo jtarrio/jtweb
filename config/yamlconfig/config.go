@@ -42,7 +42,7 @@ type authorConfig struct {
 type generatorConfig struct {
 	output           io.File
 	hideUntranslated bool
-	disabled         bool
+	skipOperation    bool
 }
 
 type mailerConfig struct {
@@ -50,7 +50,7 @@ type mailerConfig struct {
 	language      languages.Language
 	subjectPrefix string
 	engine        email.Engine
-	disabled      bool
+	skipOperation bool
 }
 
 type dateFilterConfig struct {
@@ -129,8 +129,8 @@ func (gc *generatorConfig) HideUntranslated() bool {
 	return gc.hideUntranslated
 }
 
-func (gc *generatorConfig) Disabled() bool {
-	return gc.disabled
+func (gc *generatorConfig) SkipOperation() bool {
+	return gc.skipOperation
 }
 
 func (c *parsedConfig) Mailers() []config.MailerConfig {
@@ -153,8 +153,8 @@ func (mc *mailerConfig) SubjectPrefix() string {
 	return mc.subjectPrefix
 }
 
-func (mc *mailerConfig) Disabled() bool {
-	return mc.disabled
+func (mc *mailerConfig) SkipOperation() bool {
+	return mc.skipOperation
 }
 
 func (c *parsedConfig) DateFilters() config.DateFilterConfig {

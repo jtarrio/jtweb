@@ -84,18 +84,18 @@ generator:
   # that language. If false, tables of contents will show content in other
   # languages if it is not available in the same language. Default: false.
   hide_untranslated: false
-  # If true, the generator does not run by default though it can be enabled
+  # If true, the generator does not run by default, but it can be enabled
   # through the --operations flag. Default: false.
-  disabled: false
+  skip_operation: false
 
 # Mail configurations
 mailers:
   # A name for this configuration.
   - name: "galego"
-    # If true, this mail configuration will not run by default though it can
+    # If true, this mail configuration will not run by default, but it can
     # be enabled through the --operations flag. You can use this for your
     # test configurations. Default: false.
-    disabled: false
+    skip_operation: false
     # Send posts available in this language.
     language: "gl"
     # The subject line will contain this prefix followed by
@@ -169,15 +169,15 @@ The following command-line flags are available.
   prepended with a minus sign (`-`), it is removed instead of added. You may
   use wildcards to match several operations at once for adding or for removing.
 
-  Some operations appear as "disabled" in the list, and by default they are not
+  Some operations appear as "skipped" in the list, and by default they are not
   added. You can add them by specifying them with their exact name (no
   wildcards). You can remove them by exact name or by wildcard, though.
 
-  The default value is `*`, which adds all (non-disabled) operations.
+  The default value is `*`, which adds all (non-skipped) operations.
 
   Examples:
   * `--operations=*,-mail=` -- adds all operations and then removes all the "mail" operations.
-  * `--operations=*,mail=test` -- adds all operations and also the (possibly disabled) operation `mail=test`.
+  * `--operations=*,mail=test` -- adds all operations and also the (possibly skipped) operation `mail=test`.
   * `--operations=` -- no operations (empty list).
   * `--operations=mail=*,-mail=foo` -- adds all "mail" operations except `mail=foo`.
 * `--webroot` -- Override the `site.webroot` configuration for every language.
