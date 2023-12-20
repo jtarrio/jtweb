@@ -10,17 +10,17 @@ type PostId = comments.PostId
 type CommentId = comments.CommentId
 type Markdown = comments.Markdown
 
-type commentsEnabledState int
+type CommentState int
 
 const (
-	CommentsDisabled = commentsEnabledState(0)
-	CommentsClosed   = commentsEnabledState(1)
-	CommentsEnabled  = commentsEnabledState(2)
+	CommentsDisabled = CommentState(0)
+	CommentsClosed   = CommentState(1)
+	CommentsEnabled  = CommentState(2)
 )
 
 type Config struct {
-	PostId  PostId
-	Enabled commentsEnabledState
+	PostId PostId
+	State  CommentState
 }
 
 type Comment struct {

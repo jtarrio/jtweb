@@ -19,9 +19,9 @@ type CommentsService interface {
 }
 
 type CommentList struct {
+	PostId      PostId
 	IsAvailable bool
 	IsWritable  bool
-	PostId      PostId
 	List        []Comment
 }
 
@@ -39,7 +39,7 @@ type NewComment struct {
 	Text   Markdown
 }
 
-func NewService(engine engine.Engine) CommentsService {
+func NewCommentsService(engine engine.Engine) CommentsService {
 	return &commentsServiceImpl{engine: engine}
 }
 
@@ -53,9 +53,10 @@ func (s *commentsServiceImpl) Get(id PostId) (*CommentList, error) {
 		return nil, err
 	}
 	out := &CommentList{
-		IsAvailable: cfg.Enabled != engine.CommentsDisabled,
-		IsWritable:  cfg.Enabled == engine.CommentsEnabled,
-		PostId:      id}
+		PostId:      id,
+		IsAvailable: cfg.State != engine.CommentsDisabled,
+		IsWritable:  cfg.State == engine.CommentsEnabled,
+		List:        []Comment{}}
 	if !out.IsAvailable {
 		return out, nil
 	}
@@ -83,7 +84,7 @@ func (s *commentsServiceImpl) Add(comment *NewComment) (*Comment, error) {
 	if err != nil {
 		return nil, err
 	}
-	if cfg.Enabled != engine.CommentsEnabled {
+	if cfg.State != engine.CommentsEnabled {
 		return nil, fmt.Errorf("comments are closed for post [%s]", comment.PostId)
 	}
 	nc, err := s.engine.Add(&engine.NewComment{

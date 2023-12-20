@@ -1,6 +1,6 @@
 .vscode/
 
 **/node_modules
-**/__debug_bin
+**/__debug_bin*
 **/*.exe
 **/*.js

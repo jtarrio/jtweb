@@ -4,19 +4,23 @@ import (
 	"fmt"
 
 	"jacobo.tarrio.org/jtweb/comments"
+	"jacobo.tarrio.org/jtweb/comments/engine"
 )
 
 type MemoryEngine struct {
-	posts    map[comments.PostId]bool
-	config   map[comments.PostId]*comments.Config
-	comments map[comments.PostId][]comments.Comment
-	lastId   uint64
+	posts        map[comments.PostId]bool
+	config       map[comments.PostId]*engine.Config
+	comments     map[comments.PostId][]engine.Comment
+	defaultState engine.CommentState
+	lastId       uint64
 }
 
 func NewMemoryEngine() *MemoryEngine {
 	return &MemoryEngine{
-		comments: map[comments.PostId][]comments.Comment{},
-		lastId:   1000,
+		posts:        map[comments.PostId]bool{},
+		comments:     map[comments.PostId][]engine.Comment{},
+		defaultState: engine.CommentsDisabled,
+		lastId:       1000,
 	}
 }
 
@@ -37,19 +41,19 @@ func (e *MemoryEngine) CheckPost(postId comments.PostId) error {
 	return nil
 }
 
-func (e *MemoryEngine) GetConfig(postId comments.PostId) (*comments.Config, error) {
+func (e *MemoryEngine) GetConfig(postId comments.PostId) (*engine.Config, error) {
 	err := e.CheckPost(postId)
 	if err != nil {
 		return nil, err
 	}
 	c, ok := e.config[postId]
 	if !ok {
-		return &comments.Config{PostId: postId, Enabled: comments.DefaultState}, nil
+		return &engine.Config{PostId: postId, State: e.defaultState}, nil
 	}
 	return c, nil
 }
 
-func (e *MemoryEngine) SetConfig(newConfig, oldConfig *comments.Config) error {
+func (e *MemoryEngine) SetConfig(newConfig, oldConfig *engine.Config) error {
 	c, err := e.GetConfig(newConfig.PostId)
 	if err != nil {
 		return err
@@ -61,24 +65,24 @@ func (e *MemoryEngine) SetConfig(newConfig, oldConfig *comments.Config) error {
 	return nil
 }
 
-func (e *MemoryEngine) Load(postId comments.PostId) ([]comments.Comment, error) {
+func (e *MemoryEngine) Load(postId comments.PostId) ([]engine.Comment, error) {
 	err := e.CheckPost(postId)
 	if err != nil {
 		return nil, err
 	}
 	c, ok := e.comments[postId]
 	if !ok {
-		return []comments.Comment{}, nil
+		return []engine.Comment{}, nil
 	}
 	return c, nil
 }
 
-func (e *MemoryEngine) Add(comment *comments.NewComment) (*comments.Comment, error) {
+func (e *MemoryEngine) Add(comment *engine.NewComment) (*engine.Comment, error) {
 	err := e.CheckPost(comment.PostId)
 	if err != nil {
 		return nil, err
 	}
-	nc := comments.Comment{
+	nc := engine.Comment{
 		PostId:    comment.PostId,
 		CommentId: e.nextId(),
 		Author:    comment.Author,
