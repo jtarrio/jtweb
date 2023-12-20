@@ -54,7 +54,9 @@ func getAvailableOperations(cfg config.Config) []operation {
 			},
 		})
 	}
-	for _, mailer := range cfg.Mailers() {
+	for _, mailer_iter := range cfg.Mailers() {
+		// Make a copy of the mailer.
+		mailer := mailer_iter
 		ops = append(ops, operation{
 			name:        fmt.Sprintf("email=%s", mailer.Name()),
 			description: fmt.Sprintf("Send emails for '%s' with language '%s' and engine '%s'", mailer.Name(), mailer.Language().Code(), mailer.Engine().Name()),
