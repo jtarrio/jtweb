@@ -128,6 +128,10 @@ func (gc *generatorConfig) SkipOperation() bool {
 	return false
 }
 
+func (c *FakeConfig) Comments() *config.CommentsConfig {
+	return nil
+}
+
 func (c *FakeConfig) Mailers() []config.MailerConfig {
 	return []config.MailerConfig{}
 }

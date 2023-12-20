@@ -157,6 +157,10 @@ func (mc *mailerConfig) SkipOperation() bool {
 	return mc.skipOperation
 }
 
+func (c *parsedConfig) Comments() *config.CommentsConfig {
+	return nil
+}
+
 func (c *parsedConfig) DateFilters() config.DateFilterConfig {
 	return &c.dateFilters
 }

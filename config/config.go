@@ -3,6 +3,7 @@ package config
 import (
 	"time"
 
+	comments "jacobo.tarrio.org/jtweb/comments/service"
 	"jacobo.tarrio.org/jtweb/email"
 	"jacobo.tarrio.org/jtweb/io"
 	"jacobo.tarrio.org/jtweb/languages"
@@ -14,6 +15,7 @@ type Config interface {
 	Author() AuthorConfig
 	Generator() GeneratorConfig
 	Mailers() []MailerConfig
+	Comments() *CommentsConfig
 	DateFilters() DateFilterConfig
 }
 
@@ -45,6 +47,12 @@ type MailerConfig interface {
 	Language() languages.Language
 	Engine() email.Engine
 	SubjectPrefix() string
+	SkipOperation() bool
+}
+
+type CommentsConfig interface {
+	DefaultEnabled() bool
+	Service() comments.CommentsService
 	SkipOperation() bool
 }
 
