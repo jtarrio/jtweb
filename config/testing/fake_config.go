@@ -128,7 +128,7 @@ func (gc *generatorConfig) SkipOperation() bool {
 	return false
 }
 
-func (c *FakeConfig) Comments() *config.CommentsConfig {
+func (c *FakeConfig) Comments() config.CommentsConfig {
 	return nil
 }
 

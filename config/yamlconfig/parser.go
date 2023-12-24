@@ -5,6 +5,10 @@ import (
 	"time"
 
 	"gopkg.in/yaml.v2"
+	comments_engine "jacobo.tarrio.org/jtweb/comments/engine"
+	"jacobo.tarrio.org/jtweb/comments/engine/mysql"
+	"jacobo.tarrio.org/jtweb/comments/engine/sqlite3"
+	comments_service "jacobo.tarrio.org/jtweb/comments/service"
 	"jacobo.tarrio.org/jtweb/config"
 	"jacobo.tarrio.org/jtweb/email"
 	"jacobo.tarrio.org/jtweb/email/mailerlite"
@@ -45,6 +49,16 @@ type yamlConfig struct {
 		Mailerlite    *struct {
 			ApikeySecret string `yaml:"apikey_secret"`
 			Group        int
+		}
+	}
+	Comments *struct {
+		DefaultEnabled bool `yaml:"default_enabled"`
+		SkipOperation  bool `yaml:"skip_operation"`
+		Sqlite3        *struct {
+			ConnectionStringSecret string `yaml:"connection_string_secret"`
+		}
+		Mysql *struct {
+			ConnectionStringSecret string `yaml:"connection_string_secret"`
 		}
 	}
 	DateFilters struct {
@@ -244,6 +258,33 @@ func (r *configParser) Parse() (config.Config, error) {
 			outMailer.engine = email.DryRunEngine(outMailer.engine)
 		}
 		out.mailers = append(out.mailers, outMailer)
+	}
+	if cfg.Comments != nil {
+		var engine comments_engine.Engine = nil
+		if cfg.Comments.Sqlite3 != nil {
+			connString, err := r.secretSupplier.GetSecret(cfg.Comments.Sqlite3.ConnectionStringSecret)
+			if err != nil {
+				return nil, err
+			}
+			engine, err = sqlite3.NewSqlite3Engine(connString)
+			if err != nil {
+				return nil, err
+			}
+		} else if cfg.Comments.Mysql != nil {
+			connString, err := r.secretSupplier.GetSecret(cfg.Comments.Mysql.ConnectionStringSecret)
+			if err != nil {
+				return nil, err
+			}
+			engine, err = mysql.NewMysqlEngine(connString)
+			if err != nil {
+				return nil, err
+			}
+		}
+		out.comments = &commentsConfig{
+			defaultEnabled: cfg.Comments.DefaultEnabled,
+			service:        comments_service.NewCommentsService(engine),
+			skipOperation:  cfg.Comments.SkipOperation,
+		}
 	}
 	now := time.Now()
 	out.dateFilters = dateFilterConfig{

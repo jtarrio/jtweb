@@ -26,9 +26,11 @@ require (
 	github.com/alecthomas/chroma v0.10.0 // indirect
 	github.com/aymerick/douceur v0.2.0
 	github.com/dlclark/regexp2 v1.9.0 // indirect
+	github.com/go-sql-driver/mysql v1.7.1
 	github.com/gorilla/css v1.0.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/mailerlite/mailerlite-go v1.0.2
+	github.com/mattn/go-sqlite3 v1.14.16
 	golang.org/x/net v0.17.0
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )

@@ -3,6 +3,7 @@ package yamlconfig
 import (
 	"time"
 
+	comments "jacobo.tarrio.org/jtweb/comments/service"
 	"jacobo.tarrio.org/jtweb/config"
 	"jacobo.tarrio.org/jtweb/email"
 	"jacobo.tarrio.org/jtweb/io"
@@ -15,6 +16,7 @@ type parsedConfig struct {
 	author      authorConfig
 	generator   *generatorConfig
 	mailers     []config.MailerConfig
+	comments    *commentsConfig
 	dateFilters dateFilterConfig
 }
 
@@ -51,6 +53,12 @@ type mailerConfig struct {
 	subjectPrefix string
 	engine        email.Engine
 	skipOperation bool
+}
+
+type commentsConfig struct {
+	defaultEnabled bool
+	service        comments.CommentsService
+	skipOperation  bool
 }
 
 type dateFilterConfig struct {
@@ -157,8 +165,20 @@ func (mc *mailerConfig) SkipOperation() bool {
 	return mc.skipOperation
 }
 
-func (c *parsedConfig) Comments() *config.CommentsConfig {
-	return nil
+func (c *parsedConfig) Comments() config.CommentsConfig {
+	return c.comments
+}
+
+func (cc *commentsConfig) DefaultEnabled() bool {
+	return cc.defaultEnabled
+}
+
+func (cc *commentsConfig) Service() comments.CommentsService {
+	return cc.service
+}
+
+func (cc *commentsConfig) SkipOperation() bool {
+	return cc.skipOperation
 }
 
 func (c *parsedConfig) DateFilters() config.DateFilterConfig {

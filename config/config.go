@@ -15,7 +15,7 @@ type Config interface {
 	Author() AuthorConfig
 	Generator() GeneratorConfig
 	Mailers() []MailerConfig
-	Comments() *CommentsConfig
+	Comments() CommentsConfig
 	DateFilters() DateFilterConfig
 }
 
