@@ -142,6 +142,10 @@ func (gc *generatorConfig) SkipOperation() bool {
 	return gc.skipOperation
 }
 
+func (gc *generatorConfig) Present() bool {
+	return gc != nil
+}
+
 func (c *parsedConfig) Mailers() []config.MailerConfig {
 	return c.mailers
 }
@@ -171,6 +175,9 @@ func (c *parsedConfig) Comments() config.CommentsConfig {
 }
 
 func (cc *commentsConfig) DefaultConfig() *page.CommentConfig {
+	if cc == nil {
+		return &page.CommentConfig{Enabled: false, Writable: false}
+	}
 	return cc.defaultConfig
 }
 
@@ -180,6 +187,10 @@ func (cc *commentsConfig) Service() comments.CommentsService {
 
 func (cc *commentsConfig) SkipOperation() bool {
 	return cc.skipOperation
+}
+
+func (cc *commentsConfig) Present() bool {
+	return cc != nil
 }
 
 func (c *parsedConfig) DateFilters() config.DateFilterConfig {

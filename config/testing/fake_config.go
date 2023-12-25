@@ -128,6 +128,10 @@ func (gc *generatorConfig) SkipOperation() bool {
 	return false
 }
 
+func (gc *generatorConfig) Present() bool {
+	return gc != nil
+}
+
 func (c *FakeConfig) Comments() config.CommentsConfig {
 	return nil
 }

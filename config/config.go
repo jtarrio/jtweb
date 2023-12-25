@@ -41,6 +41,7 @@ type GeneratorConfig interface {
 	Output() io.File
 	HideUntranslated() bool
 	SkipOperation() bool
+	Present() bool
 }
 
 type MailerConfig interface {
@@ -55,6 +56,7 @@ type CommentsConfig interface {
 	DefaultConfig() *page.CommentConfig
 	Service() comments.CommentsService
 	SkipOperation() bool
+	Present() bool
 }
 
 type DateFilterConfig interface {

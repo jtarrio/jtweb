@@ -9,12 +9,11 @@ import (
 func OpComments() OpFn {
 	return func(contents *site.RawContents) error {
 		cfg := contents.Config.Comments()
-		defaultConfig := cfg.DefaultConfig()
 		posts := &service.AvailablePosts{Posts: map[comments.PostId]service.CommentConfig{}}
-		for name := range contents.Pages {
+		for name, page := range contents.Pages {
 			cfg := service.CommentConfig{
-				IsAvailable: defaultConfig.Enabled,
-				IsWritable:  defaultConfig.Writable,
+				IsAvailable: page.Header.Comments.Enabled,
+				IsWritable:  page.Header.Comments.Writable,
 			}
 			posts.Posts[comments.PostId(name)] = cfg
 		}

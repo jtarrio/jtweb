@@ -31,12 +31,20 @@ type operation struct {
 
 func getAvailableOperations(cfg config.Config) []operation {
 	ops := []operation{}
-	if cfg.Generator() != nil {
+	if cfg.Generator().Present() {
 		ops = append(ops, operation{
 			name:        "generate",
 			description: "Generate the website",
 			skipped:     cfg.Generator().SkipOperation(),
 			operate:     lib.OpGenerate(),
+		})
+	}
+	if cfg.Comments().Present() {
+		ops = append(ops, operation{
+			name:        "comments",
+			description: "Update database tables for the commenting system",
+			skipped:     cfg.Comments().SkipOperation(),
+			operate:     lib.OpComments(),
 		})
 	}
 	for _, mailer_iter := range cfg.Mailers() {
@@ -47,14 +55,6 @@ func getAvailableOperations(cfg config.Config) []operation {
 			description: fmt.Sprintf("Send emails for '%s' with language '%s' and engine '%s'", mailer.Name(), mailer.Language().Code(), mailer.Engine().Name()),
 			skipped:     mailer.SkipOperation(),
 			operate:     lib.OpEmail(mailer),
-		})
-	}
-	if cfg.Comments() != nil {
-		ops = append(ops, operation{
-			name:        "comments",
-			description: "Update database tables for the commenting system",
-			skipped:     cfg.Comments().SkipOperation(),
-			operate:     lib.OpComments(),
 		})
 	}
 	return ops
