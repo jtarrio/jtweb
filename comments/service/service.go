@@ -16,6 +16,7 @@ type Html = comments.Html
 type CommentsService interface {
 	Get(id PostId) (*CommentList, error)
 	Add(comment *NewComment) (*Comment, error)
+	SetAvailablePosts(posts *AvailablePosts) error
 }
 
 type CommentList struct {
@@ -37,6 +38,15 @@ type NewComment struct {
 	Author string
 	When   time.Time
 	Text   Markdown
+}
+
+type AvailablePosts struct {
+	Posts map[comments.PostId]CommentConfig
+}
+
+type CommentConfig struct {
+	IsAvailable bool
+	IsWritable  bool
 }
 
 func NewCommentsService(engine engine.Engine) CommentsService {
@@ -98,4 +108,18 @@ func (s *commentsServiceImpl) Add(comment *NewComment) (*Comment, error) {
 	}
 	parsed := parseComment(nc)
 	return &parsed, nil
+}
+
+func (s *commentsServiceImpl) SetAvailablePosts(posts *AvailablePosts) error {
+	cfg := &engine.BulkConfig{Configs: make([]engine.Config, 0)}
+	for id, postCfg := range posts.Posts {
+		state := engine.CommentsDisabled
+		if postCfg.IsWritable {
+			state = engine.CommentsEnabled
+		} else if postCfg.IsAvailable {
+			state = engine.CommentsClosed
+		}
+		cfg.Configs = append(cfg.Configs, engine.Config{PostId: id, State: state})
+	}
+	return s.engine.BulkSetConfig(cfg)
 }

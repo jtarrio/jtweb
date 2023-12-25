@@ -5,11 +5,10 @@ import (
 	"fmt"
 	"log"
 	"strings"
-	"time"
 
+	"jacobo.tarrio.org/jtweb/cmd/jtweb/lib"
 	"jacobo.tarrio.org/jtweb/config"
 	"jacobo.tarrio.org/jtweb/config/fromflags"
-	"jacobo.tarrio.org/jtweb/email/generator"
 	"jacobo.tarrio.org/jtweb/site"
 )
 
@@ -27,14 +26,7 @@ type operation struct {
 	name        string
 	description string
 	skipped     bool
-	operate     func(content *site.RawContents) error
-}
-
-func getTimeOrDefault(when *time.Time, def time.Time) *time.Time {
-	if when == nil {
-		return &def
-	}
-	return when
+	operate     lib.OpFn
 }
 
 func getAvailableOperations(cfg config.Config) []operation {
@@ -44,14 +36,7 @@ func getAvailableOperations(cfg config.Config) []operation {
 			name:        "generate",
 			description: "Generate the website",
 			skipped:     cfg.Generator().SkipOperation(),
-			operate: func(rawContent *site.RawContents) error {
-				notAfter := getTimeOrDefault(rawContent.Config.DateFilters().Generate().NotAfter(), rawContent.Config.DateFilters().Now())
-				content, err := rawContent.Index(nil, notAfter)
-				if err != nil {
-					return err
-				}
-				return content.Write()
-			},
+			operate:     lib.OpGenerate(),
 		})
 	}
 	for _, mailer_iter := range cfg.Mailers() {
@@ -61,20 +46,15 @@ func getAvailableOperations(cfg config.Config) []operation {
 			name:        fmt.Sprintf("email=%s", mailer.Name()),
 			description: fmt.Sprintf("Send emails for '%s' with language '%s' and engine '%s'", mailer.Name(), mailer.Language().Code(), mailer.Engine().Name()),
 			skipped:     mailer.SkipOperation(),
-			operate: func(rawContent *site.RawContents) error {
-				notBefore := getTimeOrDefault(rawContent.Config.DateFilters().Mail().NotBefore(), rawContent.Config.DateFilters().Now())
-				notAfter := rawContent.Config.DateFilters().Mail().NotAfter()
-				content, err := rawContent.Index(notBefore, notAfter)
-				if err != nil {
-					return err
-				}
-				return generator.NewEmailGenerator(content, mailer.Language(), mailer.Engine()).
-					WithOptions(
-						generator.NotScheduled(),
-						generator.NamePrefix(mailer.SubjectPrefix()),
-						generator.SubjectPrefix(mailer.SubjectPrefix()),
-					).SendMails()
-			},
+			operate:     lib.OpEmail(mailer),
+		})
+	}
+	if cfg.Comments() != nil {
+		ops = append(ops, operation{
+			name:        "comments",
+			description: "Update database tables for the commenting system",
+			skipped:     cfg.Comments().SkipOperation(),
+			operate:     lib.OpComments(),
 		})
 	}
 	return ops

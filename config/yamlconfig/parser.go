@@ -14,6 +14,7 @@ import (
 	"jacobo.tarrio.org/jtweb/email/mailerlite"
 	"jacobo.tarrio.org/jtweb/io"
 	"jacobo.tarrio.org/jtweb/languages"
+	"jacobo.tarrio.org/jtweb/page"
 	"jacobo.tarrio.org/jtweb/secrets"
 )
 
@@ -52,8 +53,8 @@ type yamlConfig struct {
 		}
 	}
 	Comments *struct {
-		DefaultEnabled bool `yaml:"default_enabled"`
-		SkipOperation  bool `yaml:"skip_operation"`
+		DefaultSetting string `yaml:"default_setting"`
+		SkipOperation  bool   `yaml:"skip_operation"`
 		Sqlite3        *struct {
 			ConnectionStringSecret string `yaml:"connection_string_secret"`
 		}
@@ -280,10 +281,17 @@ func (r *configParser) Parse() (config.Config, error) {
 				return nil, err
 			}
 		}
+		defCfg, err := page.ParseCommentConfig(cfg.Comments.DefaultSetting)
+		if err != nil {
+			return nil, err
+		}
+		if defCfg == nil {
+			defCfg = &page.CommentConfig{Enabled: false, Writable: false}
+		}
 		out.comments = &commentsConfig{
-			defaultEnabled: cfg.Comments.DefaultEnabled,
-			service:        comments_service.NewCommentsService(engine),
-			skipOperation:  cfg.Comments.SkipOperation,
+			defaultConfig: defCfg,
+			service:       comments_service.NewCommentsService(engine),
+			skipOperation: cfg.Comments.SkipOperation,
 		}
 	}
 	now := time.Now()

@@ -8,6 +8,7 @@ import (
 	"jacobo.tarrio.org/jtweb/email"
 	"jacobo.tarrio.org/jtweb/io"
 	"jacobo.tarrio.org/jtweb/languages"
+	"jacobo.tarrio.org/jtweb/page"
 )
 
 type parsedConfig struct {
@@ -56,9 +57,9 @@ type mailerConfig struct {
 }
 
 type commentsConfig struct {
-	defaultEnabled bool
-	service        comments.CommentsService
-	skipOperation  bool
+	defaultConfig *page.CommentConfig
+	service       comments.CommentsService
+	skipOperation bool
 }
 
 type dateFilterConfig struct {
@@ -169,8 +170,8 @@ func (c *parsedConfig) Comments() config.CommentsConfig {
 	return c.comments
 }
 
-func (cc *commentsConfig) DefaultEnabled() bool {
-	return cc.defaultEnabled
+func (cc *commentsConfig) DefaultConfig() *page.CommentConfig {
+	return cc.defaultConfig
 }
 
 func (cc *commentsConfig) Service() comments.CommentsService {

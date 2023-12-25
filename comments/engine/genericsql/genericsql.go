@@ -11,18 +11,12 @@ import (
 	"jacobo.tarrio.org/jtweb/comments/engine"
 )
 
-const commentIdMask int64 = 0x5555555555555555
-
 func int64ToCommentId(id int64) comments.CommentId {
-	return comments.CommentId(strconv.FormatInt(id^commentIdMask, 36))
+	return comments.CommentId(strconv.FormatInt(id, 36))
 }
 
 func commentIdToInt64(id comments.CommentId) (int64, error) {
-	out, err := strconv.ParseInt(string(id), 36, 64)
-	if err != nil {
-		return 0, err
-	}
-	return out ^ commentIdMask, nil
+	return strconv.ParseInt(string(id), 36, 64)
 }
 
 type notFoundError struct {
@@ -68,6 +62,14 @@ func (e *GenericSqlEngine) SetConfig(newConfig, oldConfig *engine.Config) error 
 		return tx.finishTx(fmt.Errorf("old configuration is different from expected for post [%s]", newConfig.PostId))
 	}
 	return tx.finishTx(tx.setConfig(newConfig))
+}
+
+func (e *GenericSqlEngine) BulkSetConfig(cfg *engine.BulkConfig) error {
+	tx, err := e.startTx()
+	if err != nil {
+		return err
+	}
+	return tx.finishTx(tx.bulkSetConfig(cfg))
 }
 
 func (e *GenericSqlEngine) Load(postId comments.PostId) ([]engine.Comment, error) {
@@ -141,6 +143,82 @@ func (tx *etx) setConfig(newConfig *engine.Config) error {
 	defer stmt.Close()
 	_, err = stmt.Exec(newConfig.State, newConfig.PostId)
 	return err
+}
+
+func (tx *etx) bulkSetConfig(cfg *engine.BulkConfig) error {
+	rows, err := tx.tx.Query(`SELECT PostId, State FROM Posts`)
+	if err != nil {
+		return nil
+	}
+	knownPosts := map[engine.PostId]engine.CommentState{}
+	{
+		defer rows.Close()
+		for rows.Next() {
+			var rowPostId string
+			var rowState int
+			err := rows.Scan(&rowPostId, &rowState)
+			if err != nil {
+				return err
+			}
+			knownPosts[comments.PostId(rowPostId)] = engine.CommentState(rowState)
+		}
+	}
+	deleteConfigs := map[engine.PostId]bool{}
+	updateConfigs := map[engine.PostId]engine.CommentState{}
+	addConfigs := map[engine.PostId]engine.CommentState{}
+	for id := range knownPosts {
+		deleteConfigs[id] = true
+	}
+	for _, newConfig := range cfg.Configs {
+		if current, ok := knownPosts[newConfig.PostId]; ok {
+			if current != newConfig.State {
+				updateConfigs[newConfig.PostId] = newConfig.State
+			}
+			delete(deleteConfigs, newConfig.PostId)
+		} else {
+			addConfigs[newConfig.PostId] = newConfig.State
+		}
+	}
+	{
+		stmt, err := tx.tx.Prepare(`INSERT INTO Posts (PostId, State) VALUES (?, ?)`)
+		if err != nil {
+			return err
+		}
+		defer stmt.Close()
+		for id, state := range addConfigs {
+			_, err := stmt.Exec(id, state)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	{
+		stmt, err := tx.tx.Prepare(`UPDATE Posts SET State = ?, StateOverride = NULL WHERE PostId = ?`)
+		if err != nil {
+			return err
+		}
+		defer stmt.Close()
+		for id, state := range updateConfigs {
+			_, err := stmt.Exec(state, id)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	{
+		stmt, err := tx.tx.Prepare(`DELETE FROM Posts WHERE PostId = ?`)
+		if err != nil {
+			return err
+		}
+		defer stmt.Close()
+		for id := range deleteConfigs {
+			_, err := stmt.Exec(id)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func (tx *etx) load(postId comments.PostId) ([]engine.Comment, error) {

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/yuin/goldmark/ast"
@@ -38,7 +39,31 @@ type HeaderData struct {
 	NoIndex         bool
 	OldURI          []string
 	TranslationOf   Name
+	Comments        *CommentConfig
 	Draft           bool
+}
+
+type CommentConfig struct {
+	Enabled  bool
+	Writable bool
+}
+
+// ParseCommentConfig parses the string given to the "comments" field
+func ParseCommentConfig(enabled string) (*CommentConfig, error) {
+	value := strings.ToLower(strings.TrimSpace(enabled))
+	if value == "" {
+		return nil, nil
+	}
+	if value == "false" || value == "off" || value == "no" || value == "disabled" {
+		return &CommentConfig{Enabled: false, Writable: false}, nil
+	}
+	if value == "true" || value == "on" || value == "yes" || value == "enabled" {
+		return &CommentConfig{Enabled: true, Writable: true}, nil
+	}
+	if value == "closed" {
+		return &CommentConfig{Enabled: true, Writable: false}, nil
+	}
+	return nil, fmt.Errorf("unknown comment configuration: %s", enabled)
 }
 
 // Parse reads a page in Markdown format and parses it.
@@ -82,6 +107,7 @@ func parseHeader(hdr []byte) (HeaderData, error) {
 		NoIndex         bool     `yaml:"no_index"`
 		OldURI          []string `yaml:"old_uris"`
 		TranslationOf   string   `yaml:"translation_of"`
+		Comments        string
 		Draft           bool
 	}
 
@@ -122,6 +148,11 @@ func parseHeader(hdr []byte) (HeaderData, error) {
 	out.NoIndex = rawHeader.NoIndex
 	out.OldURI = rawHeader.OldURI
 	out.TranslationOf = Name(rawHeader.TranslationOf)
+	cmtCfg, err := ParseCommentConfig(rawHeader.Comments)
+	if err != nil {
+		return HeaderData{}, err
+	}
+	out.Comments = cmtCfg
 	out.Draft = rawHeader.Draft
 	return out, nil
 }

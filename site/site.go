@@ -76,6 +76,9 @@ func Read(s config.Config) (*RawContents, error) {
 			if err != nil {
 				return fmt.Errorf("error parsing page %s: %v", file.Name(), err)
 			}
+			if page.Header.Comments == nil {
+				page.Header.Comments = s.Comments().DefaultConfig()
+			}
 			pagesByName[page.Name] = page
 		} else if strings.HasSuffix(name, ".tmpl") {
 			templates = append(templates, name[:len(name)-5])

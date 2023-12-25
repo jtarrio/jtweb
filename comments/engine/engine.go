@@ -38,9 +38,14 @@ type NewComment struct {
 	Text   Markdown
 }
 
+type BulkConfig struct {
+	Configs []Config
+}
+
 type Engine interface {
 	GetConfig(postId PostId) (*Config, error)
 	SetConfig(newConfig, oldConfig *Config) error
+	BulkSetConfig(cfg *BulkConfig) error
 	Load(postId PostId) ([]Comment, error)
 	Add(comment *NewComment) (*Comment, error)
 }

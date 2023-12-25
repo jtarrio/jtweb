@@ -7,6 +7,7 @@ import (
 	"jacobo.tarrio.org/jtweb/email"
 	"jacobo.tarrio.org/jtweb/io"
 	"jacobo.tarrio.org/jtweb/languages"
+	"jacobo.tarrio.org/jtweb/page"
 )
 
 type Config interface {
@@ -51,7 +52,7 @@ type MailerConfig interface {
 }
 
 type CommentsConfig interface {
-	DefaultEnabled() bool
+	DefaultConfig() *page.CommentConfig
 	Service() comments.CommentsService
 	SkipOperation() bool
 }
