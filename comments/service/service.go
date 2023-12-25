@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"html"
 	"time"
 
 	"jacobo.tarrio.org/jtweb/comments"
@@ -85,7 +86,7 @@ func parseComment(comment *engine.Comment) Comment {
 		Id:     comment.CommentId,
 		Author: comment.Author,
 		When:   comment.When,
-		Text:   Html(comment.Text),
+		Text:   Html(html.EscapeString(string(comment.Text))),
 	}
 }
 

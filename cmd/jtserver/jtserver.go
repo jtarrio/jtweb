@@ -10,6 +10,7 @@ import (
 )
 
 var flagServerAddress = flag.String("server_address", "127.0.0.1:8080", "The address where the server will be listening.")
+var flagContentRoot = flag.String("content_root", "./", "The location where the static content resides.")
 
 func main() {
 	flag.Parse()
@@ -19,12 +20,13 @@ func main() {
 		panic(err)
 	}
 
-	if cfg.Comments() == nil {
+	if !cfg.Comments().Present() {
 		panic("Comments not configured")
 	}
 
 	mux := http.NewServeMux()
 	mux.Handle("/_/", http.StripPrefix("/_", web.Serve(cfg.Comments().Service())))
+	mux.Handle("/", http.FileServer(http.Dir(*flagContentRoot)))
 	server := &http.Server{Addr: *flagServerAddress, Handler: mux}
 	log.Printf("Now serving on %s", server.Addr)
 	log.Fatal(server.ListenAndServe())
