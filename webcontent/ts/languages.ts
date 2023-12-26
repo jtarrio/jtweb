@@ -57,8 +57,8 @@ const Templates = {
         `,
         'form': `
             <form id="commentform">
-                <p>Your name: <input type="text" name="jtvar authorfield"></p>
-                <p>Comment: <textarea name="jtvar textfield" rows="10" cols="50"></textarea></p>
+                <p>Your name: <input type="text" name="author"></p>
+                <p>Comment: <textarea name="text" rows="10" cols="50"></textarea></p>
                 <input type="submit" value="Submit"><input type="reset" value="Reset">
             </form>
         `,
@@ -76,8 +76,8 @@ const Templates = {
         `,
         'form': `
             <form id="commentform">
-                <p>O teu nome: <input type="text" name="jtvar authorfield"></p>
-                <p>Comentario: <textarea name="jtvar textfield" rows="10" cols="50"></textarea></p>
+                <p>O teu nome: <input type="text" name="author"></p>
+                <p>Comentario: <textarea name="text" rows="10" cols="50"></textarea></p>
                 <input type="submit" value="Enviar"><input type="reset" value="Descartar">
             </form>
         `,
@@ -95,8 +95,8 @@ const Templates = {
         `,
         'form': `
         <form id="commentform">
-            <p>Tu nombre: <input type="text" name="jtvar authorfield"></p>
-            <p>Comentario: <textarea name="jtvar textfield" rows="10" cols="50"></textarea></p>
+            <p>Tu nombre: <input type="text" name="author"></p>
+            <p>Comentario: <textarea name="text" rows="10" cols="50"></textarea></p>
             <input type="submit" value="Enviar"><input type="reset" value="Descartar">
         </form>
         `,

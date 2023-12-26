@@ -23,7 +23,6 @@ function rndName() {
 
 class JtCommentsElement extends HTMLElement {
     apiUrl: string;
-    fields: { author: string, text: string };
     postId: string | null;
     allTemplate: DocumentFragment;
     commentTemplate: DocumentFragment;
@@ -41,10 +40,6 @@ class JtCommentsElement extends HTMLElement {
             baseUrl.pathname += '/';
         }
         this.apiUrl = baseUrl.pathname += '_';
-        this.fields = {
-            author: rndName(),
-            text: rndName(),
-        };
     }
 
     connectedCallback() {
@@ -100,10 +95,6 @@ class JtCommentsElement extends HTMLElement {
 
     private renderForm(elem: Element) {
         let form = this.formTemplate.cloneNode(true) as Element;
-        applyTemplate(form, {
-            'authorfield': this.fields.author,
-            'textfield': this.fields.text,
-        });
         form.querySelector('form')?.addEventListener('submit', e => {
             this.submitComment(e.target as HTMLFormElement);
             e.preventDefault();
@@ -115,8 +106,8 @@ class JtCommentsElement extends HTMLElement {
         let formData = new FormData(form);
         let data = JSON.stringify({
             'PostId': this.postId,
-            'Author': formData.get(this.fields.author),
-            'Text': formData.get(this.fields.text)
+            'Author': formData.get('author'),
+            'Text': formData.get('text'),
         });
         fetch(this.apiUrl + '/add', {method: "POST", body: data}).
         then(_ => this.refresh());

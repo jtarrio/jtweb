@@ -4,6 +4,23 @@
         <script src="comments.js"></script>
     </head>
     <body>
+        <template id="jt-comments">
+            <h1 jtvar="singular_count">1 comment</h1>
+            <h1 jtvar="plural_count"><jtvar count></jtvar> comments</h1>
+            <div jtvar="comments"></div>
+            <div jtvar="newcomment"></div>
+        </template>
+        <template id="jt-comments-entry">
+            <p>By <jtvar author></jtvar> on <a href="jtvar url" name="jtvar anchor"><jtvar when></jtvar></a></p>
+            <p jtvar="text"></p>
+        </template>
+        <template id="jt-comments-form">
+            <form id="commentform">
+                <p>Your name: <input type="text" name="author"></p>
+                <p>Comment: <textarea name="text" rows="10" cols="50"></textarea></p>
+                <input type="submit" value="Submit"><input type="reset" value="Reset">
+            </form>
+        </template>
         <jt-comments post-id="00/1-o-que-non-nos-aprenderon"></jt-comments>
     </body>
 </html>
