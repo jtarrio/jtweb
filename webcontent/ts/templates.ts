@@ -56,16 +56,19 @@ function replacePlaceholder(elem: Element, map: TmplMap) {
                 elem.insertAdjacentText("afterend", replacer.text);
             }
         }
-        elem.remove();
-        return;
+        break;
     }
+    elem.remove();
 }
 
 function fillElement(elem: Element, map: TmplMap) {
     let name = elem.getAttribute('jtvar');
     if (!name) return;
     let replacer = map[name];
-    if (replacer === undefined) return;
+    if (replacer === undefined) {
+        elem.removeAttribute('jtvar');
+        return;
+    }
     if ("function" === typeof replacer) {
         replacer(elem);
     } else if ("string" === typeof replacer) {
@@ -96,8 +99,9 @@ function fillAttributes(elem: Element, map: TmplMap) {
         let name = attr.value.substring(6).trim();
         if (!name) continue;
         let replacer = map[name];
-        if (replacer === undefined) continue;
-        if ("string" === typeof replacer) {
+        if (replacer === undefined) {
+            elem.removeAttribute(attr.name);
+        } else if ("string" === typeof replacer) {
             elem.setAttribute(attr.name, replacer);
         } else if ("object" === typeof replacer && replacer.text !== undefined) {
             elem.setAttribute(attr.name, replacer.text);

@@ -254,7 +254,7 @@ func (tx *etx) load(postId comments.PostId) ([]engine.Comment, error) {
 }
 
 func (tx *etx) add(newComment *engine.NewComment) (*engine.Comment, error) {
-	stmt, err := tx.tx.Prepare(`INSERT INTO Comments (PostId, Author, Date, Text) VALUES (?, ?, ?, ?, ?)`)
+	stmt, err := tx.tx.Prepare(`INSERT INTO Comments (PostId, Author, Date, Text) VALUES (?, ?, ?, ?)`)
 	if err != nil {
 		return nil, err
 	}

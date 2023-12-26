@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"jacobo.tarrio.org/jtweb/comments"
 	"jacobo.tarrio.org/jtweb/comments/service"
@@ -41,6 +42,7 @@ func (s *apiService) add(rw http.ResponseWriter, req *http.Request) {
 	if input(req, &newComment, rw) != nil {
 		return
 	}
+	newComment.When = time.Now()
 	comment, err := s.service.Add(&newComment)
 	output(comment, err, rw)
 }

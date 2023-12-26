@@ -13,8 +13,21 @@ type Comments = {
     }]
 };
 
+function rndName() {
+    let out: string[] = [];
+    for (let i = 0; i < 8; ++i) {
+        out.push(String.fromCharCode(97 + Math.random() * 26));
+    }
+    return out.join('');
+}
+
 class JtCommentsElement extends HTMLElement {
-    _baseUrl: string;
+    apiUrl: string;
+    fields: { author: string, text: string };
+    postId: string | null;
+    allTemplate: DocumentFragment;
+    commentTemplate: DocumentFragment;
+    formTemplate: DocumentFragment;
 
     constructor() {
         super();
@@ -27,13 +40,27 @@ class JtCommentsElement extends HTMLElement {
         if (!baseUrl.pathname.endsWith('/')) {
             baseUrl.pathname += '/';
         }
-        this._baseUrl = baseUrl.pathname += '_';
+        this.apiUrl = baseUrl.pathname += '_';
+        this.fields = {
+            author: rndName(),
+            text: rndName(),
+        };
     }
 
     connectedCallback() {
-        let postId = this.getAttribute('post-id');
-        if (postId === null) return;
-        fetch(this._baseUrl + '/list/' + postId).
+        this.postId = this.getAttribute('post-id');
+        this.allTemplate = this.getTemplate();
+        this.commentTemplate = this.getTemplate('entry');
+        this.formTemplate = this.getTemplate('form');
+        this.refresh();
+    }
+
+    private refresh() {
+        while (this.firstChild != null) {
+            this.removeChild(this.firstChild);
+        }
+        if (this.postId === null) return;
+        fetch(this.apiUrl + '/list/' + this.postId).
             then(response => response.json()).
             then(data => this.render(data)).
             catch(console.log);
@@ -45,9 +72,8 @@ class JtCommentsElement extends HTMLElement {
             return;
         }
 
-        let template = this.getTemplate('comments');
         let numComments = comments.List.length;
-        let block = template.cloneNode(true);
+        let block = this.allTemplate.cloneNode(true);
         applyTemplate(block as Element, {
             'singular_count': (numComments == 1),
             'plural_count': (numComments != 1),
@@ -59,9 +85,8 @@ class JtCommentsElement extends HTMLElement {
     }
 
     private renderComments(list: Element, comments: Comments) {
-        let template = this.getTemplate('comment');
         for (let comment of comments.List) {
-            let row = template.cloneNode(true);
+            let row = this.commentTemplate.cloneNode(true);
             applyTemplate(row as Element, {
                 'author': comment.Author,
                 'when': formatDate(comment.When),
@@ -74,18 +99,35 @@ class JtCommentsElement extends HTMLElement {
     }
 
     private renderForm(elem: Element) {
-        let template = this.getTemplate('commentform');
-        elem.appendChild(template.cloneNode(true));
+        let form = this.formTemplate.cloneNode(true) as Element;
+        applyTemplate(form, {
+            'authorfield': this.fields.author,
+            'textfield': this.fields.text,
+        });
+        form.querySelector('form')?.addEventListener('submit', e => {
+            this.submitComment(e.target as HTMLFormElement);
+            e.preventDefault();
+        });
+        elem.appendChild(form);
     }
 
-    private getTemplate(id: string): DocumentFragment {
-        let template = this.querySelector('#' + id) as HTMLTemplateElement;
-        if (template) {
-            template.remove();
-            return template.content;
-        }
+    private submitComment(form: HTMLFormElement) {
+        let formData = new FormData(form);
+        let data = JSON.stringify({
+            'PostId': this.postId,
+            'Author': formData.get(this.fields.author),
+            'Text': formData.get(this.fields.text)
+        });
+        fetch(this.apiUrl + '/add', {method: "POST", body: data}).
+        then(_ => this.refresh());
+    }
+
+    private getTemplate(id?: string): DocumentFragment {
+        let name = 'jt-comments' + (id ? '-' + id : '');
+        let template = document.getElementById(name) as HTMLTemplateElement;
+        if (template) return template.content;
         template = document.createElement('template');
-        template.innerHTML = getTemplate(id);
+        template.innerHTML = getTemplate(id ? id : 'main');
         return template.content;
     }
 }
