@@ -1,3 +1,6 @@
+import applyTemplate from "./templates";
+import { getTemplate, formatDate } from "./languages";
+
 type Comments = {
     PostId: string,
     IsAvailable: boolean,
@@ -10,102 +13,81 @@ type Comments = {
     }]
 };
 
-(() => {
-    const defaultTemplates = {
-        'comments':
-            `<h1 id="singular_count">1 comment</h1>
-             <h1 id="plural_count"><span id="count"></span> comments</h1>
-             <div id="comments"></div>
-             <div id="entryform">
-                 (Entry form)
-             </div>
-             <div id="noentryform">
-                 (No entry form)
-             </div>`,
-        'comment':
-            `<p>By <span id="author"></span> on <span id="when"></span></p>
-             <p id="text"></p>`,
-    };
+class JtCommentsElement extends HTMLElement {
+    _baseUrl: string;
 
-    let scripts = document.getElementsByTagName('script');
-    let baseUrl = new URL(scripts[scripts.length - 1].attributes['src'].value, window.location.toString());
-    const suffix = "comments.js";
-    if (baseUrl.pathname.endsWith(suffix)) {
-        baseUrl.pathname = baseUrl.pathname.substring(0, baseUrl.pathname.length - suffix.length);
+    constructor() {
+        super();
+        let scripts = document.getElementsByTagName('script');
+        let baseUrl = new URL(scripts[scripts.length - 1].attributes['src'].value, window.location.toString());
+        const suffix = "comments.js";
+        if (baseUrl.pathname.endsWith(suffix)) {
+            baseUrl.pathname = baseUrl.pathname.substring(0, baseUrl.pathname.length - suffix.length);
+        }
+        if (!baseUrl.pathname.endsWith('/')) {
+            baseUrl.pathname += '/';
+        }
+        this._baseUrl = baseUrl.pathname += '_';
     }
-    if (!baseUrl.pathname.endsWith('/')) {
-        baseUrl.pathname += '/';
+
+    connectedCallback() {
+        let postId = this.getAttribute('post-id');
+        if (postId === null) return;
+        fetch(this._baseUrl + '/list/' + postId).
+            then(response => response.json()).
+            then(data => this.render(data)).
+            catch(console.log);
     }
-    baseUrl.pathname += '_';
 
-    customElements.define('jt-comments', class extends HTMLElement {
-        constructor() {
-            super();
+    private render(comments: Comments) {
+        if (!comments.IsAvailable) {
+            this.remove();
+            return;
         }
 
-        connectedCallback() {
-            let postId = this.getAttribute('post-id');
-            if (postId === null) return;
-            fetch(baseUrl + '/list/' + postId).then(response => response.json()).then(data => this._render(data)).catch(console.log);
-        }
+        let template = this.getTemplate('comments');
+        let numComments = comments.List.length;
+        let block = template.cloneNode(true);
+        applyTemplate(block as Element, {
+            'singular_count': (numComments == 1),
+            'plural_count': (numComments != 1),
+            'count': String(numComments),
+            'comments': (c: Element) => { this.renderComments(c, comments); },
+            'newcomment': comments.IsWritable ? (c: Element) => { this.renderForm(c); } : false,
+        });
+        this.appendChild(block);
+    }
 
-        _render(comments: Comments) {
-            let template = this._getTemplate('comments');
-            let block = template.content.cloneNode(true) as ParentNode;
-            let numComments = comments.List.length;
-            this._keepOneChildWithId(block, numComments == 1, 'singular_count', 'plural_count');
-            this._keepOneChildWithId(block, comments.IsWritable, 'entryform', 'noentryform');
-            this._replaceContentWithId(block, 'count', String(comments.List.length));
-            let list = block.querySelector('#comments');
-            if (list) this._renderComments(list, comments);
-            this.appendChild(block);
+    private renderComments(list: Element, comments: Comments) {
+        let template = this.getTemplate('comment');
+        for (let comment of comments.List) {
+            let row = template.cloneNode(true);
+            applyTemplate(row as Element, {
+                'author': comment.Author,
+                'when': formatDate(comment.When),
+                'url': new URL('#c' + comment.Id, window.location.toString()).toString(),
+                'anchor': 'c' + comment.Id,
+                'text': { html: comment.Text },
+            });
+            list.appendChild(row);
         }
+    }
 
-        _renderComments(list: Element, comments: Comments) {
-            let template = this._getTemplate('comment');
-            for (let comment of comments.List) {
-                let row = template.content.cloneNode(true) as ParentNode;
-                this._replaceContentWithId(row, 'author', comment.Author);
-                this._replaceContentWithId(row, 'when', new Date(comment.When).toLocaleString());
-                this._replaceHtmlWithId(row, 'text', comment.Text);
-                list.appendChild(row);
-            }
+    private renderForm(elem: Element) {
+        let template = this.getTemplate('commentform');
+        elem.appendChild(template.cloneNode(true));
+    }
+
+    private getTemplate(id: string): DocumentFragment {
+        let template = this.querySelector('#' + id) as HTMLTemplateElement;
+        if (template) {
+            template.remove();
+            return template.content;
         }
+        template = document.createElement('template');
+        template.innerHTML = getTemplate(id);
+        return template.content;
+    }
+}
 
-        _getTemplate(id: string) {
-            let template = this.querySelector('#' + id) as HTMLTemplateElement;
-            if (template) {
-                template.remove();
-                return template;
-            }
-            template = document.createElement('template');
-            template.innerHTML = defaultTemplates[id];
-            return template;
-        }
-
-        _keepOneChildWithId(parent: ParentNode, selector: boolean, idTrue: string, idFalse: string) {
-            if (selector) {
-                parent.querySelector('#' + idFalse)?.remove();
-                parent.querySelector('#' + idTrue)?.removeAttribute('id');
-            } else {
-                parent.querySelector('#' + idTrue)?.remove();
-                parent.querySelector('#' + idFalse)?.removeAttribute('id');
-            }
-        }
-
-        _replaceContentWithId(parent: ParentNode, id: string, content: string) {
-            for (let child of parent.querySelectorAll('#' + id)) {
-                child.removeAttribute('id');
-                child.textContent = content;    
-            }
-        }
-
-        _replaceHtmlWithId(parent: ParentNode, id: string, content: string) {
-            for (let child of parent.querySelectorAll('#' + id)) {
-                child.removeAttribute('id');
-                child.innerHTML = content;    
-            }
-        }
-
-    });
-})()
+customElements.define('jt-comments', JtCommentsElement);

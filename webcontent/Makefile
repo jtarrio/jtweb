@@ -9,7 +9,7 @@ output:
 output/index.html: html/index.html output
 	cp html/index.html output/
 
-output/comments.js: ts/comments.ts output
+output/comments.js: ts/*.ts output
 	npx rollup -c
 
 .PHONY: clean

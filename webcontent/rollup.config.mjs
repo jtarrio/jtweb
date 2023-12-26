@@ -4,7 +4,7 @@ export default {
     input: 'ts/comments.ts',
     output: {
         file: 'output/comments.js',
-        format: 'cjs',
+        format: 'iife',
     },
     plugins: [typescript({
         compilerOptions: {
