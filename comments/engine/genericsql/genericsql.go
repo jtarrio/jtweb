@@ -40,7 +40,7 @@ func NewGenericSqlEngine(db *sql.DB) engine.Engine {
 }
 
 func (e *GenericSqlEngine) GetConfig(postId comments.PostId) (*engine.Config, error) {
-	tx, err := e.startTx()
+	tx, err := e.startReadTx()
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +50,7 @@ func (e *GenericSqlEngine) GetConfig(postId comments.PostId) (*engine.Config, er
 }
 
 func (e *GenericSqlEngine) SetConfig(newConfig, oldConfig *engine.Config) error {
-	tx, err := e.startTx()
+	tx, err := e.startWriteTx()
 	if err != nil {
 		return err
 	}
@@ -65,25 +65,25 @@ func (e *GenericSqlEngine) SetConfig(newConfig, oldConfig *engine.Config) error 
 }
 
 func (e *GenericSqlEngine) BulkSetConfig(cfg *engine.BulkConfig) error {
-	tx, err := e.startTx()
+	tx, err := e.startWriteTx()
 	if err != nil {
 		return err
 	}
 	return tx.finishTx(tx.bulkSetConfig(cfg))
 }
 
-func (e *GenericSqlEngine) Load(postId comments.PostId) ([]engine.Comment, error) {
-	tx, err := e.startTx()
+func (e *GenericSqlEngine) List(postId comments.PostId, seeDrafts bool) ([]engine.Comment, error) {
+	tx, err := e.startReadTx()
 	if err != nil {
 		return nil, err
 	}
-	cmts, err := tx.load(postId)
+	cmts, err := tx.load(postId, seeDrafts)
 	tx.finishTx(err)
 	return cmts, err
 }
 
 func (e *GenericSqlEngine) Add(newComment *engine.NewComment) (*engine.Comment, error) {
-	tx, err := e.startTx()
+	tx, err := e.startWriteTx()
 	if err != nil {
 		return nil, err
 	}
@@ -96,8 +96,16 @@ type etx struct {
 	tx *sql.Tx
 }
 
-func (e *GenericSqlEngine) startTx() (*etx, error) {
-	tx, err := e.db.BeginTx(context.TODO(), nil)
+func (e *GenericSqlEngine) startReadTx() (*etx, error) {
+	return e.startTx(sql.LevelReadCommitted)
+}
+
+func (e *GenericSqlEngine) startWriteTx() (*etx, error) {
+	return e.startTx(sql.LevelSerializable)
+}
+
+func (e *GenericSqlEngine) startTx(level sql.IsolationLevel) (*etx, error) {
+	tx, err := e.db.BeginTx(context.TODO(), &sql.TxOptions{Isolation: level})
 	if err != nil {
 		return nil, err
 	}
@@ -221,13 +229,13 @@ func (tx *etx) bulkSetConfig(cfg *engine.BulkConfig) error {
 	return nil
 }
 
-func (tx *etx) load(postId comments.PostId) ([]engine.Comment, error) {
-	stmt, err := tx.tx.Prepare(`SELECT PostId, CommentId, Author, Date, Text FROM Comments WHERE PostId = ?`)
+func (tx *etx) load(postId comments.PostId, seeDrafts bool) ([]engine.Comment, error) {
+	stmt, err := tx.tx.Prepare(`SELECT PostId, CommentId, Visible, Author, Date, Text FROM Comments WHERE PostId = ? AND (Visible OR ?)`)
 	if err != nil {
 		return nil, err
 	}
 	defer stmt.Close()
-	rows, err := stmt.Query(postId)
+	rows, err := stmt.Query(postId, seeDrafts)
 	if err != nil {
 		return nil, err
 	}
@@ -236,15 +244,17 @@ func (tx *etx) load(postId comments.PostId) ([]engine.Comment, error) {
 	for rows.Next() {
 		var rowPostId string
 		var rowCommentId int64
+		var rowVisible bool
 		var rowAuthor string
 		var rowWhen time.Time
 		var rowText string
-		if err := rows.Scan(&rowPostId, &rowCommentId, &rowAuthor, &rowWhen, &rowText); err != nil {
+		if err := rows.Scan(&rowPostId, &rowCommentId, &rowVisible, &rowAuthor, &rowWhen, &rowText); err != nil {
 			return nil, err
 		}
 		out = append(out, engine.Comment{
 			PostId:    comments.PostId(rowPostId),
 			CommentId: int64ToCommentId(rowCommentId),
+			Visible:   rowVisible,
 			Author:    rowAuthor,
 			When:      rowWhen,
 			Text:      comments.Markdown(rowText),
@@ -254,12 +264,12 @@ func (tx *etx) load(postId comments.PostId) ([]engine.Comment, error) {
 }
 
 func (tx *etx) add(newComment *engine.NewComment) (*engine.Comment, error) {
-	stmt, err := tx.tx.Prepare(`INSERT INTO Comments (PostId, Author, Date, Text) VALUES (?, ?, ?, ?)`)
+	stmt, err := tx.tx.Prepare(`INSERT INTO Comments (PostId, Visible, Author, Date, Text) VALUES (?, ?, ?, ?, ?)`)
 	if err != nil {
 		return nil, err
 	}
 	defer stmt.Close()
-	result, err := stmt.Exec(newComment.PostId, newComment.Author, newComment.When, newComment.Text)
+	result, err := stmt.Exec(newComment.PostId, newComment.Visible, newComment.Author, newComment.When, newComment.Text)
 	if err != nil {
 		return nil, err
 	}
@@ -270,6 +280,7 @@ func (tx *etx) add(newComment *engine.NewComment) (*engine.Comment, error) {
 	return &engine.Comment{
 		PostId:    newComment.PostId,
 		CommentId: int64ToCommentId(newId),
+		Visible:   newComment.Visible,
 		Author:    newComment.Author,
 		When:      newComment.When,
 		Text:      newComment.Text,

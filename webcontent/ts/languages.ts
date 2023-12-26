@@ -1,3 +1,7 @@
+import * as Data from './languagedata';
+
+export { MessageType } from './languagedata';
+
 function getLanguage() {
     let elem: HTMLElement | null = document.body;
     while (elem != null && elem.lang == '') {
@@ -10,9 +14,17 @@ function getLanguage() {
 }
 
 export function getTemplate(name: string) {
-    let templates = Templates[getLanguage()];
-    if (!templates) templates = Templates['en'];
+    let templates = Data.Templates[getLanguage()];
+    if (!templates) templates = Data.Templates['en'];
     return templates[name];
+}
+
+
+export function getMessage(msg: Data.MessageType) {
+    let msgs = Data.Messages[getLanguage()];
+    if (!msgs) msgs = Data.Messages['en'];
+    let out = msgs[msg];
+    return out === undefined ? '[unknown message: ' + Data.MessageType[msg] + ']' : out;
 }
 
 export function formatDate(date: string) {
@@ -43,62 +55,3 @@ export function formatDate(date: string) {
     }
 }
 
-const Templates = {
-    'en': {
-        'main': `
-            <h1 jtvar="singular_count">1 comment</h1>
-            <h1 jtvar="plural_count"><jtvar count></jtvar> comments</h1>
-            <div jtvar="comments"></div>
-            <div jtvar="newcomment"></div>
-        `,
-        'entry': `
-            <p>By <jtvar author></jtvar> on <a href="jtvar url" name="jtvar anchor"><jtvar when></jtvar></a></p>
-            <p jtvar="text"></p>
-        `,
-        'form': `
-            <form id="commentform">
-                <p>Your name: <input type="text" name="author"></p>
-                <p>Comment: <textarea name="text" rows="10" cols="50"></textarea></p>
-                <input type="submit" value="Submit"><input type="reset" value="Reset">
-            </form>
-        `,
-    },
-    'gl': {
-        'main': `
-            <h1 jtvar="singular_count">1 comentario</h1>
-            <h1 jtvar="plural_count"><jtvar count></jtvar> comentarios</h1>
-            <div jtvar="comments"></div>
-            <div jtvar="newcomment"></div>
-        `,
-        'entry': `
-            <p>Por <jtvar author></jtvar> o <a href="jtvar url" name="jtvar anchor"><jtvar when></jtvar></a></p>
-            <p jtvar="text"></p>
-        `,
-        'form': `
-            <form id="commentform">
-                <p>O teu nome: <input type="text" name="author"></p>
-                <p>Comentario: <textarea name="text" rows="10" cols="50"></textarea></p>
-                <input type="submit" value="Enviar"><input type="reset" value="Descartar">
-            </form>
-        `,
-    },
-    'es': {
-        'main': `
-            <h1 jtvar="singular_count">1 comentario</h1>
-            <h1 jtvar="plural_count"><jtvar count></jtvar> comentarios</h1>
-            <div jtvar="comments"></div>
-            <div jtvar="newcomment"></div>
-        `,
-        'entry': `
-            <p>Por <jtvar author></jtvar> el <a href="jtvar url" name="jtvar anchor"><jtvar when></jtvar></a></p>
-            <p jtvar="text"></p>
-        `,
-        'form': `
-        <form id="commentform">
-            <p>Tu nombre: <input type="text" name="author"></p>
-            <p>Comentario: <textarea name="text" rows="10" cols="50"></textarea></p>
-            <input type="submit" value="Enviar"><input type="reset" value="Descartar">
-        </form>
-        `,
-    },
-}

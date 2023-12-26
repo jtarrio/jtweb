@@ -26,16 +26,18 @@ type Config struct {
 type Comment struct {
 	PostId    PostId
 	CommentId CommentId
+	Visible   bool
 	Author    string
 	When      time.Time
 	Text      Markdown
 }
 
 type NewComment struct {
-	PostId PostId
-	Author string
-	When   time.Time
-	Text   Markdown
+	PostId  PostId
+	Visible bool
+	Author  string
+	When    time.Time
+	Text    Markdown
 }
 
 type BulkConfig struct {
@@ -46,6 +48,6 @@ type Engine interface {
 	GetConfig(postId PostId) (*Config, error)
 	SetConfig(newConfig, oldConfig *Config) error
 	BulkSetConfig(cfg *BulkConfig) error
-	Load(postId PostId) ([]Comment, error)
+	List(postId PostId, seeDrafts bool) ([]Comment, error)
 	Add(comment *NewComment) (*Comment, error)
 }

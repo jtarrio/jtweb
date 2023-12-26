@@ -54,6 +54,7 @@ type yamlConfig struct {
 	}
 	Comments *struct {
 		DefaultSetting string `yaml:"default_setting"`
+		PostAsDraft    bool   `yaml:"post_as_draft"`
 		SkipOperation  bool   `yaml:"skip_operation"`
 		Sqlite3        *struct {
 			ConnectionStringSecret string `yaml:"connection_string_secret"`
@@ -288,9 +289,13 @@ func (r *configParser) Parse() (config.Config, error) {
 		if defCfg == nil {
 			defCfg = &page.CommentConfig{Enabled: false, Writable: false}
 		}
+		options := []comments_service.CommentsServiceOptions{}
+		if cfg.Comments.PostAsDraft {
+			options = append(options, comments_service.PostAsDraft())
+		}
 		out.comments = &commentsConfig{
 			defaultConfig: defCfg,
-			service:       comments_service.NewCommentsService(engine),
+			service:       comments_service.NewCommentsService(engine, options...),
 			skipOperation: cfg.Comments.SkipOperation,
 		}
 	}

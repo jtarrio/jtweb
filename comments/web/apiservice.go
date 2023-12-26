@@ -33,7 +33,7 @@ func Serve(service service.CommentsService) http.Handler {
 
 func (s *apiService) list(rw http.ResponseWriter, req *http.Request) {
 	postId := comments.PostId(strings.TrimPrefix(req.URL.Path, "/"))
-	list, err := s.service.Get(postId)
+	list, err := s.service.List(postId, false)
 	output(list, err, rw)
 }
 

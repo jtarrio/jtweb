@@ -1,16 +1,19 @@
 import applyTemplate from "./templates";
-import { getTemplate, formatDate } from "./languages";
+import * as Lang from "./languages";
 
 type Comments = {
     PostId: string,
     IsAvailable: boolean,
     IsWritable: boolean,
-    List: [{
-        Id: string,
-        Author: string,
-        When: string,
-        Text: string
-    }]
+    List: Comment[],
+};
+
+type Comment = {
+    Id: string,
+    Visible: string,
+    Author: string,
+    When: string,
+    Text: string,
 };
 
 function rndName() {
@@ -50,15 +53,15 @@ class JtCommentsElement extends HTMLElement {
         this.refresh();
     }
 
-    private refresh() {
+    private async refresh() {
         while (this.firstChild != null) {
             this.removeChild(this.firstChild);
         }
         if (this.postId === null) return;
-        fetch(this.apiUrl + '/list/' + this.postId).
-            then(response => response.json()).
-            then(data => this.render(data)).
-            catch(console.log);
+        let response = await fetch(this.apiUrl + '/list/' + this.postId);
+        if (response.status == 200) {
+            this.render(await response.json());
+        }
     }
 
     private render(comments: Comments) {
@@ -84,7 +87,7 @@ class JtCommentsElement extends HTMLElement {
             let row = this.commentTemplate.cloneNode(true);
             applyTemplate(row as Element, {
                 'author': comment.Author,
-                'when': formatDate(comment.When),
+                'when': Lang.formatDate(comment.When),
                 'url': new URL('#c' + comment.Id, window.location.toString()).toString(),
                 'anchor': 'c' + comment.Id,
                 'text': { html: comment.Text },
@@ -102,15 +105,27 @@ class JtCommentsElement extends HTMLElement {
         elem.appendChild(form);
     }
 
-    private submitComment(form: HTMLFormElement) {
+    private async submitComment(form: HTMLFormElement) {
         let formData = new FormData(form);
         let data = JSON.stringify({
             'PostId': this.postId,
             'Author': formData.get('author'),
             'Text': formData.get('text'),
         });
-        fetch(this.apiUrl + '/add', {method: "POST", body: data}).
-        then(_ => this.refresh());
+        let response = await fetch(this.apiUrl + '/add', { method: "POST", body: data });
+        let msg = Lang.MessageType.ErrorPostingComment;
+        if (response.status == 200) {
+            form.reset();
+            let comment = await response.json();
+            if (comment.Visible) {
+                this.refresh();
+                return;
+            }
+            msg = Lang.MessageType.CommentPostedAsDraft;
+        }
+        let p = document.createElement('p');
+        p.textContent = Lang.getMessage(Lang.MessageType.CommentPostedAsDraft);
+        form.insertAdjacentElement("beforebegin", p);
     }
 
     private getTemplate(id?: string): DocumentFragment {
@@ -118,7 +133,7 @@ class JtCommentsElement extends HTMLElement {
         let template = document.getElementById(name) as HTMLTemplateElement;
         if (template) return template.content;
         template = document.createElement('template');
-        template.innerHTML = getTemplate(id ? id : 'main');
+        template.innerHTML = Lang.getTemplate(id ? id : 'main');
         return template.content;
     }
 }

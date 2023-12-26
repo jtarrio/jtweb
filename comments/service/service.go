@@ -15,7 +15,7 @@ type Markdown = comments.Markdown
 type Html = comments.Html
 
 type CommentsService interface {
-	Get(id PostId) (*CommentList, error)
+	List(id PostId, seeDrafts bool) (*CommentList, error)
 	Add(comment *NewComment) (*Comment, error)
 	SetAvailablePosts(posts *AvailablePosts) error
 }
@@ -28,10 +28,11 @@ type CommentList struct {
 }
 
 type Comment struct {
-	Id     CommentId
-	Author string
-	When   time.Time
-	Text   Html
+	Id      CommentId
+	Visible bool
+	Author  string
+	When    time.Time
+	Text    Html
 }
 
 type NewComment struct {
@@ -50,15 +51,28 @@ type CommentConfig struct {
 	IsWritable  bool
 }
 
-func NewCommentsService(engine engine.Engine) CommentsService {
-	return &commentsServiceImpl{engine: engine}
+func NewCommentsService(engine engine.Engine, options ...CommentsServiceOptions) CommentsService {
+	service := &commentsServiceImpl{engine: engine, defaultVisible: true}
+	for _, option := range options {
+		option(service)
+	}
+	return service
+}
+
+type CommentsServiceOptions func(*commentsServiceImpl)
+
+func PostAsDraft() CommentsServiceOptions {
+	return func(s *commentsServiceImpl) {
+		s.defaultVisible = false
+	}
 }
 
 type commentsServiceImpl struct {
-	engine engine.Engine
+	engine         engine.Engine
+	defaultVisible bool
 }
 
-func (s *commentsServiceImpl) Get(id PostId) (*CommentList, error) {
+func (s *commentsServiceImpl) List(id PostId, seeDrafts bool) (*CommentList, error) {
 	cfg, err := s.engine.GetConfig(id)
 	if err != nil {
 		return nil, err
@@ -71,7 +85,7 @@ func (s *commentsServiceImpl) Get(id PostId) (*CommentList, error) {
 	if !out.IsAvailable {
 		return out, nil
 	}
-	list, err := s.engine.Load(id)
+	list, err := s.engine.List(id, seeDrafts)
 	if err != nil {
 		return nil, err
 	}
@@ -83,10 +97,11 @@ func (s *commentsServiceImpl) Get(id PostId) (*CommentList, error) {
 
 func parseComment(comment *engine.Comment) Comment {
 	return Comment{
-		Id:     comment.CommentId,
-		Author: comment.Author,
-		When:   comment.When,
-		Text:   Html(html.EscapeString(string(comment.Text))),
+		Id:      comment.CommentId,
+		Visible: comment.Visible,
+		Author:  comment.Author,
+		When:    comment.When,
+		Text:    Html(html.EscapeString(string(comment.Text))),
 	}
 }
 
@@ -99,10 +114,11 @@ func (s *commentsServiceImpl) Add(comment *NewComment) (*Comment, error) {
 		return nil, fmt.Errorf("comments are closed for post [%s]", comment.PostId)
 	}
 	nc, err := s.engine.Add(&engine.NewComment{
-		PostId: comment.PostId,
-		Author: comment.Author,
-		When:   comment.When,
-		Text:   comment.Text,
+		PostId:  comment.PostId,
+		Visible: s.defaultVisible,
+		Author:  comment.Author,
+		When:    comment.When,
+		Text:    comment.Text,
 	})
 	if err != nil {
 		return nil, err
