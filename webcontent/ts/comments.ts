@@ -16,14 +16,6 @@ type Comment = {
     Text: string,
 };
 
-function rndName() {
-    let out: string[] = [];
-    for (let i = 0; i < 8; ++i) {
-        out.push(String.fromCharCode(97 + Math.random() * 26));
-    }
-    return out.join('');
-}
-
 class JtCommentsElement extends HTMLElement {
     apiUrl: string;
     postId: string | null;

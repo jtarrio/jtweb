@@ -1,15 +1,12 @@
-all: output/index.html output/comments.js
+all: generated/comments.js
 
 clean:
-	rm -fR output
+	rm -fR generated
 
-output:
-	mkdir output
+generated:
+	mkdir generated
 
-output/index.html: html/index.html output
-	cp html/index.html output/
-
-output/comments.js: ts/*.ts output
+generated/comments.js: ts/*.ts generated
 	npx rollup -c
 
 .PHONY: clean
