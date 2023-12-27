@@ -1,10 +1,11 @@
 package yamlconfig
 
 import (
+	"bytes"
 	"fmt"
 	"time"
 
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 	comments_engine "jacobo.tarrio.org/jtweb/comments/engine"
 	"jacobo.tarrio.org/jtweb/comments/engine/mysql"
 	"jacobo.tarrio.org/jtweb/comments/engine/sqlite3"
@@ -146,14 +147,16 @@ func OverrideDryRun(dryRun bool) configParserOption {
 }
 
 func (r *configParser) Parse() (config.Config, error) {
-	var cfg = &yamlConfig{}
-	err := yaml.UnmarshalStrict(r.source, cfg)
+	var cfg = yamlConfig{}
+	decoder := yaml.NewDecoder(bytes.NewReader(r.source))
+	decoder.KnownFields(true)
+	err := decoder.Decode(&cfg)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, option := range r.options {
-		option(cfg)
+		option(&cfg)
 	}
 
 	var out = &parsedConfig{}

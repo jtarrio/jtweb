@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/yuin/goldmark/ast"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 	"jacobo.tarrio.org/jtweb/languages"
 	"jacobo.tarrio.org/jtweb/renderer"
 )
@@ -111,8 +111,10 @@ func parseHeader(hdr []byte) (HeaderData, error) {
 		Draft           bool
 	}
 
-	rawHeader := &headerYaml{}
-	err := yaml.UnmarshalStrict(hdr, rawHeader)
+	rawHeader := headerYaml{}
+	decoder := yaml.NewDecoder(bytes.NewReader(hdr))
+	decoder.KnownFields(true)
+	err := decoder.Decode(&rawHeader)
 	if err != nil {
 		return out, err
 	}
