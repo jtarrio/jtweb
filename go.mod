@@ -17,7 +17,6 @@ require (
 	github.com/PuerkitoBio/goquery v1.8.1 // indirect
 	github.com/andybalholm/cascadia v1.3.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20220521103104-8f96da9f5d5e // indirect
 )
@@ -29,10 +28,7 @@ require (
 	github.com/go-sql-driver/mysql v1.7.1
 	github.com/gorilla/css v1.0.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
-	github.com/mailerlite/mailerlite-go v1.0.2
 	github.com/mattn/go-sqlite3 v1.14.16
 	golang.org/x/net v0.17.0
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )
-
-replace github.com/mailerlite/mailerlite-go => ./email/mailerlitev2/mailerlite-go
