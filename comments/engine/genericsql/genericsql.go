@@ -121,15 +121,15 @@ func (tx *etx) finishTx(err error) error {
 }
 
 func (tx *etx) getConfig(postId comments.PostId) (*engine.Config, error) {
-	stmt, err := tx.tx.Prepare(`SELECT PostId, State, StateOverride FROM Posts WHERE PostId = ?`)
+	stmt, err := tx.tx.Prepare(`SELECT PostId, State, StateFromWeb FROM Posts WHERE PostId = ?`)
 	if err != nil {
 		return nil, err
 	}
 	defer stmt.Close()
 	var rowPostId string
 	var rowState int
-	var rowStateOverride sql.NullInt16
-	err = stmt.QueryRow(string(postId)).Scan(&rowPostId, &rowState, &rowStateOverride)
+	var rowStateFromWeb sql.NullInt16
+	err = stmt.QueryRow(string(postId)).Scan(&rowPostId, &rowState, &rowStateFromWeb)
 	if err == sql.ErrNoRows {
 		return nil, notFound(postId)
 	}
@@ -137,14 +137,14 @@ func (tx *etx) getConfig(postId comments.PostId) (*engine.Config, error) {
 		PostId: comments.PostId(rowPostId),
 		State:  engine.CommentState(rowState),
 	}
-	if rowStateOverride.Valid {
-		cfg.State = engine.CommentState(rowStateOverride.Int16)
+	if rowStateFromWeb.Valid {
+		cfg.State = engine.CommentState(rowStateFromWeb.Int16)
 	}
 	return cfg, nil
 }
 
 func (tx *etx) setConfig(newConfig *engine.Config) error {
-	stmt, err := tx.tx.Prepare(`UPDATE Posts SET StateOverride = ? WHERE PostId = ?`)
+	stmt, err := tx.tx.Prepare(`UPDATE Posts SET StateFromWeb = ? WHERE PostId = ?`)
 	if err != nil {
 		return err
 	}
@@ -201,7 +201,7 @@ func (tx *etx) bulkSetConfig(cfg *engine.BulkConfig) error {
 		}
 	}
 	{
-		stmt, err := tx.tx.Prepare(`UPDATE Posts SET State = ?, StateOverride = NULL WHERE PostId = ?`)
+		stmt, err := tx.tx.Prepare(`UPDATE Posts SET State = ?, StateFromWeb = NULL WHERE PostId = ?`)
 		if err != nil {
 			return err
 		}

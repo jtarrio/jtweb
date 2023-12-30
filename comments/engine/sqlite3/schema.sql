@@ -1,7 +1,7 @@
 CREATE TABLE Posts (
     PostId TEXT NOT NULL PRIMARY KEY,
     State INTEGER NOT NULL,
-    StateOverride INTEGER NULL);
+    StateFromWeb INTEGER NULL);
 
 CREATE TABLE Comments (
     PostId TEXT NOT NULL,
