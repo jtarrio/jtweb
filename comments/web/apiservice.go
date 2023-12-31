@@ -2,19 +2,24 @@ package web
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
+
+	"golang.org/x/time/rate"
 
 	"jacobo.tarrio.org/jtweb/comments"
 	"jacobo.tarrio.org/jtweb/comments/service"
 )
 
 type apiService struct {
-	service  service.CommentsService
-	handlers map[handlerPath]http.HandlerFunc
+	service       service.CommentsService
+	handlers      map[handlerPath]http.HandlerFunc
+	renderLimiter *rate.Limiter
 }
 
 type handlerPath struct {
@@ -23,7 +28,10 @@ type handlerPath struct {
 }
 
 func Serve(service service.CommentsService) http.Handler {
-	out := &apiService{service: service}
+	out := &apiService{
+		service:       service,
+		renderLimiter: rate.NewLimiter(1, 10),
+	}
 	out.handlers = map[handlerPath]http.HandlerFunc{
 		{prefix: "/list/", method: http.MethodGet}:   out.list,
 		{prefix: "/add", method: http.MethodPost}:    out.add,
@@ -49,6 +57,9 @@ func (s *apiService) add(rw http.ResponseWriter, req *http.Request) {
 }
 
 func (s *apiService) render(rw http.ResponseWriter, req *http.Request) {
+	if limitRate(s.renderLimiter, rw) != nil {
+		return
+	}
 	var inputData struct{ Text comments.Markdown }
 	if input(req, &inputData, rw) != nil {
 		return
@@ -69,6 +80,22 @@ func (s *apiService) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		}
 	}
 	badRequest("invalid URL", rw)
+}
+
+func limitRate(limiter *rate.Limiter, rw http.ResponseWriter) error {
+	allowed := float64(limiter.Limit() * 60)
+	remaining := limiter.Tokens()
+	rw.Header().Add("X-RateLimit-Limit", fmt.Sprintf("%.0f", math.Floor(allowed)))
+	rw.Header().Add("X-RateLimit-Remaining", fmt.Sprintf("%.0f", math.Floor(remaining)))
+	resv := limiter.Reserve()
+	delay := resv.Delay()
+	if delay.Nanoseconds() != 0 {
+		rw.Header().Add("Retry-After", fmt.Sprint(int(math.Ceil(delay.Seconds()))))
+		rw.WriteHeader(http.StatusTooManyRequests)
+		resv.Cancel()
+		return fmt.Errorf("rate limit exceeded, retry after %f seconds", delay.Seconds())
+	}
+	return nil
 }
 
 func output(what any, err error, rw http.ResponseWriter) {
