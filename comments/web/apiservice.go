@@ -25,8 +25,9 @@ type handlerPath struct {
 func Serve(service service.CommentsService) http.Handler {
 	out := &apiService{service: service}
 	out.handlers = map[handlerPath]http.HandlerFunc{
-		{prefix: "/list/", method: http.MethodGet}: out.list,
-		{prefix: "/add", method: http.MethodPost}:  out.add,
+		{prefix: "/list/", method: http.MethodGet}:   out.list,
+		{prefix: "/add", method: http.MethodPost}:    out.add,
+		{prefix: "/render", method: http.MethodPost}: out.render,
 	}
 	return out
 }
@@ -45,6 +46,15 @@ func (s *apiService) add(rw http.ResponseWriter, req *http.Request) {
 	newComment.When = time.Now()
 	comment, err := s.service.Add(&newComment)
 	output(comment, err, rw)
+}
+
+func (s *apiService) render(rw http.ResponseWriter, req *http.Request) {
+	var inputData struct{ Text comments.Markdown }
+	if input(req, &inputData, rw) != nil {
+		return
+	}
+	outputData, err := s.service.Render(comments.Markdown(inputData.Text))
+	output(struct{ Text comments.Html }{Text: outputData}, err, rw)
 }
 
 func (s *apiService) ServeHTTP(rw http.ResponseWriter, req *http.Request) {

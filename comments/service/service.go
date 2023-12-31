@@ -16,6 +16,7 @@ type Html = comments.Html
 type CommentsService interface {
 	List(id PostId, seeDrafts bool) (*CommentList, error)
 	Add(comment *NewComment) (*Comment, error)
+	Render(text Markdown) (Html, error)
 	SetAvailablePosts(posts *AvailablePosts) error
 }
 
@@ -139,6 +140,10 @@ func (s *commentsServiceImpl) Add(comment *NewComment) (*Comment, error) {
 		return nil, err
 	}
 	return s.parseComment(nc)
+}
+
+func (s *commentsServiceImpl) Render(text Markdown) (Html, error) {
+	return s.renderer.Render(text)
 }
 
 func (s *commentsServiceImpl) SetAvailablePosts(posts *AvailablePosts) error {
