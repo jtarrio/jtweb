@@ -292,7 +292,9 @@ func (r *configParser) Parse() (config.Config, error) {
 		if defCfg == nil {
 			defCfg = &page.CommentConfig{Enabled: false, Writable: false}
 		}
-		options := []comments_service.CommentsServiceOptions{}
+		options := []comments_service.CommentsServiceOptions{
+			comments_service.WithRenderer(comments_service.NewMarkdownRenderer()),
+		}
 		if cfg.Comments.PostAsDraft {
 			options = append(options, comments_service.PostAsDraft())
 		}

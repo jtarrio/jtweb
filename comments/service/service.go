@@ -2,7 +2,6 @@ package service
 
 import (
 	"fmt"
-	"html"
 	"time"
 
 	"jacobo.tarrio.org/jtweb/comments"
@@ -24,7 +23,7 @@ type CommentList struct {
 	PostId      PostId
 	IsAvailable bool
 	IsWritable  bool
-	List        []Comment
+	List        []*Comment
 }
 
 type Comment struct {
@@ -52,7 +51,7 @@ type CommentConfig struct {
 }
 
 func NewCommentsService(engine engine.Engine, options ...CommentsServiceOptions) CommentsService {
-	service := &commentsServiceImpl{engine: engine, defaultVisible: true}
+	service := &commentsServiceImpl{engine: engine, renderer: NewEscapeRenderer(), defaultVisible: true}
 	for _, option := range options {
 		option(service)
 	}
@@ -67,8 +66,15 @@ func PostAsDraft() CommentsServiceOptions {
 	}
 }
 
+func WithRenderer(renderer Renderer) CommentsServiceOptions {
+	return func(s *commentsServiceImpl) {
+		s.renderer = renderer
+	}
+}
+
 type commentsServiceImpl struct {
 	engine         engine.Engine
+	renderer       Renderer
 	defaultVisible bool
 }
 
@@ -81,7 +87,7 @@ func (s *commentsServiceImpl) List(id PostId, seeDrafts bool) (*CommentList, err
 		PostId:      id,
 		IsAvailable: cfg.State != engine.CommentsDisabled,
 		IsWritable:  cfg.State == engine.CommentsEnabled,
-		List:        []Comment{}}
+		List:        []*Comment{}}
 	if !out.IsAvailable {
 		return out, nil
 	}
@@ -90,19 +96,28 @@ func (s *commentsServiceImpl) List(id PostId, seeDrafts bool) (*CommentList, err
 		return nil, err
 	}
 	for _, comment := range list {
-		out.List = append(out.List, parseComment(&comment))
+		cmt, err := s.parseComment(&comment)
+		if err != nil {
+			return nil, err
+		}
+		out.List = append(out.List, cmt)
 	}
 	return out, nil
 }
 
-func parseComment(comment *engine.Comment) Comment {
-	return Comment{
+func (s *commentsServiceImpl) parseComment(comment *engine.Comment) (*Comment, error) {
+	html, err := s.renderer.Render(comment.Text)
+	if err != nil {
+		return nil, err
+	}
+	cmt := &Comment{
 		Id:      comment.CommentId,
 		Visible: comment.Visible,
 		Author:  comment.Author,
 		When:    comment.When,
-		Text:    Html(html.EscapeString(string(comment.Text))),
+		Text:    html,
 	}
+	return cmt, nil
 }
 
 func (s *commentsServiceImpl) Add(comment *NewComment) (*Comment, error) {
@@ -123,8 +138,7 @@ func (s *commentsServiceImpl) Add(comment *NewComment) (*Comment, error) {
 	if err != nil {
 		return nil, err
 	}
-	parsed := parseComment(nc)
-	return &parsed, nil
+	return s.parseComment(nc)
 }
 
 func (s *commentsServiceImpl) SetAvailablePosts(posts *AvailablePosts) error {
