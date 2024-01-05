@@ -252,6 +252,69 @@
         }
     }
 
+    function setup(params) {
+        new Preview(params.apiUrl, params.input, params.output, params.container || params.output, params.toggle);
+    }
+    class Preview {
+        apiUrl;
+        input;
+        output;
+        container;
+        constructor(apiUrl, input, output, container, toggle) {
+            this.apiUrl = apiUrl;
+            this.input = input;
+            this.output = output;
+            this.container = container;
+            this.previewFn = _ => this.launchPreview();
+            this.timeout = undefined;
+            this.lastPreview = '';
+            toggle.addEventListener('click', _ => this.togglePreview());
+        }
+        static PreviewInterval = 1000;
+        previewFn;
+        timeout;
+        lastPreview;
+        visible() {
+            return this.container.classList.contains('jtPreview');
+        }
+        togglePreview() {
+            if (this.visible()) {
+                this.input.removeEventListener('input', this.previewFn);
+                while (true) {
+                    let child = this.output.firstChild;
+                    if (!child)
+                        break;
+                    child.remove();
+                }
+                this.container.classList.remove('jtPreview');
+                return;
+            }
+            this.container.classList.add('jtPreview');
+            this.input.addEventListener('input', this.previewFn);
+            this.doPreview();
+        }
+        launchPreview() {
+            if (this.timeout !== undefined)
+                return;
+            this.timeout = setTimeout(() => this.doPreview(), Preview.PreviewInterval);
+        }
+        async doPreview() {
+            if (!this.visible())
+                return;
+            let text = this.input.value;
+            if (this.lastPreview == text)
+                return;
+            this.timeout = undefined;
+            let content = JSON.stringify({ 'Text': text });
+            let data = await fetch(this.apiUrl + '/render', { method: 'POST', body: content });
+            if (data.status != 200)
+                return;
+            let result = await data.json();
+            this.lastPreview = text;
+            this.output.innerHTML = result['Text'];
+        }
+    }
+
     class JtCommentsElement extends HTMLElement {
         apiUrl;
         postId;
@@ -324,6 +387,19 @@
                 this.submitComment(e.target);
                 e.preventDefault();
             });
+            let commentBox = form.querySelector('#jtComment');
+            let previewButton = form.querySelector('#jtPreviewButton');
+            let previewBox = form.querySelector('#jtPreviewBox');
+            let containerBox = form.querySelector('#jtPreviewContainer');
+            if (commentBox && previewButton && previewBox) {
+                setup({
+                    toggle: previewButton,
+                    input: commentBox,
+                    output: previewBox,
+                    container: containerBox,
+                    apiUrl: this.apiUrl
+                });
+            }
             elem.appendChild(form);
         }
         async submitComment(form) {

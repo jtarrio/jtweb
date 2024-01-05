@@ -1,5 +1,6 @@
 import applyTemplate from "./templates";
 import * as Lang from "./languages";
+import * as Preview from "./preview";
 
 type Comments = {
     PostId: string,
@@ -94,6 +95,19 @@ class JtCommentsElement extends HTMLElement {
             this.submitComment(e.target as HTMLFormElement);
             e.preventDefault();
         });
+        let commentBox = form.querySelector('#jtComment');
+        let previewButton = form.querySelector('#jtPreviewButton');
+        let previewBox = form.querySelector('#jtPreviewBox');
+        let containerBox = form.querySelector('#jtPreviewContainer')
+        if (commentBox && previewButton && previewBox) {
+            Preview.setup({
+                toggle: previewButton as HTMLElement,
+                input: commentBox as HTMLTextAreaElement,
+                output: previewBox as HTMLElement,
+                container: containerBox as HTMLElement | null,
+                apiUrl: this.apiUrl
+            });
+        }
         elem.appendChild(form);
     }
 

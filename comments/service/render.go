@@ -43,7 +43,22 @@ func NewMarkdownRenderer() Renderer {
 				extension.Typographer,
 			),
 		),
-		sanitizer: bluemonday.UGCPolicy()}
+		sanitizer: commentPolicy()}
+}
+
+func commentPolicy() *bluemonday.Policy {
+	p := bluemonday.StrictPolicy()
+	p.AllowStandardAttributes()
+	p.AllowStandardURLs()
+	p.RequireParseableURLs(true)
+	p.AllowElements("br", "div", "hr", "p", "span", "wbr")
+	p.AllowAttrs("href").OnElements("a")
+	p.RequireNoFollowOnLinks(true)
+	p.AllowElements("abbr", "acronym", "cite", "code", "dfn", "em",
+		"figcaption", "mark", "s", "samp", "strong", "sub", "sup", "var")
+	p.AllowElements("b", "i", "pre", "small", "strike", "tt", "u")
+	p.AllowLists()
+	return p
 }
 
 func (r *markdownRenderer) Render(src comments.Markdown) (comments.Html, error) {
