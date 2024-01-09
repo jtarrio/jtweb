@@ -1,16 +1,18 @@
+import { UserApi } from "./api";
+
 export function setup(params: {
     toggle: HTMLElement,
     input: HTMLTextAreaElement,
     output: HTMLElement,
     container: HTMLElement | null,
-    apiUrl: string
+    api: UserApi
 }) {
-    new Preview(params.apiUrl, params.input, params.output, params.container || params.output, params.toggle);
+    new Preview(params.api, params.input, params.output, params.container || params.output, params.toggle);
 }
 
 class Preview {
     constructor(
-        private apiUrl: string,
+        private api: UserApi,
         private input: HTMLTextAreaElement,
         private output: HTMLElement,
         private container: HTMLElement,
@@ -58,10 +60,7 @@ class Preview {
         let text = this.input.value;
         if (this.lastPreview == text) return;
         this.timeout = undefined;
-        let content = JSON.stringify({ 'Text': text });
-        let data = await fetch(this.apiUrl + '/render', { method: 'POST', body: content });
-        if (data.status != 200) return;
-        let result = await data.json();
+        let result = this.api.render(text);
         this.lastPreview = text;
         this.output.innerHTML = result['Text'];
     }

@@ -25,6 +25,23 @@ type apiService struct {
 type handlerPath struct {
 	prefix string
 	method string
+	admin  bool
+}
+
+func userGet(path string) handlerPath {
+	return handlerPath{prefix: path, method: http.MethodGet, admin: false}
+}
+
+func userPost(path string) handlerPath {
+	return handlerPath{prefix: path, method: http.MethodPost, admin: false}
+}
+
+func adminGet(path string) handlerPath {
+	return handlerPath{prefix: path, method: http.MethodGet, admin: true}
+}
+
+func adminPost(path string) handlerPath {
+	return handlerPath{prefix: path, method: http.MethodPost, admin: true}
 }
 
 func Serve(service service.CommentsService) http.Handler {
@@ -33,9 +50,12 @@ func Serve(service service.CommentsService) http.Handler {
 		renderLimiter: rate.NewLimiter(1, 10),
 	}
 	out.handlers = map[handlerPath]http.HandlerFunc{
-		{prefix: "/list/", method: http.MethodGet}:   out.list,
-		{prefix: "/add", method: http.MethodPost}:    out.add,
-		{prefix: "/render", method: http.MethodPost}: out.render,
+		userGet("/list/"):   out.list,
+		userPost("/add"):    out.add,
+		userPost("/render"): out.render,
+
+		adminPost("/find"):       out.find,
+		adminPost("/setVisible"): out.setVisible,
 	}
 	return out
 }
@@ -68,18 +88,52 @@ func (s *apiService) render(rw http.ResponseWriter, req *http.Request) {
 	output(struct{ Text comments.Html }{Text: outputData}, err, rw)
 }
 
+func (s *apiService) find(rw http.ResponseWriter, req *http.Request) {
+	var params struct {
+		Filter service.Filter
+		Sort   service.Sort
+		Limit  int
+		Start  int
+	}
+	if input(req, &params, rw) != nil {
+		return
+	}
+	result, err := s.service.Find(params.Filter, params.Sort, params.Limit, params.Start)
+	output(result, err, rw)
+}
+
+func (s *apiService) setVisible(rw http.ResponseWriter, req *http.Request) {
+	var params struct {
+		Ids     map[service.PostId][]*service.CommentId
+		Visible bool
+	}
+	if input(req, &params, rw) != nil {
+		return
+	}
+	err := s.service.BulkSetVisible(params.Ids, params.Visible)
+	output("Success", err, rw)
+}
+
 func (s *apiService) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	for path, handler := range s.handlers {
 		if req.Method != path.method {
 			continue
 		}
 		newReq, found := stripPathPrefix(req, path.prefix)
-		if found {
-			handler(rw, newReq)
-			return
+		if !found {
+			continue
 		}
+		if path.admin && !isAdmin(req) {
+			continue
+		}
+		handler(rw, newReq)
+		return
 	}
 	badRequest("invalid URL", rw)
+}
+
+func isAdmin(req *http.Request) bool {
+	return true
 }
 
 func limitRate(limiter *rate.Limiter, rw http.ResponseWriter) error {

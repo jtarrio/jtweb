@@ -44,10 +44,22 @@ type BulkConfig struct {
 	Configs []Config
 }
 
+type Filter struct {
+	Visible *bool
+}
+
+type Sort int
+
+const (
+	SortNewestFirst = Sort(iota)
+)
+
 type Engine interface {
 	GetConfig(postId PostId) (*Config, error)
 	SetConfig(newConfig, oldConfig *Config) error
 	BulkSetConfig(cfg *BulkConfig) error
-	List(postId PostId, seeDrafts bool) ([]Comment, error)
+	List(postId PostId, seeDrafts bool) ([]*Comment, error)
 	Add(comment *NewComment) (*Comment, error)
+	Find(filter Filter, sort Sort, limit int, start int) ([]*Comment, error)
+	BulkSetVisible(ids map[PostId][]*CommentId, visible bool) error
 }

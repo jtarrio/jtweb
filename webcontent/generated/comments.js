@@ -156,8 +156,9 @@
             <form id="commentform">
                 <p>Your name: <input type="text" name="author"></p>
                 <p>Comment: <textarea name="text" rows="10" cols="50"></textarea></p>
-                <input type="submit" value="Submit"><input type="reset" value="Reset">
+                <input type="submit" value="Submit"><input type="reset" value="Reset"><input type="button" value="Preview" id="jtPreviewButton">
             </form>
+            <div id="jtPreviewContainer"><div id="jtPreviewBox"></div></div>
         `,
         },
         'gl': {
@@ -175,8 +176,9 @@
             <form id="commentform">
                 <p>O teu nome: <input type="text" name="author"></p>
                 <p>Comentario: <textarea name="text" rows="10" cols="50"></textarea></p>
-                <input type="submit" value="Enviar"><input type="reset" value="Descartar">
+                <input type="submit" value="Enviar"><input type="reset" value="Descartar"><input type="button" value="Previsualizar" id="jtPreviewButton">
             </form>
+            <div id="jtPreviewContainer"><div id="jtPreviewBox"></div></div>
         `,
         },
         'es': {
@@ -194,8 +196,9 @@
         <form id="commentform">
             <p>Tu nombre: <input type="text" name="author"></p>
             <p>Comentario: <textarea name="text" rows="10" cols="50"></textarea></p>
-            <input type="submit" value="Enviar"><input type="reset" value="Descartar">
+            <input type="submit" value="Enviar"><input type="reset" value="Descartar"><input type="button" value="Previsualizar" id="jtPreviewButton">
         </form>
+        <div id="jtPreviewContainer"><div id="jtPreviewBox"></div></div>
         `,
         },
     };
@@ -253,15 +256,15 @@
     }
 
     function setup(params) {
-        new Preview(params.apiUrl, params.input, params.output, params.container || params.output, params.toggle);
+        new Preview(params.api, params.input, params.output, params.container || params.output, params.toggle);
     }
     class Preview {
-        apiUrl;
+        api;
         input;
         output;
         container;
-        constructor(apiUrl, input, output, container, toggle) {
-            this.apiUrl = apiUrl;
+        constructor(api, input, output, container, toggle) {
+            this.api = api;
             this.input = input;
             this.output = output;
             this.container = container;
@@ -305,34 +308,68 @@
             if (this.lastPreview == text)
                 return;
             this.timeout = undefined;
-            let content = JSON.stringify({ 'Text': text });
-            let data = await fetch(this.apiUrl + '/render', { method: 'POST', body: content });
-            if (data.status != 200)
-                return;
-            let result = await data.json();
+            let result = this.api.render(text);
             this.lastPreview = text;
             this.output.innerHTML = result['Text'];
         }
     }
 
-    class JtCommentsElement extends HTMLElement {
+    var Sort;
+    (function (Sort) {
+        Sort[Sort["NewestFirst"] = 0] = "NewestFirst";
+    })(Sort || (Sort = {}));
+    class UserApi {
+        constructor() {
+            this.apiUrl = findApiUrl();
+        }
         apiUrl;
+        async list(postId) {
+            return get(this.apiUrl + '/list/' + postId);
+        }
+        async add(newComment) {
+            return post(this.apiUrl + '/add', newComment);
+        }
+        async render(text) {
+            return post(this.apiUrl + '/render', { 'Text': text });
+        }
+    }
+    async function get(url) {
+        let response = await fetch(url);
+        if (response.status != 200) {
+            throw `Error ${response.status}: ${await response.text()}`;
+        }
+        return response.json();
+    }
+    async function post(url, data) {
+        let response = await fetch(url, { method: 'POST', body: JSON.stringify(data) });
+        if (response.status != 200) {
+            throw `Error ${response.status}: ${await response.text()}`;
+        }
+        return response.json();
+    }
+    function findApiUrl() {
+        let scripts = document.getElementsByTagName('script');
+        let baseUrl = new URL(scripts[scripts.length - 1].attributes['src'].value, window.location.toString());
+        let pathname = baseUrl.pathname;
+        let lastSlash = pathname.lastIndexOf('/');
+        if (lastSlash === undefined) {
+            baseUrl.pathname = '/_';
+        }
+        else {
+            baseUrl.pathname = pathname.substring(0, lastSlash) + '_';
+        }
+        return baseUrl.toString();
+    }
+
+    class JtCommentsElement extends HTMLElement {
+        api;
         postId;
         allTemplate;
         commentTemplate;
         formTemplate;
         constructor() {
             super();
-            let scripts = document.getElementsByTagName('script');
-            let baseUrl = new URL(scripts[scripts.length - 1].attributes['src'].value, window.location.toString());
-            const suffix = "comments.js";
-            if (baseUrl.pathname.endsWith(suffix)) {
-                baseUrl.pathname = baseUrl.pathname.substring(0, baseUrl.pathname.length - suffix.length);
-            }
-            if (!baseUrl.pathname.endsWith('/')) {
-                baseUrl.pathname += '/';
-            }
-            this.apiUrl = baseUrl.pathname += '_';
+            this.api = new UserApi();
         }
         connectedCallback() {
             this.postId = this.getAttribute('post-id');
@@ -347,10 +384,7 @@
             }
             if (this.postId === null)
                 return;
-            let response = await fetch(this.apiUrl + '/list/' + this.postId);
-            if (response.status == 200) {
-                this.render(await response.json());
-            }
+            this.render(await this.api.list(this.postId));
         }
         render(comments) {
             if (!comments.IsAvailable) {
@@ -397,28 +431,29 @@
                     input: commentBox,
                     output: previewBox,
                     container: containerBox,
-                    apiUrl: this.apiUrl
+                    api: this.api
                 });
             }
             elem.appendChild(form);
         }
         async submitComment(form) {
+            let msg;
             let formData = new FormData(form);
-            let data = JSON.stringify({
-                'PostId': this.postId,
-                'Author': formData.get('author'),
-                'Text': formData.get('text'),
-            });
-            let response = await fetch(this.apiUrl + '/add', { method: "POST", body: data });
-            MessageType.ErrorPostingComment;
-            if (response.status == 200) {
+            try {
+                let comment = await this.api.add({
+                    PostId: this.postId,
+                    Author: formData.get('author'),
+                    Text: formData.get('text'),
+                });
                 form.reset();
-                let comment = await response.json();
                 if (comment.Visible) {
                     this.refresh();
                     return;
                 }
-                MessageType.CommentPostedAsDraft;
+                msg = MessageType.CommentPostedAsDraft;
+            }
+            catch (_) {
+                msg = MessageType.ErrorPostingComment;
             }
             let p = document.createElement('p');
             p.textContent = getMessage(MessageType.CommentPostedAsDraft);

@@ -28,6 +28,8 @@ func main() {
 	mux := http.NewServeMux()
 	mux.Handle("/_/", http.StripPrefix("/_", web.Serve(cfg.Comments().Service())))
 	mux.Handle("/comments.js", webcontent.ServeCommentsJs())
+	mux.Handle("/admin.html", webcontent.ServeAdminHtml())
+	mux.Handle("/admin.js", webcontent.ServeAdminJs())
 	mux.Handle("/", http.FileServer(http.Dir(*flagContentRoot)))
 	server := &http.Server{Addr: *flagServerAddress, Handler: mux}
 	log.Printf("Now serving on %s", server.Addr)

@@ -41,8 +41,9 @@ export const Templates = {
             <form id="commentform">
                 <p>Your name: <input type="text" name="author"></p>
                 <p>Comment: <textarea name="text" rows="10" cols="50"></textarea></p>
-                <input type="submit" value="Submit"><input type="reset" value="Reset">
+                <input type="submit" value="Submit"><input type="reset" value="Reset"><input type="button" value="Preview" id="jtPreviewButton">
             </form>
+            <div id="jtPreviewContainer"><div id="jtPreviewBox"></div></div>
         `,
     },
     'gl': {
@@ -60,8 +61,9 @@ export const Templates = {
             <form id="commentform">
                 <p>O teu nome: <input type="text" name="author"></p>
                 <p>Comentario: <textarea name="text" rows="10" cols="50"></textarea></p>
-                <input type="submit" value="Enviar"><input type="reset" value="Descartar">
+                <input type="submit" value="Enviar"><input type="reset" value="Descartar"><input type="button" value="Previsualizar" id="jtPreviewButton">
             </form>
+            <div id="jtPreviewContainer"><div id="jtPreviewBox"></div></div>
         `,
     },
     'es': {
@@ -79,8 +81,9 @@ export const Templates = {
         <form id="commentform">
             <p>Tu nombre: <input type="text" name="author"></p>
             <p>Comentario: <textarea name="text" rows="10" cols="50"></textarea></p>
-            <input type="submit" value="Enviar"><input type="reset" value="Descartar">
+            <input type="submit" value="Enviar"><input type="reset" value="Descartar"><input type="button" value="Previsualizar" id="jtPreviewButton">
         </form>
+        <div id="jtPreviewContainer"><div id="jtPreviewBox"></div></div>
         `,
     },
 }

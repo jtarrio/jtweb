@@ -1,41 +1,18 @@
 import applyTemplate from "./templates";
 import * as Lang from "./languages";
 import * as Preview from "./preview";
-
-type Comments = {
-    PostId: string,
-    IsAvailable: boolean,
-    IsWritable: boolean,
-    List: Comment[],
-};
-
-type Comment = {
-    Id: string,
-    Visible: string,
-    Author: string,
-    When: string,
-    Text: string,
-};
+import { Comments, UserApi } from "./api";
 
 class JtCommentsElement extends HTMLElement {
-    apiUrl: string;
-    postId: string | null;
-    allTemplate: DocumentFragment;
-    commentTemplate: DocumentFragment;
-    formTemplate: DocumentFragment;
+    private api: UserApi;
+    private postId: string | null;
+    private allTemplate: DocumentFragment;
+    private commentTemplate: DocumentFragment;
+    private formTemplate: DocumentFragment;
 
     constructor() {
         super();
-        let scripts = document.getElementsByTagName('script');
-        let baseUrl = new URL(scripts[scripts.length - 1].attributes['src'].value, window.location.toString());
-        const suffix = "comments.js";
-        if (baseUrl.pathname.endsWith(suffix)) {
-            baseUrl.pathname = baseUrl.pathname.substring(0, baseUrl.pathname.length - suffix.length);
-        }
-        if (!baseUrl.pathname.endsWith('/')) {
-            baseUrl.pathname += '/';
-        }
-        this.apiUrl = baseUrl.pathname += '_';
+        this.api = new UserApi();
     }
 
     connectedCallback() {
@@ -51,10 +28,7 @@ class JtCommentsElement extends HTMLElement {
             this.removeChild(this.firstChild);
         }
         if (this.postId === null) return;
-        let response = await fetch(this.apiUrl + '/list/' + this.postId);
-        if (response.status == 200) {
-            this.render(await response.json());
-        }
+        this.render(await this.api.list(this.postId));
     }
 
     private render(comments: Comments) {
@@ -105,29 +79,29 @@ class JtCommentsElement extends HTMLElement {
                 input: commentBox as HTMLTextAreaElement,
                 output: previewBox as HTMLElement,
                 container: containerBox as HTMLElement | null,
-                apiUrl: this.apiUrl
+                api: this.api
             });
         }
         elem.appendChild(form);
     }
 
     private async submitComment(form: HTMLFormElement) {
+        let msg: Lang.MessageType;
         let formData = new FormData(form);
-        let data = JSON.stringify({
-            'PostId': this.postId,
-            'Author': formData.get('author'),
-            'Text': formData.get('text'),
-        });
-        let response = await fetch(this.apiUrl + '/add', { method: "POST", body: data });
-        let msg = Lang.MessageType.ErrorPostingComment;
-        if (response.status == 200) {
+        try {
+            let comment = await this.api.add({
+                PostId: this.postId!,
+                Author: formData.get('author')! as string,
+                Text: formData.get('text')! as string,
+            });
             form.reset();
-            let comment = await response.json();
             if (comment.Visible) {
                 this.refresh();
                 return;
             }
             msg = Lang.MessageType.CommentPostedAsDraft;
+        } catch (_) {
+            msg = Lang.MessageType.ErrorPostingComment;
         }
         let p = document.createElement('p');
         p.textContent = Lang.getMessage(Lang.MessageType.CommentPostedAsDraft);

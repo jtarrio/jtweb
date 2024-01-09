@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Comment admin</title>
+        <script src="admin.js"></script>
+        <style>
+            table {
+                border-collapse: collapse;
+            }
+
+            td {
+                padding: 3pt;
+                border: 1px solid black;
+            }
+        </style>
+    </head>
+    <body>
+        <h1 id="cmtListName">Loading</h1>
+        <div id="filters">
+            Visible
+            <select name="Visible">
+                <option value="">-</option>
+                <option value="false" selected>No</option>
+                <option value="true">Yes</option>
+            </select>
+            <input type="button" name="ApplyFilter" value="Apply Filters">
+        </div>
+        <table id="cmtList">
+            <thead>
+                <tr><td><input type="checkbox"></td><td>Visible</td><td>Post</td><td>Author</td><td>When</td><td>Text</td></tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        <div id="cmtListLinks"></div>
+        <div>
+            <input type="button" name="MakeVisible" value="Make visible">
+            <input type="button" name="MakeNonVisible" value="Make non-visible">
+        </div>
+    </body>
+</html>

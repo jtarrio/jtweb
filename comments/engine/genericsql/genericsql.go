@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"jacobo.tarrio.org/jtweb/comments"
@@ -175,9 +176,33 @@ func (e *GenericSqlEngine) BulkSetConfig(cfg *engine.BulkConfig) error {
 	})
 }
 
-func (e *GenericSqlEngine) List(postId comments.PostId, seeDrafts bool) ([]engine.Comment, error) {
-	return doInReadTx(e, func(tx *sql.Tx) ([]engine.Comment, error) {
-		stmt, err := tx.Prepare(`SELECT PostId, CommentId, Visible, Author, Date, Text FROM Comments WHERE PostId = ? AND (Visible OR ?)`)
+func commentRowFields() string {
+	return `PostId, CommentId, Visible, Author, Date, Text`
+}
+
+func parseCommentRow(rows *sql.Rows) (*engine.Comment, error) {
+	var rowPostId string
+	var rowCommentId int64
+	var rowVisible bool
+	var rowAuthor string
+	var rowWhen time.Time
+	var rowText string
+	if err := rows.Scan(&rowPostId, &rowCommentId, &rowVisible, &rowAuthor, &rowWhen, &rowText); err != nil {
+		return nil, sqlError(err)
+	}
+	return &engine.Comment{
+		PostId:    comments.PostId(rowPostId),
+		CommentId: int64ToCommentId(rowCommentId),
+		Visible:   rowVisible,
+		Author:    rowAuthor,
+		When:      rowWhen,
+		Text:      comments.Markdown(rowText),
+	}, nil
+}
+
+func (e *GenericSqlEngine) List(postId comments.PostId, seeDrafts bool) ([]*engine.Comment, error) {
+	return doInReadTx(e, func(tx *sql.Tx) ([]*engine.Comment, error) {
+		stmt, err := tx.Prepare(fmt.Sprintf(`SELECT %s FROM Comments WHERE PostId = ? AND (Visible OR ?)`, commentRowFields()))
 		if err != nil {
 			return nil, sqlError(err)
 		}
@@ -187,25 +212,13 @@ func (e *GenericSqlEngine) List(postId comments.PostId, seeDrafts bool) ([]engin
 			return nil, sqlError(err)
 		}
 		defer rows.Close()
-		out := []engine.Comment{}
+		out := []*engine.Comment{}
 		for rows.Next() {
-			var rowPostId string
-			var rowCommentId int64
-			var rowVisible bool
-			var rowAuthor string
-			var rowWhen time.Time
-			var rowText string
-			if err := rows.Scan(&rowPostId, &rowCommentId, &rowVisible, &rowAuthor, &rowWhen, &rowText); err != nil {
+			cmt, err := parseCommentRow(rows)
+			if err != nil {
 				return nil, sqlError(err)
 			}
-			out = append(out, engine.Comment{
-				PostId:    comments.PostId(rowPostId),
-				CommentId: int64ToCommentId(rowCommentId),
-				Visible:   rowVisible,
-				Author:    rowAuthor,
-				When:      rowWhen,
-				Text:      comments.Markdown(rowText),
-			})
+			out = append(out, cmt)
 		}
 		return out, nil
 	})
@@ -234,6 +247,71 @@ func (e *GenericSqlEngine) Add(newComment *engine.NewComment) (*engine.Comment, 
 			When:      newComment.When,
 			Text:      newComment.Text,
 		}, nil
+	})
+}
+
+func (e *GenericSqlEngine) Find(filter engine.Filter, sort engine.Sort, limit int, start int) ([]*engine.Comment, error) {
+	return doInReadTx(e, func(tx *sql.Tx) ([]*engine.Comment, error) {
+		where, args := whereStr(filter)
+		order := orderStr(sort)
+		stmt, err := tx.Prepare(fmt.Sprintf(`SELECT %s FROM Comments WHERE %s ORDER BY %s LIMIT %d OFFSET %d`, commentRowFields(), where, order, limit, start))
+		if err != nil {
+			return nil, sqlError(err)
+		}
+		defer stmt.Close()
+		rows, err := stmt.Query(args...)
+		if err != nil {
+			return nil, sqlError(err)
+		}
+		defer rows.Close()
+		out := []*engine.Comment{}
+		for rows.Next() {
+			cmt, err := parseCommentRow(rows)
+			if err != nil {
+				return nil, sqlError(err)
+			}
+			out = append(out, cmt)
+		}
+		return out, nil
+	})
+}
+
+func whereStr(filter engine.Filter) (string, []any) {
+	args := []any{}
+	where := []string{}
+	if filter.Visible != nil {
+		where = append(where, `Visible = ?`)
+		args = append(args, filter.Visible)
+	}
+	if len(where) == 0 {
+		return "TRUE", []any{}
+	}
+	return strings.Join(where, " AND "), args
+}
+
+func orderStr(sort engine.Sort) string {
+	switch sort {
+	default:
+		return "Date DESC"
+	}
+}
+
+func (e *GenericSqlEngine) BulkSetVisible(ids map[engine.PostId][]*engine.CommentId, visible bool) error {
+	return doInWriteTxNoReturn(e, func(tx *sql.Tx) error {
+		stmt, err := tx.Prepare(`UPDATE Comments SET Visible = ? WHERE PostId = ? AND CommentId = ?`)
+		if err != nil {
+			return sqlError(err)
+		}
+		defer stmt.Close()
+		for postId, commentIds := range ids {
+			for _, commentId := range commentIds {
+				_, err := stmt.Exec(visible, postId, commentId)
+				if err != nil {
+					return sqlError(err)
+				}
+			}
+		}
+		return nil
 	})
 }
 

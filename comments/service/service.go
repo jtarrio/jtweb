@@ -17,6 +17,8 @@ type CommentsService interface {
 	List(id PostId, seeDrafts bool) (*CommentList, error)
 	Add(comment *NewComment) (*Comment, error)
 	Render(text Markdown) (Html, error)
+	Find(filter Filter, sort Sort, limit int, start int) (*FoundComments, error)
+	BulkSetVisible(ids map[PostId][]*CommentId, visible bool) error
 	SetAvailablePosts(posts *AvailablePosts) error
 }
 
@@ -40,6 +42,21 @@ type NewComment struct {
 	Author string
 	When   time.Time
 	Text   Markdown
+}
+
+type Filter = engine.Filter
+type Sort = engine.Sort
+
+const SortNewestFirst = engine.SortNewestFirst
+
+type FoundComments struct {
+	List []*FoundComment
+	More bool
+}
+
+type FoundComment struct {
+	PostId  PostId
+	Comment Comment
 }
 
 type AvailablePosts struct {
@@ -97,13 +114,42 @@ func (s *commentsServiceImpl) List(id PostId, seeDrafts bool) (*CommentList, err
 		return nil, err
 	}
 	for _, comment := range list {
-		cmt, err := s.parseComment(&comment)
+		cmt, err := s.parseComment(comment)
 		if err != nil {
 			return nil, err
 		}
 		out.List = append(out.List, cmt)
 	}
 	return out, nil
+}
+
+func (s *commentsServiceImpl) Find(filter Filter, sort Sort, limit int, start int) (*FoundComments, error) {
+	if start < 0 {
+		start = 0
+	}
+	list, err := s.engine.Find(filter, sort, limit+1, start)
+	if err != nil {
+		return nil, err
+	}
+	out := &FoundComments{
+		List: []*FoundComment{},
+		More: len(list) > limit,
+	}
+	for i := 0; i < limit && i < len(list); i++ {
+		cmt, err := s.parseComment(list[i])
+		if err != nil {
+			return nil, err
+		}
+		out.List = append(out.List, &FoundComment{
+			PostId:  list[i].PostId,
+			Comment: *cmt,
+		})
+	}
+	return out, nil
+}
+
+func (s *commentsServiceImpl) BulkSetVisible(ids map[PostId][]*CommentId, visible bool) error {
+	return s.engine.BulkSetVisible(ids, visible)
 }
 
 func (s *commentsServiceImpl) parseComment(comment *engine.Comment) (*Comment, error) {
