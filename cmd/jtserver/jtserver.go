@@ -25,11 +25,13 @@ func main() {
 		panic("Comments not configured")
 	}
 
+	adminChecker := web.NewAdminChecker(cfg.Comments().AdminPassword())
+
 	mux := http.NewServeMux()
-	mux.Handle("/_/", http.StripPrefix("/_", web.Serve(cfg.Comments().Service())))
+	mux.Handle("/_/", http.StripPrefix("/_", web.Serve(cfg.Comments().Service(), adminChecker)))
 	mux.Handle("/comments.js", webcontent.ServeCommentsJs())
-	mux.Handle("/admin.html", webcontent.ServeAdminHtml())
-	mux.Handle("/admin.js", webcontent.ServeAdminJs())
+	mux.Handle("/admin.html", adminChecker.RequiringAdmin(webcontent.ServeAdminHtml()))
+	mux.Handle("/admin.js", adminChecker.RequiringAdmin(webcontent.ServeAdminJs()))
 	mux.Handle("/", http.FileServer(http.Dir(*flagContentRoot)))
 	server := &http.Server{Addr: *flagServerAddress, Handler: mux}
 	log.Printf("Now serving on %s", server.Addr)

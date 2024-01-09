@@ -55,6 +55,7 @@ type MailerConfig interface {
 type CommentsConfig interface {
 	DefaultConfig() *page.CommentConfig
 	Service() comments.CommentsService
+	AdminPassword() string
 	SkipOperation() bool
 	Present() bool
 }

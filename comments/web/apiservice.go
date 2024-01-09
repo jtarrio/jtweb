@@ -18,6 +18,7 @@ import (
 
 type apiService struct {
 	service       service.CommentsService
+	adminChecker  *AdminChecker
 	handlers      map[handlerPath]http.HandlerFunc
 	renderLimiter *rate.Limiter
 }
@@ -36,17 +37,14 @@ func userPost(path string) handlerPath {
 	return handlerPath{prefix: path, method: http.MethodPost, admin: false}
 }
 
-func adminGet(path string) handlerPath {
-	return handlerPath{prefix: path, method: http.MethodGet, admin: true}
-}
-
 func adminPost(path string) handlerPath {
 	return handlerPath{prefix: path, method: http.MethodPost, admin: true}
 }
 
-func Serve(service service.CommentsService) http.Handler {
+func Serve(service service.CommentsService, adminChecker *AdminChecker) http.Handler {
 	out := &apiService{
 		service:       service,
+		adminChecker:  adminChecker,
 		renderLimiter: rate.NewLimiter(1, 10),
 	}
 	out.handlers = map[handlerPath]http.HandlerFunc{
@@ -123,7 +121,7 @@ func (s *apiService) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		if !found {
 			continue
 		}
-		if path.admin && !isAdmin(req) {
+		if path.admin && !s.isAdmin(req) {
 			continue
 		}
 		handler(rw, newReq)
@@ -132,8 +130,8 @@ func (s *apiService) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	badRequest("invalid URL", rw)
 }
 
-func isAdmin(req *http.Request) bool {
-	return true
+func (s *apiService) isAdmin(req *http.Request) bool {
+	return s.adminChecker.HasAdmin(req)
 }
 
 func limitRate(limiter *rate.Limiter, rw http.ResponseWriter) error {

@@ -59,6 +59,7 @@ type mailerConfig struct {
 type commentsConfig struct {
 	defaultConfig *page.CommentConfig
 	service       comments.CommentsService
+	adminPassword string
 	skipOperation bool
 }
 
@@ -183,6 +184,10 @@ func (cc *commentsConfig) DefaultConfig() *page.CommentConfig {
 
 func (cc *commentsConfig) Service() comments.CommentsService {
 	return cc.service
+}
+
+func (cc *commentsConfig) AdminPassword() string {
+	return cc.adminPassword
 }
 
 func (cc *commentsConfig) SkipOperation() bool {

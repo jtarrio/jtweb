@@ -54,10 +54,11 @@ type yamlConfig struct {
 		}
 	}
 	Comments *struct {
-		DefaultSetting string `yaml:"default_setting"`
-		PostAsDraft    bool   `yaml:"post_as_draft"`
-		SkipOperation  bool   `yaml:"skip_operation"`
-		Sqlite3        *struct {
+		DefaultSetting      string `yaml:"default_setting"`
+		PostAsDraft         bool   `yaml:"post_as_draft"`
+		AdminPasswordSecret string `yaml:"admin_password_secret"`
+		SkipOperation       bool   `yaml:"skip_operation"`
+		Sqlite3             *struct {
 			ConnectionStringSecret string `yaml:"connection_string_secret"`
 		}
 		Mysql *struct {
@@ -298,9 +299,14 @@ func (r *configParser) Parse() (config.Config, error) {
 		if cfg.Comments.PostAsDraft {
 			options = append(options, comments_service.PostAsDraft())
 		}
+		adminPassword, err := r.secretSupplier.GetSecret(cfg.Comments.AdminPasswordSecret)
+		if err != nil {
+			return nil, err
+		}
 		out.comments = &commentsConfig{
 			defaultConfig: defCfg,
 			service:       comments_service.NewCommentsService(engine, options...),
+			adminPassword: adminPassword,
 			skipOperation: cfg.Comments.SkipOperation,
 		}
 	}
