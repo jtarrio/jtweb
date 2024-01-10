@@ -44,14 +44,14 @@ export class UserApi {
 
     async list(postId: string): Promise<Comments> {
         return get(this.apiUrl + '/list/' + postId);
-    }    
+    }
 
     async add(newComment: NewComment): Promise<Comment> {
         return post(this.apiUrl + '/add', newComment);
     }
 
     async render(text: string): Promise<string> {
-        return post(this.apiUrl + '/render', { 'Text': text});
+        return post(this.apiUrl + '/render', { 'Text': text });
     }
 }
 
@@ -82,7 +82,7 @@ export class AdminApi {
 }
 
 async function get<R>(url: string): Promise<R> {
-    let response = await fetch(url);
+    let response = await fetch(url, { method: 'GET', mode: 'cors' });
     if (response.status != 200) {
         throw `Error ${response.status}: ${await response.text()}`;
     }
@@ -90,7 +90,7 @@ async function get<R>(url: string): Promise<R> {
 }
 
 async function post<R, M>(url: string, data: M): Promise<R> {
-    let response = await fetch(url, { method: 'POST', body: JSON.stringify(data)});
+    let response = await fetch(url, { method: 'POST', mode: 'cors', body: JSON.stringify(data) });
     if (response.status != 200) {
         throw `Error ${response.status}: ${await response.text()}`;
     }

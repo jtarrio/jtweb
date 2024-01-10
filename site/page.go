@@ -96,6 +96,7 @@ func (c *Contents) makePageData(page *page.Page) (*templates.PageData, error) {
 	pageData := &templates.PageData{
 		Title:     page.Header.Title,
 		Permalink: c.makePageURI(page),
+		Name:      string(page.Name),
 		Author:    templates.LinkData{},
 		Summary:   page.Header.Summary,
 		Episode:   page.Header.Episode,

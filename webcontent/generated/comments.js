@@ -143,6 +143,7 @@
     const Templates = {
         'en': {
             'main': `
+            <h1 jtvar="none_count">No comments</h1>
             <h1 jtvar="singular_count">1 comment</h1>
             <h1 jtvar="plural_count"><jtvar count></jtvar> comments</h1>
             <div jtvar="comments"></div>
@@ -163,6 +164,7 @@
         },
         'gl': {
             'main': `
+            <h1 jtvar="none_count">Ningún comentario</h1>
             <h1 jtvar="singular_count">1 comentario</h1>
             <h1 jtvar="plural_count"><jtvar count></jtvar> comentarios</h1>
             <div jtvar="comments"></div>
@@ -183,6 +185,7 @@
         },
         'es': {
             'main': `
+            <h1 jtvar="none_count">Ningún comentario</h1>
             <h1 jtvar="singular_count">1 comentario</h1>
             <h1 jtvar="plural_count"><jtvar count></jtvar> comentarios</h1>
             <div jtvar="comments"></div>
@@ -233,21 +236,21 @@
             case 'es':
                 return (d.getDate() +
                     ' de ' + ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-                    'julio', 'agosto', 'setiembre', 'octubre', 'noviembre', 'diciembre'][d.getMonth() - 1] +
+                    'julio', 'agosto', 'setiembre', 'octubre', 'noviembre', 'diciembre'][d.getMonth()] +
                     ' de ' + d.getFullYear() +
                     ' a las ' + String(d.getHours()).padStart(2, '0') +
                     ':' + String(d.getMinutes()).padStart(2, '0'));
             case 'gl':
                 return (d.getDate() +
                     ' de ' + ['xaneiro', 'febreiro', 'marzo', 'abril', 'maio', 'xuño',
-                    'xullo', 'agosto', 'setembro', 'outubro', 'novembro', 'decembro'][d.getMonth() - 1] +
+                    'xullo', 'agosto', 'setembro', 'outubro', 'novembro', 'decembro'][d.getMonth()] +
                     ' de ' + d.getFullYear() +
                     ' ás ' + String(d.getHours()).padStart(2, '0') +
                     ':' + String(d.getMinutes()).padStart(2, '0'));
             case 'en':
             default:
                 return (['January', 'February', 'March', 'April', 'May', 'June',
-                    'July', 'August', 'September', 'October', 'November', 'December'][d.getMonth() - 1] +
+                    'July', 'August', 'September', 'October', 'November', 'December'][d.getMonth()] +
                     ' ' + d.getDate() +
                     ', ' + d.getFullYear() +
                     ' at ' + String(d.getHours()).padStart(2, '0') +
@@ -257,6 +260,12 @@
 
     function setup(params) {
         new Preview(params.api, params.input, params.output, params.container || params.output, params.toggle);
+    }
+    function findForm(element) {
+        let current = element;
+        while (current !== null && current.tagName != 'FORM')
+            current = current.parentElement;
+        return current;
     }
     class Preview {
         api;
@@ -268,13 +277,22 @@
             this.input = input;
             this.output = output;
             this.container = container;
+            this.form = findForm(this.input);
             this.previewFn = _ => this.launchPreview();
+            this.resetPreviewFn = _ => this.resetPreview();
             this.timeout = undefined;
-            this.lastPreview = '';
-            toggle.addEventListener('click', _ => this.togglePreview());
+            this.lastPreview = ['', ''];
+            if (toggle === null) {
+                this.togglePreview();
+            }
+            else {
+                toggle.addEventListener('click', _ => this.togglePreview());
+            }
         }
         static PreviewInterval = 1000;
+        form;
         previewFn;
+        resetPreviewFn;
         timeout;
         lastPreview;
         visible() {
@@ -283,6 +301,7 @@
         togglePreview() {
             if (this.visible()) {
                 this.input.removeEventListener('input', this.previewFn);
+                this.form?.removeEventListener('reset', this.resetPreviewFn);
                 while (true) {
                     let child = this.output.firstChild;
                     if (!child)
@@ -294,6 +313,7 @@
             }
             this.container.classList.add('jtPreview');
             this.input.addEventListener('input', this.previewFn);
+            this.form?.addEventListener('reset', this.resetPreviewFn);
             this.doPreview();
         }
         launchPreview() {
@@ -305,12 +325,17 @@
             if (!this.visible())
                 return;
             let text = this.input.value;
-            if (this.lastPreview == text)
-                return;
             this.timeout = undefined;
-            let result = this.api.render(text);
-            this.lastPreview = text;
-            this.output.innerHTML = result['Text'];
+            let preview = this.lastPreview[1];
+            if (this.lastPreview[0] != text) {
+                let result = await this.api.render(text);
+                preview = result['Text'];
+            }
+            this.output.innerHTML = preview;
+            this.lastPreview = [text, preview];
+        }
+        async resetPreview() {
+            this.output.innerHTML = '';
         }
     }
 
@@ -334,14 +359,14 @@
         }
     }
     async function get(url) {
-        let response = await fetch(url);
+        let response = await fetch(url, { method: 'GET', mode: 'cors' });
         if (response.status != 200) {
             throw `Error ${response.status}: ${await response.text()}`;
         }
         return response.json();
     }
     async function post(url, data) {
-        let response = await fetch(url, { method: 'POST', body: JSON.stringify(data) });
+        let response = await fetch(url, { method: 'POST', mode: 'cors', body: JSON.stringify(data) });
         if (response.status != 200) {
             throw `Error ${response.status}: ${await response.text()}`;
         }
@@ -394,8 +419,9 @@
             let numComments = comments.List.length;
             let block = this.allTemplate.cloneNode(true);
             applyTemplate(block, {
+                'none_count': (numComments == 0),
                 'singular_count': (numComments == 1),
-                'plural_count': (numComments != 1),
+                'plural_count': (numComments > 1),
                 'count': String(numComments),
                 'comments': (c) => { this.renderComments(c, comments); },
                 'newcomment': comments.IsWritable ? (c) => { this.renderForm(c); } : false,
@@ -409,7 +435,7 @@
                     'author': comment.Author,
                     'when': formatDate(comment.When),
                     'url': new URL('#c' + comment.Id, window.location.toString()).toString(),
-                    'anchor': 'c' + comment.Id,
+                    'anchor': 'c_' + comment.Id,
                     'text': { html: comment.Text },
                 });
                 list.appendChild(row);
@@ -425,11 +451,11 @@
             let previewButton = form.querySelector('#jtPreviewButton');
             let previewBox = form.querySelector('#jtPreviewBox');
             let containerBox = form.querySelector('#jtPreviewContainer');
-            if (commentBox && previewButton && previewBox) {
+            if (commentBox && previewBox) {
                 setup({
-                    toggle: previewButton,
                     input: commentBox,
                     output: previewBox,
+                    toggle: previewButton,
                     container: containerBox,
                     api: this.api
                 });
@@ -456,14 +482,18 @@
                 msg = MessageType.ErrorPostingComment;
             }
             let p = document.createElement('p');
+            p.classList.add("jtSubmitMessage");
             p.textContent = getMessage(MessageType.CommentPostedAsDraft);
             form.insertAdjacentElement("beforebegin", p);
+            p.scrollIntoView();
         }
         getTemplate(id) {
             let name = 'jt-comments' + (id ? '-' + id : '');
             let template = document.getElementById(name);
-            if (template)
+            if (template) {
+                template.remove();
                 return template.content;
+            }
             template = document.createElement('template');
             template.innerHTML = getTemplate(id ? id : 'main');
             return template.content;

@@ -56,6 +56,7 @@ type yamlConfig struct {
 	Comments *struct {
 		DefaultSetting      string `yaml:"default_setting"`
 		PostAsDraft         bool   `yaml:"post_as_draft"`
+		JsUri               string `yaml:"js_uri"`
 		AdminPasswordSecret string `yaml:"admin_password_secret"`
 		SkipOperation       bool   `yaml:"skip_operation"`
 		Sqlite3             *struct {
@@ -303,8 +304,12 @@ func (r *configParser) Parse() (config.Config, error) {
 		if err != nil {
 			return nil, err
 		}
+		if cfg.Comments.JsUri == "" {
+			return nil, fmt.Errorf("no comments JS URI was defined")
+		}
 		out.comments = &commentsConfig{
 			defaultConfig: defCfg,
+			jsUri:         cfg.Comments.JsUri,
 			service:       comments_service.NewCommentsService(engine, options...),
 			adminPassword: adminPassword,
 			skipOperation: cfg.Comments.SkipOperation,

@@ -28,7 +28,7 @@
         }
     }
     async function post(url, data) {
-        let response = await fetch(url, { method: 'POST', body: JSON.stringify(data) });
+        let response = await fetch(url, { method: 'POST', mode: 'cors', body: JSON.stringify(data) });
         if (response.status != 200) {
             throw `Error ${response.status}: ${await response.text()}`;
         }

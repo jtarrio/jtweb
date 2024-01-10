@@ -305,7 +305,11 @@ func (e *GenericSqlEngine) BulkSetVisible(ids map[engine.PostId][]*engine.Commen
 		defer stmt.Close()
 		for postId, commentIds := range ids {
 			for _, commentId := range commentIds {
-				_, err := stmt.Exec(visible, postId, commentId)
+				cid, err := commentIdToInt64(*commentId)
+				if err != nil {
+					return err
+				}
+				_, err = stmt.Exec(visible, postId, cid)
 				if err != nil {
 					return sqlError(err)
 				}

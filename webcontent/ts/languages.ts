@@ -33,21 +33,21 @@ export function formatDate(date: string) {
         case 'es':
             return (d.getDate() +
                 ' de ' + ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-                    'julio', 'agosto', 'setiembre', 'octubre', 'noviembre', 'diciembre'][d.getMonth() - 1] +
+                    'julio', 'agosto', 'setiembre', 'octubre', 'noviembre', 'diciembre'][d.getMonth()] +
                 ' de ' + d.getFullYear() +
                 ' a las ' + String(d.getHours()).padStart(2, '0') +
                 ':' + String(d.getMinutes()).padStart(2, '0'));
         case 'gl':
             return (d.getDate() +
                 ' de ' + ['xaneiro', 'febreiro', 'marzo', 'abril', 'maio', 'xuño',
-                    'xullo', 'agosto', 'setembro', 'outubro', 'novembro', 'decembro'][d.getMonth() - 1] +
+                    'xullo', 'agosto', 'setembro', 'outubro', 'novembro', 'decembro'][d.getMonth()] +
                 ' de ' + d.getFullYear() +
                 ' ás ' + String(d.getHours()).padStart(2, '0') +
                 ':' + String(d.getMinutes()).padStart(2, '0'));
         case 'en':
         default:
             return (['January', 'February', 'March', 'April', 'May', 'June',
-                'July', 'August', 'September', 'October', 'November', 'December'][d.getMonth() - 1] +
+                'July', 'August', 'September', 'October', 'November', 'December'][d.getMonth()] +
                 ' ' + d.getDate() +
                 ', ' + d.getFullYear() +
                 ' at ' + String(d.getHours()).padStart(2, '0') +

@@ -58,6 +58,7 @@ type mailerConfig struct {
 
 type commentsConfig struct {
 	defaultConfig *page.CommentConfig
+	jsUri         string
 	service       comments.CommentsService
 	adminPassword string
 	skipOperation bool
@@ -180,6 +181,10 @@ func (cc *commentsConfig) DefaultConfig() *page.CommentConfig {
 		return &page.CommentConfig{Enabled: false, Writable: false}
 	}
 	return cc.defaultConfig
+}
+
+func (cc *commentsConfig) JsUri() string {
+	return cc.jsUri
 }
 
 func (cc *commentsConfig) Service() comments.CommentsService {

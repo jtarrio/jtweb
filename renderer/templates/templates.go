@@ -17,6 +17,7 @@ import (
 type Templates struct {
 	err           error
 	config        config.SiteConfig
+	commentsJs    string
 	templateBase  io.File
 	templates     map[string]*template.Template
 	textTemplates map[string]*textTemplate.Template
@@ -32,6 +33,7 @@ type LinkData struct {
 type PageData struct {
 	Title        string
 	Permalink    string
+	Name         string
 	Author       LinkData
 	Summary      string
 	Episode      string
@@ -60,8 +62,13 @@ type TocData struct {
 
 // GetTemplates returns a loader for templates for a particular language.
 func GetTemplates(c config.Config, lang languages.Language) *Templates {
+	commentsJs := ""
+	if c.Comments() != nil {
+		commentsJs = c.Comments().JsUri()
+	}
 	return &Templates{
 		config:        c.Site(lang),
+		commentsJs:    commentsJs,
 		templateBase:  c.Files().Templates(),
 		templates:     make(map[string]*template.Template),
 		textTemplates: make(map[string]*textTemplate.Template),
@@ -116,6 +123,7 @@ func (t *Templates) getTemplate(name string) (*template.Template, error) {
 		"plural":     t.plural,
 		"site":       t.getSite,
 		"webRoot":    t.getWebroot,
+		"commentsJs": t.getCommentsJs,
 	}).Parse(string(tmpl))
 	if err != nil {
 		return nil, err
@@ -207,4 +215,8 @@ func (t *Templates) getSite() LinkData {
 
 func (t *Templates) getWebroot() string {
 	return t.config.WebRoot()
+}
+
+func (t *Templates) getCommentsJs() string {
+	return t.commentsJs
 }

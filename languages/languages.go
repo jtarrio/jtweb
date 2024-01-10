@@ -33,6 +33,15 @@ var languages map[string]Language = map[string]Language{
 	"gl": LanguageGl,
 }
 
+// AllLanguages returns a list with all known languages.
+func AllLanguages() []Language {
+	out := []Language{}
+	for _, lang := range languages {
+		out = append(out, lang)
+	}
+	return out
+}
+
 // FindByCode returns the Language object corresponding to the language code.
 func FindByCode(code string) (Language, error) {
 	l, ok := languages[code]

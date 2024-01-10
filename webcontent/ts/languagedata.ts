@@ -28,6 +28,7 @@ export const Messages = {
 export const Templates = {
     'en': {
         'main': `
+            <h1 jtvar="none_count">No comments</h1>
             <h1 jtvar="singular_count">1 comment</h1>
             <h1 jtvar="plural_count"><jtvar count></jtvar> comments</h1>
             <div jtvar="comments"></div>
@@ -48,6 +49,7 @@ export const Templates = {
     },
     'gl': {
         'main': `
+            <h1 jtvar="none_count">Ningún comentario</h1>
             <h1 jtvar="singular_count">1 comentario</h1>
             <h1 jtvar="plural_count"><jtvar count></jtvar> comentarios</h1>
             <div jtvar="comments"></div>
@@ -68,6 +70,7 @@ export const Templates = {
     },
     'es': {
         'main': `
+            <h1 jtvar="none_count">Ningún comentario</h1>
             <h1 jtvar="singular_count">1 comentario</h1>
             <h1 jtvar="plural_count"><jtvar count></jtvar> comentarios</h1>
             <div jtvar="comments"></div>

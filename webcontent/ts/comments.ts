@@ -40,8 +40,9 @@ class JtCommentsElement extends HTMLElement {
         let numComments = comments.List.length;
         let block = this.allTemplate.cloneNode(true);
         applyTemplate(block as Element, {
+            'none_count': (numComments == 0),
             'singular_count': (numComments == 1),
-            'plural_count': (numComments != 1),
+            'plural_count': (numComments > 1),
             'count': String(numComments),
             'comments': (c: Element) => { this.renderComments(c, comments); },
             'newcomment': comments.IsWritable ? (c: Element) => { this.renderForm(c); } : false,
@@ -56,7 +57,7 @@ class JtCommentsElement extends HTMLElement {
                 'author': comment.Author,
                 'when': Lang.formatDate(comment.When),
                 'url': new URL('#c' + comment.Id, window.location.toString()).toString(),
-                'anchor': 'c' + comment.Id,
+                'anchor': 'c_' + comment.Id,
                 'text': { html: comment.Text },
             });
             list.appendChild(row);
@@ -73,11 +74,11 @@ class JtCommentsElement extends HTMLElement {
         let previewButton = form.querySelector('#jtPreviewButton');
         let previewBox = form.querySelector('#jtPreviewBox');
         let containerBox = form.querySelector('#jtPreviewContainer')
-        if (commentBox && previewButton && previewBox) {
+        if (commentBox && previewBox) {
             Preview.setup({
-                toggle: previewButton as HTMLElement,
                 input: commentBox as HTMLTextAreaElement,
                 output: previewBox as HTMLElement,
+                toggle: previewButton as HTMLElement | null,
                 container: containerBox as HTMLElement | null,
                 api: this.api
             });
@@ -104,14 +105,19 @@ class JtCommentsElement extends HTMLElement {
             msg = Lang.MessageType.ErrorPostingComment;
         }
         let p = document.createElement('p');
+        p.classList.add("jtSubmitMessage");
         p.textContent = Lang.getMessage(Lang.MessageType.CommentPostedAsDraft);
         form.insertAdjacentElement("beforebegin", p);
+        p.scrollIntoView();
     }
 
     private getTemplate(id?: string): DocumentFragment {
         let name = 'jt-comments' + (id ? '-' + id : '');
         let template = document.getElementById(name) as HTMLTemplateElement;
-        if (template) return template.content;
+        if (template) {
+            template.remove();
+            return template.content;
+        }
         template = document.createElement('template');
         template.innerHTML = Lang.getTemplate(id ? id : 'main');
         return template.content;
