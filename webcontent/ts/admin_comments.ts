@@ -9,9 +9,8 @@ class AdminComments extends AdminPage<RawComment, CommentFilter> {
     constructor(root: HTMLElement) {
         super(root);
         this.api = new AdminApi();
-        this.wireEvent('input[name=ApplyCommentFilter]', 'click', _ => this.loadList(0));
-        this.wireEvent('input[name=MakeVisible]', 'click', _ => this.makeVisible());
-        this.wireEvent('input[name=MakeNonVisible]', 'click', _ => this.makeNonVisible());
+        this.wireEvent('input[name=MakeVisible]', 'click', _ => this.changeVisible(true));
+        this.wireEvent('input[name=MakeNonVisible]', 'click', _ => this.changeVisible(false));
         this.loadList(0);
     }
 
@@ -19,7 +18,7 @@ class AdminComments extends AdminPage<RawComment, CommentFilter> {
 
     protected getFilter(): CommentFilter {
         let out: CommentFilter = { Visible: null };
-        let form = this.root.querySelector('#cmtFilters');
+        let form = this.root.querySelector('#filters');
         if (!form) throw "Could not find filters box";
         let visible = (form.querySelector('[name=Visible]') as HTMLSelectElement).value;
         if (visible == 'true') out.Visible = true;
@@ -37,15 +36,6 @@ class AdminComments extends AdminPage<RawComment, CommentFilter> {
         }
     }
 
-    protected getItemsPerPage(): number {
-        let form = this.root.querySelector('#cmtFilters');
-        if (form) {
-            let items = form.querySelector('[name=ItemsPerPage') as HTMLSelectElement | null;
-            if (items) return Number(items.value);
-        }
-        return 20;
-    }
-
     protected getItems(filter: CommentFilter, itemsPerPage: number, start: number): Promise<FoundComments> {
         return this.api.findComments(filter, Sort.NewestFirst, itemsPerPage, start);
     }
@@ -60,33 +50,14 @@ class AdminComments extends AdminPage<RawComment, CommentFilter> {
         ];
     }
 
-    protected getListNameElement(): HTMLElement | null {
-        return this.root.querySelector('#cmtListName');
-    }
-
-    protected getListTableElement(): HTMLElement | null {
-        return this.root.querySelector('#cmtList');
-    }
-
-    protected getListLinksElement(): HTMLElement | null {
-        return this.root.querySelector('#cmtListLinks');
-    }
-
-    async makeVisible() {
+    private async changeVisible(visible: boolean) {
         let ids = this.gatherSelectedIds();
         if (ids.size == 0) return;
-        await this.api.setVisible(ids, true);
+        await this.api.bulkSetVisible(ids, visible);
         this.loadList(0)
     }
 
-    async makeNonVisible() {
-        let ids = this.gatherSelectedIds();
-        if (ids.size == 0) return;
-        await this.api.setVisible(ids, false);
-        this.loadList(0)
-    }
-
-    gatherSelectedIds(): Map<string, string[]> {
+    private gatherSelectedIds(): Map<string, string[]> {
         let items = this.gatherSelectedItems();
         let ids = new Map<string, string[]>();
         for (let item of items) {

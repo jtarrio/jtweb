@@ -1,7 +1,9 @@
 export type Comments = {
     PostId: string,
-    IsReadable: boolean,
-    IsWritable: boolean,
+    Config: {
+        IsReadable: boolean,
+        IsWritable: boolean,
+    },
     List: Comment[],
 };
 
@@ -108,12 +110,23 @@ export class AdminApi {
         return post(this.apiUrl + '/findPosts', params);
     }
 
-    async setVisible(ids: Map<string, string[]>, visible: boolean) {
+    async bulkSetVisible(ids: Map<string, string[]>, visible: boolean) {
         let params = {
             'Ids': Object.fromEntries(ids),
             'Visible': visible
         };
-        await post(this.apiUrl + '/setVisible', params);
+        await post(this.apiUrl + '/bulkSetVisible', params);
+    }
+
+    async bulkUpdatePostConfigs(postIds: string[], writable: boolean, readable: boolean) {
+        let params = {
+            'PostIds': postIds,
+            'Config': {
+                'IsWritable': writable,
+                'IsReadable': readable,
+            },
+        }
+        await post(this.apiUrl + '/bulkUpdatePostConfigs', params);
     }
 }
 

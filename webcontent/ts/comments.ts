@@ -3,6 +3,8 @@ import * as Lang from "./languages";
 import * as Preview from "./preview";
 import { Comments, UserApi } from "./api";
 
+const AnchorPrefix = 'comment_';
+
 class JtCommentsElement extends HTMLElement {
     private api: UserApi;
     private postId: string | null;
@@ -32,7 +34,7 @@ class JtCommentsElement extends HTMLElement {
     }
 
     private render(comments: Comments) {
-        if (!comments.IsReadable) {
+        if (!comments.Config.IsReadable) {
             this.remove();
             return;
         }
@@ -45,9 +47,15 @@ class JtCommentsElement extends HTMLElement {
             'plural_count': (numComments > 1),
             'count': String(numComments),
             'comments': (c: Element) => { this.renderComments(c, comments); },
-            'newcomment': comments.IsWritable ? (c: Element) => { this.renderForm(c); } : false,
+            'newcomment': comments.Config.IsWritable ? (c: Element) => { this.renderForm(c); } : false,
         });
         this.appendChild(block);
+
+        if (window.location.hash.startsWith('#' + AnchorPrefix)) {
+            let anchor = window.location.hash.substring(1);
+            let element = document.querySelector(`[name=${anchor}]`);
+            if (element) element.scrollIntoView();
+        }
     }
 
     private renderComments(list: Element, comments: Comments) {
@@ -56,8 +64,8 @@ class JtCommentsElement extends HTMLElement {
             applyTemplate(row as Element, {
                 'author': comment.Author,
                 'when': Lang.formatDate(comment.When),
-                'url': new URL('#c' + comment.Id, window.location.toString()).toString(),
-                'anchor': 'c_' + comment.Id,
+                'url': new URL('#' + AnchorPrefix + comment.Id, window.location.toString()).toString(),
+                'anchor': AnchorPrefix + comment.Id,
                 'text': { html: comment.Text },
             });
             list.appendChild(row);

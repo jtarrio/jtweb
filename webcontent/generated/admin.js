@@ -5,6 +5,7 @@
         root;
         constructor(root) {
             this.root = root;
+            this.wireEvent('input[name=ApplyFilter]', 'click', _ => this.loadList(0));
             let list = this.getListTableElement();
             if (list) {
                 this.wireEventFromRoot(list, 'thead input[type=checkbox]', 'change', e => this.toggleSelectAll(e));
@@ -17,6 +18,24 @@
         }
         wireEvent(selector, event, handler) {
             this.wireEventFromRoot(this.root, selector, event, handler);
+        }
+        getListNameElement() {
+            return this.root.querySelector('#listName');
+        }
+        getListTableElement() {
+            return this.root.querySelector('#list');
+        }
+        getListLinksElement() {
+            return this.root.querySelector('#listLinks');
+        }
+        getItemsPerPage() {
+            let form = this.root.querySelector('#filters');
+            if (form) {
+                let items = form.querySelector('[name=ItemsPerPage');
+                if (items)
+                    return Number(items.value);
+            }
+            return 20;
         }
         createRow(columns) {
             let rowHtml = `<td><input type="checkbox"></td>`;
@@ -123,12 +142,22 @@
             };
             return post(this.apiUrl + '/findPosts', params);
         }
-        async setVisible(ids, visible) {
+        async bulkSetVisible(ids, visible) {
             let params = {
                 'Ids': Object.fromEntries(ids),
                 'Visible': visible
             };
-            await post(this.apiUrl + '/setVisible', params);
+            await post(this.apiUrl + '/bulkSetVisible', params);
+        }
+        async bulkUpdatePostConfigs(postIds, writable, readable) {
+            let params = {
+                'PostIds': postIds,
+                'Config': {
+                    'IsWritable': writable,
+                    'IsReadable': readable,
+                },
+            };
+            await post(this.apiUrl + '/bulkUpdatePostConfigs', params);
         }
     }
     async function post(url, data) {
@@ -159,15 +188,14 @@
         constructor(root) {
             super(root);
             this.api = new AdminApi();
-            this.wireEvent('input[name=ApplyCommentFilter]', 'click', _ => this.loadList(0));
-            this.wireEvent('input[name=MakeVisible]', 'click', _ => this.makeVisible());
-            this.wireEvent('input[name=MakeNonVisible]', 'click', _ => this.makeNonVisible());
+            this.wireEvent('input[name=MakeVisible]', 'click', _ => this.changeVisible(true));
+            this.wireEvent('input[name=MakeNonVisible]', 'click', _ => this.changeVisible(false));
             this.loadList(0);
         }
         api;
         getFilter() {
             let out = { Visible: null };
-            let form = this.root.querySelector('#cmtFilters');
+            let form = this.root.querySelector('#filters');
             if (!form)
                 throw "Could not find filters box";
             let visible = form.querySelector('[name=Visible]').value;
@@ -188,15 +216,6 @@
                 return 'Latest non-visible comments';
             }
         }
-        getItemsPerPage() {
-            let form = this.root.querySelector('#cmtFilters');
-            if (form) {
-                let items = form.querySelector('[name=ItemsPerPage');
-                if (items)
-                    return Number(items.value);
-            }
-            return 20;
-        }
         getItems(filter, itemsPerPage, start) {
             return this.api.findComments(filter, Sort.NewestFirst, itemsPerPage, start);
         }
@@ -209,27 +228,11 @@
                 item.Text
             ];
         }
-        getListNameElement() {
-            return this.root.querySelector('#cmtListName');
-        }
-        getListTableElement() {
-            return this.root.querySelector('#cmtList');
-        }
-        getListLinksElement() {
-            return this.root.querySelector('#cmtListLinks');
-        }
-        async makeVisible() {
+        async changeVisible(visible) {
             let ids = this.gatherSelectedIds();
             if (ids.size == 0)
                 return;
-            await this.api.setVisible(ids, true);
-            this.loadList(0);
-        }
-        async makeNonVisible() {
-            let ids = this.gatherSelectedIds();
-            if (ids.size == 0)
-                return;
-            await this.api.setVisible(ids, false);
+            await this.api.bulkSetVisible(ids, visible);
             this.loadList(0);
         }
         gatherSelectedIds() {
@@ -256,13 +259,15 @@
         constructor(root) {
             super(root);
             this.api = new AdminApi();
-            this.wireEvent('input[name=ApplyPostFilter]', 'click', _ => this.loadList(0));
+            this.wireEvent('input[name=MakeOpen]', 'click', _ => this.changeState(true, true));
+            this.wireEvent('input[name=MakeClosed]', 'click', _ => this.changeState(false, true));
+            this.wireEvent('input[name=MakeDisabled]', 'click', _ => this.changeState(false, false));
             this.loadList(0);
         }
         api;
         getFilter() {
             let out = { CommentsReadable: null, CommentsWritable: null };
-            let form = this.root.querySelector('#postFilters');
+            let form = this.root.querySelector('#filters');
             if (!form)
                 throw "Could not find filters box";
             let state = form.querySelector('[name=State]').value;
@@ -293,15 +298,6 @@
                 return 'Latest posts';
             }
         }
-        getItemsPerPage() {
-            let form = this.root.querySelector('#postFilters');
-            if (form) {
-                let items = form.querySelector('[name=ItemsPerPage');
-                if (items)
-                    return Number(items.value);
-            }
-            return 20;
-        }
         getItems(filter, itemsPerPage, start) {
             return this.api.findPosts(filter, Sort.NewestFirst, itemsPerPage, start);
         }
@@ -311,14 +307,18 @@
                 item.PostId
             ];
         }
-        getListNameElement() {
-            return this.root.querySelector('#postListName');
+        async changeState(writable, readable) {
+            let ids = this.gatherSelectedIds();
+            await this.api.bulkUpdatePostConfigs(ids, writable, readable);
+            this.loadList(0);
         }
-        getListTableElement() {
-            return this.root.querySelector('#postList');
-        }
-        getListLinksElement() {
-            return this.root.querySelector('#postListLinks');
+        gatherSelectedIds() {
+            let items = this.gatherSelectedItems();
+            let ids = [];
+            for (let item of items) {
+                ids.push(item.PostId);
+            }
+            return ids;
         }
     }
 

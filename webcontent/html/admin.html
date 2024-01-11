@@ -32,8 +32,8 @@
         </div>
 
         <div id="tabPage-0" class="tabOpen">
-            <h1 id="cmtListName">Loading</h1>
-            <div id="cmtFilters">
+            <h1 id="listName">Loading</h1>
+            <div id="filters">
                 Items/page
                 <select name="ItemsPerPage">
                     <option value="20">20</option>
@@ -47,15 +47,15 @@
                     <option value="false" selected>No</option>
                     <option value="true">Yes</option>
                 </select>
-                <input type="button" name="ApplyCommentFilter" value="Apply Filters">
+                <input type="button" name="ApplyFilter" value="Apply Filters">
             </div>
-            <table id="cmtList">
+            <table id="list">
                 <thead>
                     <tr><td><input type="checkbox"></td><td>Visible</td><td>Post</td><td>Author</td><td>When</td><td>Text</td></tr>
                 </thead>
                 <tbody></tbody>
             </table>
-            <div id="cmtListLinks"></div>
+            <div id="listLinks"></div>
             <div>
                 <input type="button" name="MakeVisible" value="Make visible">
                 <input type="button" name="MakeNonVisible" value="Make non-visible">
@@ -63,8 +63,8 @@
         </div>
 
         <div id="tabPage-1">
-            <h1 id="postListName">Loading</h1>
-            <div id="postFilters">
+            <h1 id="listName">Loading</h1>
+            <div id="filters">
                 Items/page
                 <select name="ItemsPerPage">
                     <option value="20">20</option>
@@ -79,15 +79,15 @@
                     <option value="closed">Closed</option>
                     <option value="disabled">Disabled</option>
                 </select>
-                <input type="button" name="ApplyPostFilter" value="Apply Filters">
+                <input type="button" name="ApplyFilter" value="Apply Filters">
             </div>
-            <table id="postList">
+            <table id="list">
                 <thead>
                     <tr><td><input type="checkbox"></td><td>State</td><td>Id</td></tr>
                 </thead>
                 <tbody></tbody>
             </table>
-            <div id="postListLinks"></div>
+            <div id="listLinks"></div>
             <div>
                 <input type="button" name="MakeOpen" value="Open comments">
                 <input type="button" name="MakeClosed" value="Close comments">

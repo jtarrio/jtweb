@@ -5,9 +5,10 @@ interface ItemList<T> {
 
 export abstract class AdminPage<Type, Filter> {
     constructor(protected root: HTMLElement) {
+        this.wireEvent('input[name=ApplyFilter]', 'click', _ => this.loadList(0));
         let list = this.getListTableElement();
         if (list) {
-        this.wireEventFromRoot(list, 'thead input[type=checkbox]', 'change', e => this.toggleSelectAll(e));
+            this.wireEventFromRoot(list, 'thead input[type=checkbox]', 'change', e => this.toggleSelectAll(e));
         }
     }
 
@@ -20,17 +21,34 @@ export abstract class AdminPage<Type, Filter> {
         this.wireEventFromRoot(this.root, selector, event, handler);
     }
 
-    protected abstract getFilter() : Filter;
+    protected abstract getFilter(): Filter;
     protected abstract getFilterTitle(filter: Filter): string;
-    protected abstract getItemsPerPage(): number;
-    protected abstract getItems(filter: Filter, itemsPerPage: number, start: number) : Promise<ItemList<Type>>;
+    protected abstract getItems(filter: Filter, itemsPerPage: number, start: number): Promise<ItemList<Type>>;
     protected abstract getRowContents(item: Type): string[];
-    protected abstract getListNameElement(): HTMLElement | null;
-    protected abstract getListTableElement(): HTMLElement | null;
-    protected abstract getListLinksElement(): HTMLElement | null;
 
-    protected createRow(columns: number) : HTMLTableRowElement {
-        let rowHtml =  `<td><input type="checkbox"></td>`;
+    protected getListNameElement(): HTMLElement | null {
+        return this.root.querySelector('#listName');
+    }
+
+    protected getListTableElement(): HTMLElement | null {
+        return this.root.querySelector('#list');
+    }
+
+    protected getListLinksElement(): HTMLElement | null {
+        return this.root.querySelector('#listLinks');
+    }
+
+    protected getItemsPerPage(): number {
+        let form = this.root.querySelector('#filters');
+        if (form) {
+            let items = form.querySelector('[name=ItemsPerPage') as HTMLSelectElement | null;
+            if (items) return Number(items.value);
+        }
+        return 20;
+    }
+
+    protected createRow(columns: number): HTMLTableRowElement {
+        let rowHtml = `<td><input type="checkbox"></td>`;
         for (let i = 0; i < columns; ++i) {
             rowHtml += `<td></td>`;
         }
@@ -85,14 +103,14 @@ export abstract class AdminPage<Type, Filter> {
         }
     }
 
-    toggleSelectAll(e: Event) {
+    private toggleSelectAll(e: Event) {
         let boxes = this.getListTableElement()?.querySelectorAll('tbody input[type=checkbox]') as NodeListOf<HTMLInputElement>;
         for (let box of boxes) {
             box.checked = (e.target! as HTMLInputElement).checked;
-        }    
+        }
     }
 
-    gatherSelectedItems(): Type[] {
+    protected gatherSelectedItems(): Type[] {
         let items: Type[] = [];
         let list = this.getListTableElement();
         if (!list) return items;

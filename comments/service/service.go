@@ -21,13 +21,13 @@ type CommentsService interface {
 	FindPosts(filter PostFilter, sort Sort, limit int, start int) (*FoundPosts, error)
 	BulkSetVisible(ids map[PostId][]*CommentId, visible bool) error
 	SetAvailablePosts(posts *AvailablePosts) error
+	BulkUpdatePostConfigs(ids []PostId, config CommentConfig) error
 }
 
 type CommentList struct {
-	PostId     PostId
-	IsReadable bool
-	IsWritable bool
-	List       []*Comment
+	PostId PostId
+	Config CommentConfig
+	List   []*Comment
 }
 
 type Comment struct {
@@ -105,17 +105,33 @@ type commentsServiceImpl struct {
 	defaultVisible bool
 }
 
+func commentConfigToState(cfg CommentConfig) engine.CommentState {
+	if cfg.IsReadable {
+		if cfg.IsWritable {
+			return engine.CommentsEnabled
+		}
+		return engine.CommentsClosed
+	}
+	return engine.CommentsDisabled
+}
+
+func commentStateToConfig(state engine.CommentState) CommentConfig {
+	return CommentConfig{
+		IsWritable: state == engine.CommentsEnabled,
+		IsReadable: state != engine.CommentsDisabled,
+	}
+}
+
 func (s *commentsServiceImpl) List(id PostId, seeDrafts bool) (*CommentList, error) {
 	cfg, err := s.engine.GetConfig(id)
 	if err != nil {
 		return nil, err
 	}
 	out := &CommentList{
-		PostId:     id,
-		IsReadable: cfg.State != engine.CommentsDisabled,
-		IsWritable: cfg.State == engine.CommentsEnabled,
-		List:       []*Comment{}}
-	if !out.IsReadable {
+		PostId: id,
+		Config: commentStateToConfig(cfg.State),
+		List:   []*Comment{}}
+	if !out.Config.IsReadable {
 		return out, nil
 	}
 	list, err := s.engine.List(id, seeDrafts)
@@ -166,10 +182,7 @@ func (s *commentsServiceImpl) FindPosts(filter PostFilter, sort Sort, limit int,
 	for i := 0; i < len(list) && i < limit; i++ {
 		out.List = append(out.List, &FoundPost{
 			PostId: list[i].PostId,
-			Config: CommentConfig{
-				IsReadable: list[i].State != engine.CommentsDisabled,
-				IsWritable: list[i].State == engine.CommentsEnabled,
-			},
+			Config: commentStateToConfig(list[i].State),
 		})
 	}
 	return out, nil
@@ -222,13 +235,21 @@ func (s *commentsServiceImpl) Render(text Markdown) (Html, error) {
 func (s *commentsServiceImpl) SetAvailablePosts(posts *AvailablePosts) error {
 	cfg := &engine.BulkConfig{Configs: make([]engine.Config, 0)}
 	for id, postCfg := range posts.Posts {
-		state := engine.CommentsDisabled
-		if postCfg.IsWritable {
-			state = engine.CommentsEnabled
-		} else if postCfg.IsReadable {
-			state = engine.CommentsClosed
-		}
-		cfg.Configs = append(cfg.Configs, engine.Config{PostId: id, State: state})
+		cfg.Configs = append(cfg.Configs, engine.Config{PostId: id, State: commentConfigToState(postCfg)})
 	}
-	return s.engine.BulkSetConfig(cfg)
+	return s.engine.SetAllPostConfigs(cfg)
+}
+
+func (s *commentsServiceImpl) BulkUpdatePostConfigs(ids []PostId, config CommentConfig) error {
+	cfg := &engine.BulkConfig{
+		Configs: []engine.Config{},
+	}
+	state := commentConfigToState(config)
+	for _, id := range ids {
+		cfg.Configs = append(cfg.Configs, engine.Config{
+			PostId: id,
+			State:  state,
+		})
+	}
+	return s.engine.BulkUpdatePostConfigs(cfg)
 }

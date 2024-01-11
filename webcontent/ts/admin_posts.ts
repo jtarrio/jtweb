@@ -9,7 +9,9 @@ class AdminPosts extends AdminPage<FoundPost, PostFilter> {
     constructor(root: HTMLElement) {
         super(root);
         this.api = new AdminApi();
-        this.wireEvent('input[name=ApplyPostFilter]', 'click', _ => this.loadList(0));
+        this.wireEvent('input[name=MakeOpen]', 'click', _ => this.changeState(true, true));
+        this.wireEvent('input[name=MakeClosed]', 'click', _ => this.changeState(false, true));
+        this.wireEvent('input[name=MakeDisabled]', 'click', _ => this.changeState(false, false));
         this.loadList(0);
     }
 
@@ -17,7 +19,7 @@ class AdminPosts extends AdminPage<FoundPost, PostFilter> {
 
     protected getFilter(): PostFilter {
         let out: PostFilter = { CommentsReadable: null, CommentsWritable: null };
-        let form = this.root.querySelector('#postFilters');
+        let form = this.root.querySelector('#filters');
         if (!form) throw "Could not find filters box";
         let state = (form.querySelector('[name=State]') as HTMLSelectElement).value;
         if (state == 'open') {
@@ -46,15 +48,6 @@ class AdminPosts extends AdminPage<FoundPost, PostFilter> {
         }
     }
 
-    protected getItemsPerPage(): number {
-        let form = this.root.querySelector('#postFilters');
-        if (form) {
-            let items = form.querySelector('[name=ItemsPerPage') as HTMLSelectElement | null;
-            if (items) return Number(items.value);
-        }
-        return 20;
-    }
-
     protected getItems(filter: PostFilter, itemsPerPage: number, start: number): Promise<FoundPosts> {
         return this.api.findPosts(filter, Sort.NewestFirst, itemsPerPage, start);
     }
@@ -66,16 +59,20 @@ class AdminPosts extends AdminPage<FoundPost, PostFilter> {
         ];
     }
 
-    protected getListNameElement(): HTMLElement | null {
-        return this.root.querySelector('#postListName');
+    private async changeState(writable: boolean, readable: boolean) {
+        let ids = this.gatherSelectedIds();
+        await this.api.bulkUpdatePostConfigs(ids, writable, readable);
+        this.loadList(0);
     }
 
-    protected getListTableElement(): HTMLElement | null {
-        return this.root.querySelector('#postList');
+    private gatherSelectedIds(): string[] {
+        let items = this.gatherSelectedItems();
+        let ids: string[] = [];
+        for (let item of items) {
+            ids.push(item.PostId);
+        }
+        return ids;
     }
 
-    protected getListLinksElement(): HTMLElement | null {
-        return this.root.querySelector('#postListLinks');
-    }
 }
 

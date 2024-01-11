@@ -386,6 +386,7 @@
         return baseUrl.toString();
     }
 
+    const AnchorPrefix = 'comment_';
     class JtCommentsElement extends HTMLElement {
         api;
         postId;
@@ -412,7 +413,7 @@
             this.render(await this.api.list(this.postId));
         }
         render(comments) {
-            if (!comments.IsReadable) {
+            if (!comments.Config.IsReadable) {
                 this.remove();
                 return;
             }
@@ -424,9 +425,15 @@
                 'plural_count': (numComments > 1),
                 'count': String(numComments),
                 'comments': (c) => { this.renderComments(c, comments); },
-                'newcomment': comments.IsWritable ? (c) => { this.renderForm(c); } : false,
+                'newcomment': comments.Config.IsWritable ? (c) => { this.renderForm(c); } : false,
             });
             this.appendChild(block);
+            if (window.location.hash.startsWith('#' + AnchorPrefix)) {
+                let anchor = window.location.hash.substring(1);
+                let element = document.querySelector(`[name=${anchor}]`);
+                if (element)
+                    element.scrollIntoView();
+            }
         }
         renderComments(list, comments) {
             for (let comment of comments.List) {
@@ -434,8 +441,8 @@
                 applyTemplate(row, {
                     'author': comment.Author,
                     'when': formatDate(comment.When),
-                    'url': new URL('#c' + comment.Id, window.location.toString()).toString(),
-                    'anchor': 'c_' + comment.Id,
+                    'url': new URL('#' + AnchorPrefix + comment.Id, window.location.toString()).toString(),
+                    'anchor': AnchorPrefix + comment.Id,
                     'text': { html: comment.Text },
                 });
                 list.appendChild(row);

@@ -1,7 +1,6 @@
 package genericsql
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
 	"strconv"
@@ -18,26 +17,6 @@ func int64ToCommentId(id int64) comments.CommentId {
 
 func commentIdToInt64(id comments.CommentId) (int64, error) {
 	return strconv.ParseInt(string(id), 36, 64)
-}
-
-type sqlErrorWrapper struct {
-	parent error
-}
-
-func sqlError(e error) error {
-	if e == nil {
-		return nil
-	}
-	return &sqlErrorWrapper{parent: e}
-}
-
-func (e *sqlErrorWrapper) Error() string {
-	return e.parent.Error()
-}
-
-func IsSqlError(e error) bool {
-	_, ok := e.(*sqlErrorWrapper)
-	return ok
 }
 
 type GenericSqlEngine struct {
@@ -82,6 +61,9 @@ func getConfig(tx *sql.Tx, postId comments.PostId) (*engine.Config, error) {
 	}
 	defer stmt.Close()
 	rows, err := stmt.Query(string(postId))
+	if err != nil {
+		return nil, sqlError(err)
+	}
 	if !rows.Next() {
 		return nil, fmt.Errorf("post not found [%s]", postId)
 	}
@@ -111,7 +93,7 @@ func (e *GenericSqlEngine) SetConfig(newConfig, oldConfig *engine.Config) error 
 	})
 }
 
-func (e *GenericSqlEngine) BulkSetConfig(cfg *engine.BulkConfig) error {
+func (e *GenericSqlEngine) SetAllPostConfigs(cfg *engine.BulkConfig) error {
 	return doInWriteTxNoReturn(e, func(tx *sql.Tx) error {
 		knownPosts := map[engine.PostId]engine.CommentState{}
 		{
@@ -401,41 +383,19 @@ func (e *GenericSqlEngine) BulkSetVisible(ids map[engine.PostId][]*engine.Commen
 	})
 }
 
-func doInReadTx[R any](e *GenericSqlEngine, op func(tx *sql.Tx) (R, error)) (R, error) {
-	return doInTx(e, sql.LevelReadCommitted, op)
-}
-
-func doInWriteTx[R any](e *GenericSqlEngine, op func(tx *sql.Tx) (R, error)) (R, error) {
-	retries_left := 1
-	for {
-		ret, err := doInTx(e, sql.LevelSerializable, op)
-		if !IsSqlError(err) {
-			return ret, err
+func (e *GenericSqlEngine) BulkUpdatePostConfigs(cfg *engine.BulkConfig) error {
+	return doInWriteTxNoReturn(e, func(tx *sql.Tx) error {
+		stmt, err := tx.Prepare(`UPDATE Posts SET StateFromWeb = ? WHERE PostId = ?`)
+		if err != nil {
+			return sqlError(err)
 		}
-		if retries_left <= 0 {
-			var zero R
-			return zero, fmt.Errorf("maximum retries exceeded: %s", err)
+		defer stmt.Close()
+		for _, cfg := range cfg.Configs {
+			_, err := stmt.Exec(cfg.State, cfg.PostId)
+			if err != nil {
+				return sqlError(err)
+			}
 		}
-		retries_left--
-	}
-}
-
-func doInWriteTxNoReturn(e *GenericSqlEngine, op func(tx *sql.Tx) error) error {
-	_, err := doInWriteTx(e, func(tx *sql.Tx) (bool, error) {
-		return false, op(tx)
+		return nil
 	})
-	return err
-}
-
-func doInTx[R any](e *GenericSqlEngine, level sql.IsolationLevel, op func(tx *sql.Tx) (R, error)) (R, error) {
-	var zero R
-	tx, err := e.db.BeginTx(context.TODO(), &sql.TxOptions{Isolation: (sql.LevelReadCommitted)})
-	if err != nil {
-		return zero, err
-	}
-	ret, err := op(tx)
-	if err != nil {
-		return zero, sqlError(tx.Rollback())
-	}
-	return ret, sqlError(tx.Commit())
 }
