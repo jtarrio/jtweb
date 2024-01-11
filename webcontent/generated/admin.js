@@ -1,6 +1,101 @@
 (function () {
     'use strict';
 
+    class AdminPage {
+        root;
+        constructor(root) {
+            this.root = root;
+            let list = this.getListTableElement();
+            if (list) {
+                this.wireEventFromRoot(list, 'thead input[type=checkbox]', 'change', e => this.toggleSelectAll(e));
+            }
+        }
+        wireEventFromRoot(root, selector, event, handler) {
+            let element = root.querySelector(selector);
+            if (element)
+                element.addEventListener(event, handler);
+        }
+        wireEvent(selector, event, handler) {
+            this.wireEventFromRoot(this.root, selector, event, handler);
+        }
+        createRow(columns) {
+            let rowHtml = `<td><input type="checkbox"></td>`;
+            for (let i = 0; i < columns; ++i) {
+                rowHtml += `<td></td>`;
+            }
+            let row = document.createElement('tr');
+            row.innerHTML = rowHtml;
+            return row;
+        }
+        async loadList(start) {
+            let filter = this.getFilter();
+            let items = await this.getItems(filter, this.getItemsPerPage(), start);
+            let listName = this.getListNameElement();
+            if (listName)
+                listName.textContent = this.getFilterTitle(filter);
+            let listTable = this.getListTableElement()?.querySelector('tbody');
+            if (listTable) {
+                while (listTable.firstChild)
+                    listTable.firstChild.remove();
+                for (let item of items.List) {
+                    let row = document.createElement('tr');
+                    row['item'] = item;
+                    let td = document.createElement('td');
+                    td.innerHTML = `<input type="checkbox">`;
+                    row.appendChild(td);
+                    for (let col of this.getRowContents(item)) {
+                        let td = document.createElement('td');
+                        td.textContent = col;
+                        row.appendChild(td);
+                    }
+                    listTable.appendChild(row);
+                }
+            }
+            let listLinks = this.getListLinksElement();
+            if (listLinks) {
+                while (listLinks.firstChild)
+                    listLinks.firstChild.remove();
+                if (items.More) {
+                    let link = document.createElement('a');
+                    link.href = "javascript:0";
+                    link.textContent = "Next";
+                    link.addEventListener('click', _ => this.loadList(start + this.getItemsPerPage()));
+                    listLinks.appendChild(link);
+                    if (items.More) {
+                        listLinks.insertAdjacentText('beforeend', ' ');
+                    }
+                }
+                if (start > 0) {
+                    let link = document.createElement('a');
+                    link.href = "javascript:0";
+                    link.textContent = "Previous";
+                    link.addEventListener('click', _ => this.loadList(start - this.getItemsPerPage()));
+                    listLinks.appendChild(link);
+                }
+            }
+        }
+        toggleSelectAll(e) {
+            let boxes = this.getListTableElement()?.querySelectorAll('tbody input[type=checkbox]');
+            for (let box of boxes) {
+                box.checked = e.target.checked;
+            }
+        }
+        gatherSelectedItems() {
+            let items = [];
+            let list = this.getListTableElement();
+            if (!list)
+                return items;
+            let rows = list.querySelectorAll('tbody tr');
+            for (let row of rows) {
+                let checkbox = row.querySelector('input[type=checkbox]');
+                if (checkbox.checked) {
+                    items.push(row['item']);
+                }
+            }
+            return items;
+        }
+    }
+
     var Sort;
     (function (Sort) {
         Sort[Sort["NewestFirst"] = 0] = "NewestFirst";
@@ -10,14 +105,23 @@
             this.apiUrl = findApiUrl();
         }
         apiUrl;
-        async find(filter, sort, limit, start) {
+        async findComments(filter, sort, limit, start) {
             let params = {
                 'Filter': filter,
                 'Sort': sort,
                 'Limit': limit,
                 'Start': start,
             };
-            return post(this.apiUrl + '/find', params);
+            return post(this.apiUrl + '/findComments', params);
+        }
+        async findPosts(filter, sort, limit, start) {
+            let params = {
+                'Filter': filter,
+                'Sort': sort,
+                'Limit': limit,
+                'Start': start,
+            };
+            return post(this.apiUrl + '/findPosts', params);
         }
         async setVisible(ids, visible) {
             let params = {
@@ -48,129 +152,242 @@
         return baseUrl.toString();
     }
 
-    var api = new AdminApi();
-    window.addEventListener('load', _ => doAdmin());
-    const COMMENTS_PER_PAGE = 20;
-    function doAdmin() {
-        wireEvents();
-        loadList(0);
+    function doAdminComments(rootElement) {
+        new AdminComments(rootElement);
     }
-    function wireEvents() {
-        wireEvent('#cmtList thead input[type=checkbox]', 'change', toggleSelectAll);
-        wireEvent('input[name=ApplyFilter]', 'click', _ => loadList(0));
-        wireEvent('input[name=MakeVisible]', 'click', makeVisible);
-        wireEvent('input[name=MakeNonVisible]', 'click', makeNonVisible);
-    }
-    function wireEvent(selector, event, handler) {
-        let element = document.querySelector(selector);
-        if (element)
-            element.addEventListener(event, handler);
-    }
-    async function loadList(start) {
-        let filter = getFilter();
-        let comments = await api.find(filter, Sort.NewestFirst, COMMENTS_PER_PAGE, start);
-        let listName = document.getElementById('cmtListName');
-        if (listName)
-            listName.textContent = getFilterTitle(filter);
-        let listTable = document.querySelector('#cmtList tbody');
-        if (listTable) {
-            while (listTable.firstChild)
-                listTable.firstChild.remove();
-            for (let cmt of comments.List) {
-                let row = document.createElement('tr');
-                row['comment'] = cmt;
-                // select visible post author when text
-                row.innerHTML = `<td><input type="checkbox"></td><td></td><td></td><td></td><td></td><td></td>`;
-                let cells = row.querySelectorAll('td');
-                cells[1].textContent = cmt.Comment.Visible ? 'Yes' : 'No';
-                cells[2].textContent = cmt.PostId;
-                cells[3].textContent = cmt.Comment.Author;
-                cells[4].textContent = cmt.Comment.When;
-                cells[5].textContent = cmt.Comment.Text;
-                listTable.appendChild(row);
+    class AdminComments extends AdminPage {
+        constructor(root) {
+            super(root);
+            this.api = new AdminApi();
+            this.wireEvent('input[name=ApplyCommentFilter]', 'click', _ => this.loadList(0));
+            this.wireEvent('input[name=MakeVisible]', 'click', _ => this.makeVisible());
+            this.wireEvent('input[name=MakeNonVisible]', 'click', _ => this.makeNonVisible());
+            this.loadList(0);
+        }
+        api;
+        getFilter() {
+            let out = { Visible: null };
+            let form = this.root.querySelector('#cmtFilters');
+            if (!form)
+                throw "Could not find filters box";
+            let visible = form.querySelector('[name=Visible]').value;
+            if (visible == 'true')
+                out.Visible = true;
+            if (visible == 'false')
+                out.Visible = false;
+            return out;
+        }
+        getFilterTitle(filter) {
+            if (filter.Visible === null) {
+                return 'Latest comments';
+            }
+            else if (filter.Visible) {
+                return 'Latest visible comments';
+            }
+            else {
+                return 'Latest non-visible comments';
             }
         }
-        let listLinks = document.getElementById('cmtListLinks');
-        if (listLinks) {
-            while (listLinks.firstChild)
-                listLinks.firstChild.remove();
-            if (start > 0) {
-                let link = document.createElement('a');
-                link.href = "javascript:0";
-                link.textContent = "Previous";
-                link.addEventListener('click', _ => loadList(start - COMMENTS_PER_PAGE));
-                listLinks.appendChild(link);
-                if (comments.More) {
-                    listLinks.insertAdjacentText('beforeend', ' ');
+        getItemsPerPage() {
+            let form = this.root.querySelector('#cmtFilters');
+            if (form) {
+                let items = form.querySelector('[name=ItemsPerPage');
+                if (items)
+                    return Number(items.value);
+            }
+            return 20;
+        }
+        getItems(filter, itemsPerPage, start) {
+            return this.api.findComments(filter, Sort.NewestFirst, itemsPerPage, start);
+        }
+        getRowContents(item) {
+            return [
+                item.Visible ? 'Yes' : 'No',
+                item.PostId,
+                item.Author,
+                item.When,
+                item.Text
+            ];
+        }
+        getListNameElement() {
+            return this.root.querySelector('#cmtListName');
+        }
+        getListTableElement() {
+            return this.root.querySelector('#cmtList');
+        }
+        getListLinksElement() {
+            return this.root.querySelector('#cmtListLinks');
+        }
+        async makeVisible() {
+            let ids = this.gatherSelectedIds();
+            if (ids.size == 0)
+                return;
+            await this.api.setVisible(ids, true);
+            this.loadList(0);
+        }
+        async makeNonVisible() {
+            let ids = this.gatherSelectedIds();
+            if (ids.size == 0)
+                return;
+            await this.api.setVisible(ids, false);
+            this.loadList(0);
+        }
+        gatherSelectedIds() {
+            let items = this.gatherSelectedItems();
+            let ids = new Map();
+            for (let item of items) {
+                let postId = item.PostId;
+                let commentId = item.CommentId;
+                if (!ids.has(postId)) {
+                    ids.set(postId, [commentId]);
+                }
+                else {
+                    ids.get(postId).push(commentId);
                 }
             }
-            if (comments.More) {
-                let link = document.createElement('a');
-                link.href = "javascript:0";
-                link.textContent = "Next";
-                link.addEventListener('click', _ => loadList(start + COMMENTS_PER_PAGE));
-                listLinks.appendChild(link);
+            return ids;
+        }
+    }
+
+    function doAdminPosts(rootElement) {
+        new AdminPosts(rootElement);
+    }
+    class AdminPosts extends AdminPage {
+        constructor(root) {
+            super(root);
+            this.api = new AdminApi();
+            this.wireEvent('input[name=ApplyPostFilter]', 'click', _ => this.loadList(0));
+            this.loadList(0);
+        }
+        api;
+        getFilter() {
+            let out = { CommentsReadable: null, CommentsWritable: null };
+            let form = this.root.querySelector('#postFilters');
+            if (!form)
+                throw "Could not find filters box";
+            let state = form.querySelector('[name=State]').value;
+            if (state == 'open') {
+                out.CommentsReadable = true;
+                out.CommentsWritable = true;
+            }
+            if (state == 'closed') {
+                out.CommentsReadable = true;
+                out.CommentsWritable = false;
+            }
+            if (state == 'disabled') {
+                out.CommentsReadable = false;
+            }
+            return out;
+        }
+        getFilterTitle(filter) {
+            if (filter.CommentsWritable === true) {
+                return 'Latest posts with open comments';
+            }
+            else if (filter.CommentsReadable === true) {
+                return 'Latest posts with closed comments';
+            }
+            else if (filter.CommentsReadable === false) {
+                return 'Latest posts with disabled comments';
+            }
+            else {
+                return 'Latest posts';
+            }
+        }
+        getItemsPerPage() {
+            let form = this.root.querySelector('#postFilters');
+            if (form) {
+                let items = form.querySelector('[name=ItemsPerPage');
+                if (items)
+                    return Number(items.value);
+            }
+            return 20;
+        }
+        getItems(filter, itemsPerPage, start) {
+            return this.api.findPosts(filter, Sort.NewestFirst, itemsPerPage, start);
+        }
+        getRowContents(item) {
+            return [
+                item.Config.IsReadable ? item.Config.IsWritable ? 'open' : 'closed' : 'disabled',
+                item.PostId
+            ];
+        }
+        getListNameElement() {
+            return this.root.querySelector('#postListName');
+        }
+        getListTableElement() {
+            return this.root.querySelector('#postList');
+        }
+        getListLinksElement() {
+            return this.root.querySelector('#postListLinks');
+        }
+    }
+
+    function initTabs(tabTitle, tabPage) {
+        new Tabs(tabTitle, tabPage);
+    }
+    class Tabs {
+        tabTitle;
+        tabPage;
+        constructor(tabTitle, tabPage) {
+            this.tabTitle = tabTitle;
+            this.tabPage = tabPage;
+            this.titles = this.findElements(this.tabTitle);
+            this.pages = this.findElements(this.tabPage);
+            for (let title of this.titles) {
+                title.addEventListener('click', e => this.switchTab(e));
+            }
+        }
+        titles;
+        pages;
+        getNum(elem, name) {
+            let id = elem.id;
+            if (!id.startsWith(name + '-'))
+                return null;
+            return Number(id.substring(name.length + 1));
+        }
+        findElements(name) {
+            let elems = document.querySelectorAll(`[id|=${name}]`);
+            let out = [];
+            for (let elem of elems) {
+                let num = this.getNum(elem, name);
+                if (num != null) {
+                    let tabElem = elem;
+                    tabElem.tabNum = num;
+                    out.push(tabElem);
+                }
+            }
+            return out;
+        }
+        switchTab(e) {
+            let elem = e.target;
+            if (elem.tabNum !== undefined)
+                this.selectTab(elem.tabNum);
+        }
+        selectTab(num) {
+            for (let title of this.titles) {
+                if (title.tabNum == num) {
+                    title.classList.add('tabSelected');
+                }
+                else {
+                    title.classList.remove('tabSelected');
+                }
+            }
+            for (let page of this.pages) {
+                if (page.tabNum == num) {
+                    page.classList.add('tabOpen');
+                }
+                else {
+                    page.classList.remove('tabOpen');
+                }
             }
         }
     }
-    function toggleSelectAll(e) {
-        let boxes = document.querySelectorAll('#cmtList tbody input[type=checkbox]');
-        for (let box of boxes) {
-            box.checked = e.target.checked;
-        }
-    }
-    function gatherSelectedIds() {
-        let ids = new Map();
-        let rows = document.querySelectorAll('#cmtList tbody tr');
-        for (let row of rows) {
-            let checkbox = row.querySelector('input[type=checkbox]');
-            if (checkbox?.checked) {
-                let comment = row['comment'];
-                let postId = comment.PostId;
-                let commentId = comment.Comment.Id;
-                if (!ids.has(postId))
-                    ids.set(postId, []);
-                ids.get(postId).push(commentId);
-            }
-        }
-        return ids;
-    }
-    async function makeVisible() {
-        let ids = gatherSelectedIds();
-        if (ids.size == 0)
-            return;
-        await api.setVisible(ids, true);
-        loadList(0);
-    }
-    async function makeNonVisible() {
-        let ids = gatherSelectedIds();
-        if (ids.size == 0)
-            return;
-        await api.setVisible(ids, false);
-        loadList(0);
-    }
-    function getFilter() {
-        let out = { Visible: null };
-        let form = document.getElementById('filters');
-        if (!form)
-            throw "Could not find filters box";
-        let visible = form.querySelector('[name=Visible]').value;
-        if (visible == 'true')
-            out.Visible = true;
-        if (visible == 'false')
-            out.Visible = false;
-        return out;
-    }
-    function getFilterTitle(filter) {
-        if (filter.Visible === null) {
-            return 'Latest comments';
-        }
-        else if (filter.Visible) {
-            return 'Latest visible comments';
-        }
-        else {
-            return 'Latest non-visible comments';
-        }
+
+    window.addEventListener('load', _ => doAdmin());
+    function doAdmin() {
+        initTabs('tabTitle', 'tabPage');
+        doAdminComments(document.getElementById('tabPage-0'));
+        doAdminPosts(document.getElementById('tabPage-1'));
     }
 
 })();

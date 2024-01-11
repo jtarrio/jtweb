@@ -17,16 +17,17 @@ type CommentsService interface {
 	List(id PostId, seeDrafts bool) (*CommentList, error)
 	Add(comment *NewComment) (*Comment, error)
 	Render(text Markdown) (Html, error)
-	Find(filter Filter, sort Sort, limit int, start int) (*FoundComments, error)
+	FindComments(filter CommentFilter, sort Sort, limit int, start int) (*FoundComments, error)
+	FindPosts(filter PostFilter, sort Sort, limit int, start int) (*FoundPosts, error)
 	BulkSetVisible(ids map[PostId][]*CommentId, visible bool) error
 	SetAvailablePosts(posts *AvailablePosts) error
 }
 
 type CommentList struct {
-	PostId      PostId
-	IsAvailable bool
-	IsWritable  bool
-	List        []*Comment
+	PostId     PostId
+	IsReadable bool
+	IsWritable bool
+	List       []*Comment
 }
 
 type Comment struct {
@@ -37,6 +38,8 @@ type Comment struct {
 	Text    Html
 }
 
+type RawComment = engine.Comment
+
 type NewComment struct {
 	PostId PostId
 	Author string
@@ -44,19 +47,25 @@ type NewComment struct {
 	Text   Markdown
 }
 
-type Filter = engine.Filter
+type CommentFilter = engine.CommentFilter
+type PostFilter = engine.PostFilter
 type Sort = engine.Sort
 
 const SortNewestFirst = engine.SortNewestFirst
 
 type FoundComments struct {
-	List []*FoundComment
+	List []*RawComment
 	More bool
 }
 
-type FoundComment struct {
-	PostId  PostId
-	Comment Comment
+type FoundPosts struct {
+	List []*FoundPost
+	More bool
+}
+
+type FoundPost struct {
+	PostId comments.PostId
+	Config CommentConfig
 }
 
 type AvailablePosts struct {
@@ -64,8 +73,8 @@ type AvailablePosts struct {
 }
 
 type CommentConfig struct {
-	IsAvailable bool
-	IsWritable  bool
+	IsReadable bool
+	IsWritable bool
 }
 
 func NewCommentsService(engine engine.Engine, options ...CommentsServiceOptions) CommentsService {
@@ -102,11 +111,11 @@ func (s *commentsServiceImpl) List(id PostId, seeDrafts bool) (*CommentList, err
 		return nil, err
 	}
 	out := &CommentList{
-		PostId:      id,
-		IsAvailable: cfg.State != engine.CommentsDisabled,
-		IsWritable:  cfg.State == engine.CommentsEnabled,
-		List:        []*Comment{}}
-	if !out.IsAvailable {
+		PostId:     id,
+		IsReadable: cfg.State != engine.CommentsDisabled,
+		IsWritable: cfg.State == engine.CommentsEnabled,
+		List:       []*Comment{}}
+	if !out.IsReadable {
 		return out, nil
 	}
 	list, err := s.engine.List(id, seeDrafts)
@@ -123,26 +132,44 @@ func (s *commentsServiceImpl) List(id PostId, seeDrafts bool) (*CommentList, err
 	return out, nil
 }
 
-func (s *commentsServiceImpl) Find(filter Filter, sort Sort, limit int, start int) (*FoundComments, error) {
+func (s *commentsServiceImpl) FindComments(filter CommentFilter, sort Sort, limit int, start int) (*FoundComments, error) {
 	if start < 0 {
 		start = 0
 	}
-	list, err := s.engine.Find(filter, sort, limit+1, start)
+	list, err := s.engine.FindComments(filter, sort, limit+1, start)
 	if err != nil {
 		return nil, err
 	}
+	last := limit
+	if last > len(list) {
+		last = len(list)
+	}
 	out := &FoundComments{
-		List: []*FoundComment{},
+		List: list[0:last],
 		More: len(list) > limit,
 	}
-	for i := 0; i < limit && i < len(list); i++ {
-		cmt, err := s.parseComment(list[i])
-		if err != nil {
-			return nil, err
-		}
-		out.List = append(out.List, &FoundComment{
-			PostId:  list[i].PostId,
-			Comment: *cmt,
+	return out, nil
+}
+
+func (s *commentsServiceImpl) FindPosts(filter PostFilter, sort Sort, limit int, start int) (*FoundPosts, error) {
+	if start < 0 {
+		start = 0
+	}
+	list, err := s.engine.FindPosts(filter, sort, limit+1, start)
+	if err != nil {
+		return nil, err
+	}
+	out := &FoundPosts{
+		List: []*FoundPost{},
+		More: len(list) > limit,
+	}
+	for i := 0; i < len(list) && i < limit; i++ {
+		out.List = append(out.List, &FoundPost{
+			PostId: list[i].PostId,
+			Config: CommentConfig{
+				IsReadable: list[i].State != engine.CommentsDisabled,
+				IsWritable: list[i].State == engine.CommentsEnabled,
+			},
 		})
 	}
 	return out, nil
@@ -198,7 +225,7 @@ func (s *commentsServiceImpl) SetAvailablePosts(posts *AvailablePosts) error {
 		state := engine.CommentsDisabled
 		if postCfg.IsWritable {
 			state = engine.CommentsEnabled
-		} else if postCfg.IsAvailable {
+		} else if postCfg.IsReadable {
 			state = engine.CommentsClosed
 		}
 		cfg.Configs = append(cfg.Configs, engine.Config{PostId: id, State: state})

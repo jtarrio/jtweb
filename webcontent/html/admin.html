@@ -12,29 +12,87 @@
                 padding: 3pt;
                 border: 1px solid black;
             }
+
+            .tabSelected {
+                font-weight: bold;
+            }
+
+            [id|=tabPage] {
+                display: none;
+            }
+
+            .tabOpen {
+                display: initial;
+            }
         </style>
     </head>
     <body>
-        <h1 id="cmtListName">Loading</h1>
-        <div id="filters">
-            Visible
-            <select name="Visible">
-                <option value="">-</option>
-                <option value="false" selected>No</option>
-                <option value="true">Yes</option>
-            </select>
-            <input type="button" name="ApplyFilter" value="Apply Filters">
+        <div id="tabs">
+            <a href="javascript:0" id="tabTitle-0" class="tabSelected">Comments</a> <a href="javascript:0" id="tabTitle-1">Posts</a>
         </div>
-        <table id="cmtList">
-            <thead>
-                <tr><td><input type="checkbox"></td><td>Visible</td><td>Post</td><td>Author</td><td>When</td><td>Text</td></tr>
-            </thead>
-            <tbody></tbody>
-        </table>
-        <div id="cmtListLinks"></div>
-        <div>
-            <input type="button" name="MakeVisible" value="Make visible">
-            <input type="button" name="MakeNonVisible" value="Make non-visible">
+
+        <div id="tabPage-0" class="tabOpen">
+            <h1 id="cmtListName">Loading</h1>
+            <div id="cmtFilters">
+                Items/page
+                <select name="ItemsPerPage">
+                    <option value="20">20</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                    <option value="1000">1000</option>
+                </select>
+                Visible
+                <select name="Visible">
+                    <option value="">-</option>
+                    <option value="false" selected>No</option>
+                    <option value="true">Yes</option>
+                </select>
+                <input type="button" name="ApplyCommentFilter" value="Apply Filters">
+            </div>
+            <table id="cmtList">
+                <thead>
+                    <tr><td><input type="checkbox"></td><td>Visible</td><td>Post</td><td>Author</td><td>When</td><td>Text</td></tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+            <div id="cmtListLinks"></div>
+            <div>
+                <input type="button" name="MakeVisible" value="Make visible">
+                <input type="button" name="MakeNonVisible" value="Make non-visible">
+            </div>
+        </div>
+
+        <div id="tabPage-1">
+            <h1 id="postListName">Loading</h1>
+            <div id="postFilters">
+                Items/page
+                <select name="ItemsPerPage">
+                    <option value="20">20</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                    <option value="1000">1000</option>
+                </select>
+                Comments state
+                <select name="State">
+                    <option value="">-</option>
+                    <option value="open" selected>Open</option>
+                    <option value="closed">Closed</option>
+                    <option value="disabled">Disabled</option>
+                </select>
+                <input type="button" name="ApplyPostFilter" value="Apply Filters">
+            </div>
+            <table id="postList">
+                <thead>
+                    <tr><td><input type="checkbox"></td><td>State</td><td>Id</td></tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+            <div id="postListLinks"></div>
+            <div>
+                <input type="button" name="MakeOpen" value="Open comments">
+                <input type="button" name="MakeClosed" value="Close comments">
+                <input type="button" name="MakeDisabled" value="Disable comments">
+            </div>
         </div>
     </body>
 </html>

@@ -12,8 +12,8 @@ func OpComments() OpFn {
 		posts := &service.AvailablePosts{Posts: map[comments.PostId]service.CommentConfig{}}
 		for name, page := range contents.Pages {
 			cfg := service.CommentConfig{
-				IsAvailable: page.Header.Comments.Enabled,
-				IsWritable:  page.Header.Comments.Writable,
+				IsReadable: page.Header.Comments.Enabled,
+				IsWritable: page.Header.Comments.Writable,
 			}
 			posts.Posts[comments.PostId(name)] = cfg
 		}

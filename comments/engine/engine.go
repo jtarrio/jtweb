@@ -44,8 +44,13 @@ type BulkConfig struct {
 	Configs []Config
 }
 
-type Filter struct {
+type CommentFilter struct {
 	Visible *bool
+}
+
+type PostFilter struct {
+	CommentsReadable *bool
+	CommentsWritable *bool
 }
 
 type Sort int
@@ -60,6 +65,7 @@ type Engine interface {
 	BulkSetConfig(cfg *BulkConfig) error
 	List(postId PostId, seeDrafts bool) ([]*Comment, error)
 	Add(comment *NewComment) (*Comment, error)
-	Find(filter Filter, sort Sort, limit int, start int) ([]*Comment, error)
+	FindComments(filter CommentFilter, sort Sort, limit int, start int) ([]*Comment, error)
+	FindPosts(filter PostFilter, sort Sort, limit int, start int) ([]*Config, error)
 	BulkSetVisible(ids map[PostId][]*CommentId, visible bool) error
 }

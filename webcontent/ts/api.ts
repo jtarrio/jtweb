@@ -1,6 +1,6 @@
 export type Comments = {
     PostId: string,
-    IsAvailable: boolean,
+    IsReadable: boolean,
     IsWritable: boolean,
     List: Comment[],
 };
@@ -17,22 +17,6 @@ export type NewComment = {
     PostId: string,
     Author: string,
     Text: string,
-}
-
-export type Filter = {
-    Visible: boolean | null,
-}
-
-export enum Sort {
-    NewestFirst,
-}
-
-export type FoundComments = {
-    List: {
-        PostId: string,
-        Comment: Comment,
-    }[],
-    More: boolean,
 }
 
 export class UserApi {
@@ -55,6 +39,48 @@ export class UserApi {
     }
 }
 
+export type CommentFilter = {
+    Visible: boolean | null,
+}
+
+export enum Sort {
+    NewestFirst,
+}
+
+export type RawComment = {
+    PostId: string,
+    CommentId: string,
+    Visible: boolean,
+    Author: string,
+    When: string,
+    Text: string,
+}
+
+export type FoundComments = {
+    List: RawComment[],
+    More: boolean,
+}
+
+export type PostFilter = {
+    CommentsReadable: boolean | null,
+    CommentsWritable: boolean | null,
+}
+
+export type FoundPosts = {
+    List: FoundPost[],
+    More: boolean,
+}
+
+export type FoundPost = {
+    PostId: string,
+    Config: CommentConfig,
+}
+
+export type CommentConfig = {
+    IsReadable: boolean,
+    IsWritable: boolean,
+}
+
 export class AdminApi {
     constructor() {
         this.apiUrl = findApiUrl();
@@ -62,14 +88,24 @@ export class AdminApi {
 
     private apiUrl: string;
 
-    async find(filter: Filter, sort: Sort, limit: number, start: number): Promise<FoundComments> {
+    async findComments(filter: CommentFilter, sort: Sort, limit: number, start: number): Promise<FoundComments> {
         let params = {
             'Filter': filter,
             'Sort': sort,
             'Limit': limit,
             'Start': start,
         };
-        return post(this.apiUrl + '/find', params);
+        return post(this.apiUrl + '/findComments', params);
+    }
+
+    async findPosts(filter: PostFilter, sort: Sort, limit: number, start: number): Promise<FoundPosts> {
+        let params = {
+            'Filter': filter,
+            'Sort': sort,
+            'Limit': limit,
+            'Start': start,
+        };
+        return post(this.apiUrl + '/findPosts', params);
     }
 
     async setVisible(ids: Map<string, string[]>, visible: boolean) {

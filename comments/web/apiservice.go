@@ -52,8 +52,9 @@ func Serve(service service.CommentsService, adminChecker *AdminChecker) http.Han
 		userPost("/add"):    out.add,
 		userPost("/render"): out.render,
 
-		adminPost("/find"):       out.find,
-		adminPost("/setVisible"): out.setVisible,
+		adminPost("/findComments"): out.findComments,
+		adminPost("/findPosts"):    out.findPosts,
+		adminPost("/setVisible"):   out.setVisible,
 	}
 	return out
 }
@@ -86,9 +87,9 @@ func (s *apiService) render(rw http.ResponseWriter, req *http.Request) {
 	output(struct{ Text comments.Html }{Text: outputData}, err, rw)
 }
 
-func (s *apiService) find(rw http.ResponseWriter, req *http.Request) {
+func (s *apiService) findComments(rw http.ResponseWriter, req *http.Request) {
 	var params struct {
-		Filter service.Filter
+		Filter service.CommentFilter
 		Sort   service.Sort
 		Limit  int
 		Start  int
@@ -96,7 +97,21 @@ func (s *apiService) find(rw http.ResponseWriter, req *http.Request) {
 	if input(req, &params, rw) != nil {
 		return
 	}
-	result, err := s.service.Find(params.Filter, params.Sort, params.Limit, params.Start)
+	result, err := s.service.FindComments(params.Filter, params.Sort, params.Limit, params.Start)
+	output(result, err, rw)
+}
+
+func (s *apiService) findPosts(rw http.ResponseWriter, req *http.Request) {
+	var params struct {
+		Filter service.PostFilter
+		Sort   service.Sort
+		Limit  int
+		Start  int
+	}
+	if input(req, &params, rw) != nil {
+		return
+	}
+	result, err := s.service.FindPosts(params.Filter, params.Sort, params.Limit, params.Start)
 	output(result, err, rw)
 }
 

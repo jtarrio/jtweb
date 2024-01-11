@@ -54,19 +54,15 @@ func (e *GenericSqlEngine) GetConfig(postId comments.PostId) (*engine.Config, er
 	})
 }
 
-func getConfig(tx *sql.Tx, postId comments.PostId) (*engine.Config, error) {
-	stmt, err := tx.Prepare(`SELECT PostId, State, StateFromWeb FROM Posts WHERE PostId = ?`)
-	if err != nil {
-		return nil, sqlError(err)
-	}
-	defer stmt.Close()
+func postRowFields() string {
+	return `PostId, State, StateFromWeb`
+}
+
+func parsePostRow(rows *sql.Rows) (*engine.Config, error) {
 	var rowPostId string
 	var rowState int
 	var rowStateFromWeb sql.NullInt16
-	err = stmt.QueryRow(string(postId)).Scan(&rowPostId, &rowState, &rowStateFromWeb)
-	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("post not found [%s]", postId)
-	} else if err != nil {
+	if err := rows.Scan(&rowPostId, &rowState, &rowStateFromWeb); err != nil {
 		return nil, sqlError(err)
 	}
 	cfg := &engine.Config{
@@ -75,6 +71,23 @@ func getConfig(tx *sql.Tx, postId comments.PostId) (*engine.Config, error) {
 	}
 	if rowStateFromWeb.Valid {
 		cfg.State = engine.CommentState(rowStateFromWeb.Int16)
+	}
+	return cfg, nil
+}
+
+func getConfig(tx *sql.Tx, postId comments.PostId) (*engine.Config, error) {
+	stmt, err := tx.Prepare(fmt.Sprintf(`SELECT %s FROM Posts WHERE PostId = ?`, postRowFields()))
+	if err != nil {
+		return nil, sqlError(err)
+	}
+	defer stmt.Close()
+	rows, err := stmt.Query(string(postId))
+	if !rows.Next() {
+		return nil, fmt.Errorf("post not found [%s]", postId)
+	}
+	cfg, err := parsePostRow(rows)
+	if err != nil {
+		return nil, sqlError(err)
 	}
 	return cfg, nil
 }
@@ -250,10 +263,10 @@ func (e *GenericSqlEngine) Add(newComment *engine.NewComment) (*engine.Comment, 
 	})
 }
 
-func (e *GenericSqlEngine) Find(filter engine.Filter, sort engine.Sort, limit int, start int) ([]*engine.Comment, error) {
+func (e *GenericSqlEngine) FindComments(filter engine.CommentFilter, sort engine.Sort, limit int, start int) ([]*engine.Comment, error) {
 	return doInReadTx(e, func(tx *sql.Tx) ([]*engine.Comment, error) {
-		where, args := whereStr(filter)
-		order := orderStr(sort)
+		where, args := whereStrComments(filter)
+		order := orderStrComments(sort)
 		stmt, err := tx.Prepare(fmt.Sprintf(`SELECT %s FROM Comments WHERE %s ORDER BY %s LIMIT %d OFFSET %d`, commentRowFields(), where, order, limit, start))
 		if err != nil {
 			return nil, sqlError(err)
@@ -276,7 +289,7 @@ func (e *GenericSqlEngine) Find(filter engine.Filter, sort engine.Sort, limit in
 	})
 }
 
-func whereStr(filter engine.Filter) (string, []any) {
+func whereStrComments(filter engine.CommentFilter) (string, []any) {
 	args := []any{}
 	where := []string{}
 	if filter.Visible != nil {
@@ -289,10 +302,79 @@ func whereStr(filter engine.Filter) (string, []any) {
 	return strings.Join(where, " AND "), args
 }
 
-func orderStr(sort engine.Sort) string {
+func orderStrComments(sort engine.Sort) string {
 	switch sort {
 	default:
 		return "Date DESC"
+	}
+}
+
+func (e *GenericSqlEngine) FindPosts(filter engine.PostFilter, sort engine.Sort, limit int, start int) ([]*engine.Config, error) {
+	return doInReadTx(e, func(tx *sql.Tx) ([]*engine.Config, error) {
+		where, args := whereStrPosts(filter)
+		order := orderStrPosts(sort)
+		stmt, err := tx.Prepare(fmt.Sprintf(`SELECT %s FROM Posts WHERE %s ORDER BY %s LIMIT %d OFFSET %d`, postRowFields(), where, order, limit, start))
+		if err != nil {
+			return nil, sqlError(err)
+		}
+		defer stmt.Close()
+		rows, err := stmt.Query(args...)
+		if err != nil {
+			return nil, sqlError(err)
+		}
+		defer rows.Close()
+		out := []*engine.Config{}
+		for rows.Next() {
+			cmt, err := parsePostRow(rows)
+			if err != nil {
+				return nil, sqlError(err)
+			}
+			out = append(out, cmt)
+		}
+		return out, nil
+	})
+}
+
+func whereStrPosts(filter engine.PostFilter) (string, []any) {
+	args := []any{}
+	where := []string{}
+	const stateEq = `((StateFromWeb IS NULL AND State = ?) OR StateFromWeb = ?)`
+	const stateNotEq = `((StateFromWeb IS NULL AND State <> ?) OR StateFromWeb <> ?)`
+	if filter.CommentsReadable == nil {
+		if filter.CommentsWritable == nil {
+			// Any
+		} else if *filter.CommentsWritable {
+			where = append(where, stateEq)
+			args = append(args, engine.CommentsEnabled, engine.CommentsEnabled)
+		} else {
+			where = append(where, stateNotEq)
+			args = append(args, engine.CommentsEnabled, engine.CommentsEnabled)
+		}
+	} else if *filter.CommentsReadable {
+		if filter.CommentsWritable == nil {
+			where = append(where, stateNotEq)
+			args = append(args, engine.CommentsDisabled, engine.CommentsDisabled)
+		} else if *filter.CommentsWritable {
+			where = append(where, stateEq)
+			args = append(args, engine.CommentsEnabled, engine.CommentsEnabled)
+		} else {
+			where = append(where, stateEq)
+			args = append(args, engine.CommentsClosed, engine.CommentsClosed)
+		}
+	} else {
+		where = append(where, stateEq)
+		args = append(args, engine.CommentsDisabled, engine.CommentsDisabled)
+	}
+	if len(where) == 0 {
+		return "TRUE", []any{}
+	}
+	return strings.Join(where, " AND "), args
+}
+
+func orderStrPosts(sort engine.Sort) string {
+	switch sort {
+	default:
+		return "PostId DESC"
 	}
 }
 

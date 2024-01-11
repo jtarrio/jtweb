@@ -32,7 +32,7 @@ class JtCommentsElement extends HTMLElement {
     }
 
     private render(comments: Comments) {
-        if (!comments.IsAvailable) {
+        if (!comments.IsReadable) {
             this.remove();
             return;
         }

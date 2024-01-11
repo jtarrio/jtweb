@@ -339,10 +339,6 @@
         }
     }
 
-    var Sort;
-    (function (Sort) {
-        Sort[Sort["NewestFirst"] = 0] = "NewestFirst";
-    })(Sort || (Sort = {}));
     class UserApi {
         constructor() {
             this.apiUrl = findApiUrl();
@@ -358,6 +354,10 @@
             return post(this.apiUrl + '/render', { 'Text': text });
         }
     }
+    var Sort;
+    (function (Sort) {
+        Sort[Sort["NewestFirst"] = 0] = "NewestFirst";
+    })(Sort || (Sort = {}));
     async function get(url) {
         let response = await fetch(url, { method: 'GET', mode: 'cors' });
         if (response.status != 200) {
@@ -412,7 +412,7 @@
             this.render(await this.api.list(this.postId));
         }
         render(comments) {
-            if (!comments.IsAvailable) {
+            if (!comments.IsReadable) {
                 this.remove();
                 return;
             }
