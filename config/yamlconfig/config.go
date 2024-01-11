@@ -184,6 +184,9 @@ func (cc *commentsConfig) DefaultConfig() *page.CommentConfig {
 }
 
 func (cc *commentsConfig) JsUri() string {
+	if cc == nil {
+		return ""
+	}
 	return cc.jsUri
 }
 

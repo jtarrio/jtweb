@@ -62,13 +62,9 @@ type TocData struct {
 
 // GetTemplates returns a loader for templates for a particular language.
 func GetTemplates(c config.Config, lang languages.Language) *Templates {
-	commentsJs := ""
-	if c.Comments() != nil {
-		commentsJs = c.Comments().JsUri()
-	}
 	return &Templates{
 		config:        c.Site(lang),
-		commentsJs:    commentsJs,
+		commentsJs:    c.Comments().JsUri(),
 		templateBase:  c.Files().Templates(),
 		templates:     make(map[string]*template.Template),
 		textTemplates: make(map[string]*textTemplate.Template),
