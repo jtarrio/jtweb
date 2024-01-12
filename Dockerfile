@@ -10,7 +10,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build jacobo.tarrio.org/jtweb/cmd/jtserver
 FROM scratch
 WORKDIR /app
 COPY --from=build-stage /build/jtserver ./
-RUN mkdir /data
 VOLUME /data
+VOLUME /mysql
 EXPOSE 8080
 ENTRYPOINT [ "./jtserver", "--server_address=0.0.0.0:8080" ]
