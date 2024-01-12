@@ -142,6 +142,12 @@ func OverrideMailNotAfter(notAfter time.Time) configParserOption {
 	}
 }
 
+func DisableComments() configParserOption {
+	return func(cfg *yamlConfig) {
+		cfg.Comments = nil
+	}
+}
+
 func OverrideDryRun(dryRun bool) configParserOption {
 	return func(cfg *yamlConfig) {
 		cfg.Debug.DryRun = dryRun

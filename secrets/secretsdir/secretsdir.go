@@ -2,7 +2,7 @@ package secretsdir
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 )
@@ -19,7 +19,7 @@ func (s *secretsDir) GetSecret(key string) (string, error) {
 	if strings.Contains(key, "/") || strings.Contains(key, string(filepath.Separator)) {
 		return "", fmt.Errorf("secret key must not contain a path separator: %s", key)
 	}
-	f, err := ioutil.ReadFile(filepath.Join(s.path, key))
+	f, err := os.ReadFile(filepath.Join(s.path, key))
 	if err != nil {
 		return "", err
 	}

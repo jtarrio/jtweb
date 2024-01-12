@@ -3,7 +3,7 @@ package fromflags
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"os"
 
 	"jacobo.tarrio.org/jtweb/config"
 	"jacobo.tarrio.org/jtweb/config/yamlconfig"
@@ -17,13 +17,14 @@ var flagGenerateNotAfter = TimeFlag("generate_not_after", "Generate only posts d
 var flagMailNotBefore = TimeFlag("mail_not_before", "Mail only posts dated after the given date/time.")
 var flagMailNotAfter = TimeFlag("mail_not_after", "Mail only posts dated before the given date/time.")
 var flagSecretsDir = flag.String("secrets_dir", "", "The name of a directory containing secrets files.")
+var flagDisableComments = flag.Bool("disable_comments", false, "Remove the comments configuration.")
 var flagDryRun = flag.Bool("dry_run", false, "Do not perform the operations.")
 
 func GetConfig() (config.Config, error) {
 	if *flagConfigFile == "" {
 		return nil, fmt.Errorf("the --config_file flag has not been specified")
 	}
-	file, err := ioutil.ReadFile(*flagConfigFile)
+	file, err := os.ReadFile(*flagConfigFile)
 	if err != nil {
 		return nil, err
 	}
@@ -47,6 +48,9 @@ func GetConfig() (config.Config, error) {
 	}
 	if !flagMailNotAfter.IsZero() {
 		reader = reader.WithOptions(yamlconfig.OverrideMailNotAfter(*flagMailNotAfter))
+	}
+	if *flagDisableComments {
+		reader = reader.WithOptions(yamlconfig.DisableComments())
 	}
 	if *flagDryRun {
 		reader = reader.WithOptions(yamlconfig.OverrideDryRun(true))
