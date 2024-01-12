@@ -2,7 +2,6 @@ package web
 
 import (
 	"net/http"
-	"strings"
 	"time"
 
 	"golang.org/x/time/rate"
@@ -24,7 +23,7 @@ func Serve(service service.CommentsService, adminChecker *AdminChecker) http.Han
 	}
 	out.adminChecker = adminChecker
 	out.handlers = map[handlerPath]http.HandlerFunc{
-		userGet("/list/"):   out.list,
+		userPost("/list"):   out.list,
 		userPost("/add"):    out.add,
 		userPost("/render"): out.render,
 
@@ -38,8 +37,13 @@ func Serve(service service.CommentsService, adminChecker *AdminChecker) http.Han
 }
 
 func (s *apiService) list(rw http.ResponseWriter, req *http.Request) {
-	postId := comments.PostId(strings.TrimPrefix(req.URL.Path, "/"))
-	list, err := s.service.List(postId, false)
+	var params struct {
+		PostId service.PostId
+	}
+	if input(req, &params, rw) != nil {
+		return
+	}
+	list, err := s.service.List(params.PostId, false)
 	output(list, err, rw)
 }
 

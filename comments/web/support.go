@@ -23,10 +23,6 @@ type handlerPath struct {
 	admin  bool
 }
 
-func userGet(path string) handlerPath {
-	return handlerPath{prefix: path, method: http.MethodGet, admin: false}
-}
-
 func userPost(path string) handlerPath {
 	return handlerPath{prefix: path, method: http.MethodPost, admin: false}
 }

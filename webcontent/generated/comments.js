@@ -345,7 +345,7 @@
         }
         apiUrl;
         async list(postId) {
-            return get(this.apiUrl + '/list/' + postId);
+            return post(this.apiUrl + '/list', { 'PostId': postId });
         }
         async add(newComment) {
             return post(this.apiUrl + '/add', newComment);
@@ -358,13 +358,6 @@
     (function (Sort) {
         Sort[Sort["NewestFirst"] = 0] = "NewestFirst";
     })(Sort || (Sort = {}));
-    async function get(url) {
-        let response = await fetch(url, { method: 'GET', mode: 'cors' });
-        if (response.status != 200) {
-            throw `Error ${response.status}: ${await response.text()}`;
-        }
-        return response.json();
-    }
     async function post(url, data) {
         let response = await fetch(url, { method: 'POST', mode: 'cors', body: JSON.stringify(data) });
         if (response.status != 200) {

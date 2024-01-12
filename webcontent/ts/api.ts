@@ -29,7 +29,7 @@ export class UserApi {
     private apiUrl: string;
 
     async list(postId: string): Promise<Comments> {
-        return get(this.apiUrl + '/list/' + postId);
+        return post(this.apiUrl + '/list', { 'PostId': postId });
     }
 
     async add(newComment: NewComment): Promise<Comment> {
