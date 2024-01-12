@@ -11,6 +11,7 @@ class AdminComments extends AdminPage<RawComment, CommentFilter> {
         this.api = new AdminApi();
         this.wireEvent('input[name=MakeVisible]', 'click', _ => this.changeVisible(true));
         this.wireEvent('input[name=MakeNonVisible]', 'click', _ => this.changeVisible(false));
+        this.wireEvent('input[name=Delete]', 'click', _ => this.deleteComments());
         this.loadList(0);
     }
 
@@ -54,7 +55,14 @@ class AdminComments extends AdminPage<RawComment, CommentFilter> {
         let ids = this.gatherSelectedIds();
         if (ids.size == 0) return;
         await this.api.bulkSetVisible(ids, visible);
-        this.loadList(0)
+        this.loadList(0);
+    }
+
+    private async deleteComments() {
+        let ids = this.gatherSelectedIds();
+        if (ids.size == 0) return;
+        await this.api.deleteComments(ids);
+        this.loadList(0);
     }
 
     private gatherSelectedIds(): Map<string, string[]> {

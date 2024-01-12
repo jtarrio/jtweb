@@ -18,6 +18,7 @@ type CommentsService interface {
 	Add(comment *NewComment) (*Comment, error)
 	Render(text Markdown) (Html, error)
 	FindComments(filter CommentFilter, sort Sort, limit int, start int) (*FoundComments, error)
+	DeleteComments(ids map[PostId][]*CommentId) error
 	FindPosts(filter PostFilter, sort Sort, limit int, start int) (*FoundPosts, error)
 	BulkSetVisible(ids map[PostId][]*CommentId, visible bool) error
 	SetAvailablePosts(posts *AvailablePosts) error
@@ -165,6 +166,10 @@ func (s *commentsServiceImpl) FindComments(filter CommentFilter, sort Sort, limi
 		More: len(list) > limit,
 	}
 	return out, nil
+}
+
+func (s *commentsServiceImpl) DeleteComments(ids map[PostId][]*CommentId) error {
+	return s.engine.DeleteComments(ids)
 }
 
 func (s *commentsServiceImpl) FindPosts(filter PostFilter, sort Sort, limit int, start int) (*FoundPosts, error) {

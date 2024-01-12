@@ -292,6 +292,29 @@ func orderStrComments(sort engine.Sort) string {
 	}
 }
 
+func (e *GenericSqlEngine) DeleteComments(ids map[engine.PostId][]*engine.CommentId) error {
+	return doInWriteTxNoReturn(e, func(tx *sql.Tx) error {
+		stmt, err := tx.Prepare(`DELETE FROM Comments WHERE PostId = ? AND CommentId = ?`)
+		if err != nil {
+			return sqlError(err)
+		}
+		defer stmt.Close()
+		for postId, commentIds := range ids {
+			for _, commentId := range commentIds {
+				cid, err := commentIdToInt64(*commentId)
+				if err != nil {
+					return err
+				}
+				_, err = stmt.Exec(postId, cid)
+				if err != nil {
+					return sqlError(err)
+				}
+			}
+		}
+		return nil
+	})
+}
+
 func (e *GenericSqlEngine) FindPosts(filter engine.PostFilter, sort engine.Sort, limit int, start int) ([]*engine.Config, error) {
 	return doInReadTx(e, func(tx *sql.Tx) ([]*engine.Config, error) {
 		where, args := whereStrPosts(filter)

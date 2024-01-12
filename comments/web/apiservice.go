@@ -29,6 +29,7 @@ func Serve(service service.CommentsService, adminChecker *AdminChecker) http.Han
 		userPost("/render"): out.render,
 
 		adminPost("/findComments"):          out.findComments,
+		adminPost("/deleteComments"):        out.deleteComments,
 		adminPost("/findPosts"):             out.findPosts,
 		adminPost("/bulkSetVisible"):        out.bulkSetVisible,
 		adminPost("/bulkUpdatePostConfigs"): out.bulkUpdatePostConfigs,
@@ -76,6 +77,17 @@ func (s *apiService) findComments(rw http.ResponseWriter, req *http.Request) {
 	}
 	result, err := s.service.FindComments(params.Filter, params.Sort, params.Limit, params.Start)
 	output(result, err, rw)
+}
+
+func (s *apiService) deleteComments(rw http.ResponseWriter, req *http.Request) {
+	var params struct {
+		Ids map[service.PostId][]*service.CommentId
+	}
+	if input(req, &params, rw) != nil {
+		return
+	}
+	err := s.service.DeleteComments(params.Ids)
+	output("Success", err, rw)
 }
 
 func (s *apiService) findPosts(rw http.ResponseWriter, req *http.Request) {

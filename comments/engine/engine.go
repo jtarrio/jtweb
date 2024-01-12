@@ -67,6 +67,7 @@ type Engine interface {
 	List(postId PostId, seeDrafts bool) ([]*Comment, error)
 	Add(comment *NewComment) (*Comment, error)
 	FindComments(filter CommentFilter, sort Sort, limit int, start int) ([]*Comment, error)
+	DeleteComments(ids map[PostId][]*CommentId) error
 	FindPosts(filter PostFilter, sort Sort, limit int, start int) ([]*Config, error)
 	BulkSetVisible(ids map[PostId][]*CommentId, visible bool) error
 }

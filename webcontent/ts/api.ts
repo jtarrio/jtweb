@@ -100,6 +100,13 @@ export class AdminApi {
         return post(this.apiUrl + '/findComments', params);
     }
 
+    async deleteComments(ids: Map<string, string[]>) {
+        let params = {
+            'Ids': Object.fromEntries(ids)
+        };
+        await post(this.apiUrl + '/deleteComments', params);
+    }
+
     async findPosts(filter: PostFilter, sort: Sort, limit: number, start: number): Promise<FoundPosts> {
         let params = {
             'Filter': filter,

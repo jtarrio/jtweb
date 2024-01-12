@@ -133,6 +133,12 @@
             };
             return post(this.apiUrl + '/findComments', params);
         }
+        async deleteComments(ids) {
+            let params = {
+                'Ids': Object.fromEntries(ids)
+            };
+            await post(this.apiUrl + '/deleteComments', params);
+        }
         async findPosts(filter, sort, limit, start) {
             let params = {
                 'Filter': filter,
@@ -190,6 +196,7 @@
             this.api = new AdminApi();
             this.wireEvent('input[name=MakeVisible]', 'click', _ => this.changeVisible(true));
             this.wireEvent('input[name=MakeNonVisible]', 'click', _ => this.changeVisible(false));
+            this.wireEvent('input[name=Delete]', 'click', _ => this.deleteComments());
             this.loadList(0);
         }
         api;
@@ -233,6 +240,13 @@
             if (ids.size == 0)
                 return;
             await this.api.bulkSetVisible(ids, visible);
+            this.loadList(0);
+        }
+        async deleteComments() {
+            let ids = this.gatherSelectedIds();
+            if (ids.size == 0)
+                return;
+            await this.api.deleteComments(ids);
             this.loadList(0);
         }
         gatherSelectedIds() {
