@@ -11,6 +11,6 @@ FROM scratch
 WORKDIR /app
 COPY --from=build-stage /build/jtserver ./
 VOLUME /data
-VOLUME /mysql
+VOLUME /var/run/mysqld
 EXPOSE 8080
 ENTRYPOINT [ "./jtserver", "--server_address=0.0.0.0:8080" ]
