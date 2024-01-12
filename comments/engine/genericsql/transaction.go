@@ -60,7 +60,8 @@ func doInTx[R any](e *GenericSqlEngine, level sql.IsolationLevel, op func(tx *sq
 	}
 	ret, err := op(tx)
 	if err != nil {
-		return zero, sqlError(tx.Rollback())
+		tx.Rollback()
+		return zero, err
 	}
 	return ret, sqlError(tx.Commit())
 }

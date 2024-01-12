@@ -64,6 +64,7 @@ func getConfig(tx *sql.Tx, postId comments.PostId) (*engine.Config, error) {
 	if err != nil {
 		return nil, sqlError(err)
 	}
+	defer rows.Close()
 	if !rows.Next() {
 		return nil, fmt.Errorf("post not found [%s]", postId)
 	}
