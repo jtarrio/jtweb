@@ -19,8 +19,7 @@ func NewEmailNotificationEngine(adminUri string, from string, to string, options
 		From:     from,
 		To:       to,
 	}
-	engine.Target.Host = "localhost"
-	engine.Target.Port = 25
+	SetHostPort("localhost:25")(engine)
 
 	for _, option := range options {
 		option(engine)
@@ -29,31 +28,18 @@ func NewEmailNotificationEngine(adminUri string, from string, to string, options
 }
 
 func SetHostPort(hostport string) NotificationEngineOption {
-	host, portstr, err := net.SplitHostPort(hostport)
-	if err != nil {
-		host = hostport
-		portstr = "25"
-	}
-	port, err := net.LookupPort("tcp", portstr)
-	if err != nil {
-		panic(err)
-	}
 	return func(e *emailEngine) {
-		e.Target.Host = host
-		e.Target.Port = port
-		e.Target.CustomConn = nil
+		e.ConnProvider = func() (net.Conn, error) {
+			return net.Dial("tcp", hostport)
+		}
 	}
 }
 
 func SetUnixSocket(socket string) NotificationEngineOption {
-	conn, err := net.Dial("unix", socket)
-	if err != nil {
-		panic(err)
-	}
 	return func(e *emailEngine) {
-		e.Target.Host = ""
-		e.Target.Port = 0
-		e.Target.CustomConn = conn
+		e.ConnProvider = func() (net.Conn, error) {
+			return net.Dial("unix", socket)
+		}
 	}
 }
 
@@ -113,11 +99,12 @@ func Encryption(enc string) (mail.Encryption, error) {
 type NotificationEngineOption = func(*emailEngine)
 
 type emailEngine struct {
-	AdminUri string
-	Target   *mail.SMTPServer
-	From     string
-	To       string
-	Auth     smtp.Auth
+	AdminUri     string
+	Target       *mail.SMTPServer
+	From         string
+	To           string
+	Auth         smtp.Auth
+	ConnProvider func() (net.Conn, error)
 }
 
 // Notify implements notification.NotificationEngine.
@@ -141,7 +128,14 @@ Reject: %[1]s#ApproveComment=reject,%[2]s,%[3]s
 		return email.Error
 	}
 
-	client, err := e.Target.Connect()
+	conn, err := e.ConnProvider()
+	if err != nil {
+		return err
+	}
+
+	target := *e.Target
+	target.CustomConn = conn
+	client, err := target.Connect()
 	if err != nil {
 		return err
 	}
