@@ -20,6 +20,10 @@ This generator can also schedule emails to be sent. You will need an external
 system that will take care of managing subscriptions and sending the emails.
 So far, only Mailerlite is supported.
 
+There is an experimental, optional commenting system.
+It requires you to run a server and stores its data in a SQL database.
+It will be documented at a later date, when its design is more stable.
+
 Note: I built this for my personal site,
 [jacobo.tarrio.org](https://jacobo.tarrio.org) and my newsletters,
 [A Folla](https://folla.gal) and [Coding Sheet](https://coding-sheet.org).
