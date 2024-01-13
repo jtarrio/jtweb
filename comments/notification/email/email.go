@@ -41,6 +41,19 @@ func SetHostPort(hostport string) NotificationEngineOption {
 	return func(e *emailEngine) {
 		e.Target.Host = host
 		e.Target.Port = port
+		e.Target.CustomConn = nil
+	}
+}
+
+func SetUnixSocket(socket string) NotificationEngineOption {
+	conn, err := net.Dial("unix", socket)
+	if err != nil {
+		panic(err)
+	}
+	return func(e *emailEngine) {
+		e.Target.Host = ""
+		e.Target.Port = 0
+		e.Target.CustomConn = conn
 	}
 }
 
@@ -112,16 +125,17 @@ func (e *emailEngine) Notify(comment *engine.Comment) error {
 	email := mail.NewMSG().
 		SetFrom(e.From).
 		AddTo(e.To).
-		SetSubject(fmt.Sprintf("New comment received on %s", comment.PostId)).
+		SetSubject(fmt.Sprintf("New comment received from %s on %s", comment.Author, comment.PostId)).
 		SetBody(mail.TextPlain, fmt.Sprintf(
 			`A new comment was received.
 
-Approve: %[1]s#ApproveComment=approve,%[2]s,%[3]s
-Reject: %[1]s#ApproveComment=reject,%[2]s,%[3]s
-
 Author: %[4]s
 Text:
-%[5]s`, e.AdminUri, comment.PostId, comment.CommentId, comment.Author, comment.Text))
+%[5]s
+
+Approve: %[1]s#ApproveComment=approve,%[2]s,%[3]s
+Reject: %[1]s#ApproveComment=reject,%[2]s,%[3]s
+`, e.AdminUri, comment.PostId, comment.CommentId, comment.Author, comment.Text))
 
 	if email.Error != nil {
 		return email.Error

@@ -3,6 +3,7 @@ package yamlconfig
 import (
 	"bytes"
 	"fmt"
+	"strings"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -70,7 +71,7 @@ type yamlConfig struct {
 			Email *struct {
 				From           string
 				To             string
-				Host           string
+				Server         string
 				User           string
 				PasswordSecret string `yaml:"password_secret"`
 				Authentication string
@@ -353,8 +354,13 @@ func (r *configParser) Parse() (config.Config, error) {
 					}
 					notifyOpts = append(notifyOpts, email_notification.SetAuth(email.User, pass))
 				}
-				if email.Host != "" {
-					notifyOpts = append(notifyOpts, email_notification.SetHostPort(email.Host))
+				if email.Server != "" {
+					socket, found := strings.CutPrefix(email.Server, "unix:/")
+					if found {
+						notifyOpts = append(notifyOpts, email_notification.SetUnixSocket("/"+socket))
+					} else {
+						notifyOpts = append(notifyOpts, email_notification.SetHostPort(email.Server))
+					}
 				}
 				notify := email_notification.NewEmailNotificationEngine(
 					appendToUri(cfg.Comments.WidgetUri, "admin.html"),
