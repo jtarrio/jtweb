@@ -9,6 +9,7 @@ import (
 	comments_engine "jacobo.tarrio.org/jtweb/comments/engine"
 	"jacobo.tarrio.org/jtweb/comments/engine/mysql"
 	"jacobo.tarrio.org/jtweb/comments/engine/sqlite3"
+	email_notification "jacobo.tarrio.org/jtweb/comments/notification/email"
 	comments_service "jacobo.tarrio.org/jtweb/comments/service"
 	"jacobo.tarrio.org/jtweb/config"
 	"jacobo.tarrio.org/jtweb/email"
@@ -56,7 +57,7 @@ type yamlConfig struct {
 	Comments *struct {
 		DefaultSetting      string `yaml:"default_setting"`
 		PostAsDraft         bool   `yaml:"post_as_draft"`
-		JsUri               string `yaml:"js_uri"`
+		WidgetUri           string `yaml:"widget_uri"`
 		AdminPasswordSecret string `yaml:"admin_password_secret"`
 		SkipOperation       bool   `yaml:"skip_operation"`
 		Sqlite3             *struct {
@@ -64,6 +65,17 @@ type yamlConfig struct {
 		}
 		Mysql *struct {
 			ConnectionStringSecret string `yaml:"connection_string_secret"`
+		}
+		Notify *struct {
+			Email *struct {
+				From           string
+				To             string
+				Host           string
+				User           string
+				PasswordSecret string `yaml:"password_secret"`
+				Authentication string
+				Encryption     string
+			}
 		}
 	}
 	DateFilters struct {
@@ -310,12 +322,51 @@ func (r *configParser) Parse() (config.Config, error) {
 		if err != nil {
 			return nil, err
 		}
-		if cfg.Comments.JsUri == "" {
-			return nil, fmt.Errorf("no comments JS URI was defined")
+		if cfg.Comments.WidgetUri == "" {
+			return nil, fmt.Errorf("no comments widget URI was defined")
+		}
+		if cfg.Comments.Notify != nil {
+			if cfg.Comments.Notify.Email != nil {
+				email := cfg.Comments.Notify.Email
+				if email.From == "" {
+					return nil, fmt.Errorf("no email 'from' address was specified")
+				}
+				if email.To == "" {
+					return nil, fmt.Errorf("no email 'to' address was specified")
+				}
+				enc, err := email_notification.Encryption(email.Encryption)
+				if err != nil {
+					return nil, err
+				}
+				auth, err := email_notification.AuthType(email.Authentication)
+				if err != nil {
+					return nil, err
+				}
+				notifyOpts := []email_notification.NotificationEngineOption{
+					email_notification.SetAuthType(auth),
+					email_notification.SetEncryption(enc),
+				}
+				if email.User != "" {
+					pass, err := r.secretSupplier.GetSecret(email.PasswordSecret)
+					if err != nil {
+						return nil, err
+					}
+					notifyOpts = append(notifyOpts, email_notification.SetAuth(email.User, pass))
+				}
+				if email.Host != "" {
+					notifyOpts = append(notifyOpts, email_notification.SetHostPort(email.Host))
+				}
+				notify := email_notification.NewEmailNotificationEngine(
+					appendToUri(cfg.Comments.WidgetUri, "admin.html"),
+					email.From,
+					email.To,
+					notifyOpts...)
+				options = append(options, comments_service.WithNotificationEngine(notify))
+			}
 		}
 		out.comments = &commentsConfig{
 			defaultConfig: defCfg,
-			jsUri:         cfg.Comments.JsUri,
+			jsUri:         appendToUri(cfg.Comments.WidgetUri, "comments.js"),
 			service:       comments_service.NewCommentsService(engine, options...),
 			adminPassword: adminPassword,
 			skipOperation: cfg.Comments.SkipOperation,
@@ -347,4 +398,14 @@ func parseRelDate(when *time.Time, days *int, now time.Time) *time.Time {
 		return &moment
 	}
 	return nil
+}
+
+func appendToUri(uri string, path string) string {
+	if uri == "" {
+		return path
+	}
+	if uri[len(uri)-1] == '/' {
+		return uri + path
+	}
+	return uri + "/" + path
 }

@@ -2,10 +2,12 @@ package service
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"jacobo.tarrio.org/jtweb/comments"
 	"jacobo.tarrio.org/jtweb/comments/engine"
+	"jacobo.tarrio.org/jtweb/comments/notification"
 )
 
 type PostId = comments.PostId
@@ -100,8 +102,15 @@ func WithRenderer(renderer Renderer) CommentsServiceOptions {
 	}
 }
 
+func WithNotificationEngine(notifications notification.NotificationEngine) CommentsServiceOptions {
+	return func(s *commentsServiceImpl) {
+		s.notifications = notifications
+	}
+}
+
 type commentsServiceImpl struct {
 	engine         engine.Engine
+	notifications  notification.NotificationEngine
 	renderer       Renderer
 	defaultVisible bool
 }
@@ -229,6 +238,10 @@ func (s *commentsServiceImpl) Add(comment *NewComment) (*Comment, error) {
 	})
 	if err != nil {
 		return nil, err
+	}
+	err = s.notifications.Notify(nc)
+	if err != nil {
+		log.Printf("error sending notification: %s", err)
 	}
 	return s.parseComment(nc)
 }
