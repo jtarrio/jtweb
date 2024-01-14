@@ -57,10 +57,10 @@ func ParseCommentConfig(enabled string) (*CommentConfig, error) {
 	if value == "false" || value == "off" || value == "no" || value == "disabled" {
 		return &CommentConfig{Enabled: false, Writable: false}, nil
 	}
-	if value == "true" || value == "on" || value == "yes" || value == "enabled" {
+	if value == "true" || value == "on" || value == "yes" || value == "enabled" || value == "open" {
 		return &CommentConfig{Enabled: true, Writable: true}, nil
 	}
-	if value == "closed" {
+	if value == "closed" || value == "readonly" {
 		return &CommentConfig{Enabled: true, Writable: false}, nil
 	}
 	return nil, fmt.Errorf("unknown comment configuration: %s", enabled)
