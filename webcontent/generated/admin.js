@@ -120,10 +120,6 @@
         Sort[Sort["NewestFirst"] = 0] = "NewestFirst";
     })(Sort || (Sort = {}));
     class AdminApi {
-        constructor() {
-            this.apiUrl = findApiUrl();
-        }
-        apiUrl;
         async findComments(filter, sort, limit, start) {
             let params = {
                 'Filter': filter,
@@ -131,13 +127,13 @@
                 'Limit': limit,
                 'Start': start,
             };
-            return post(this.apiUrl + '/findComments', params);
+            return post('/findComments', params);
         }
         async deleteComments(ids) {
             let params = {
                 'Ids': Object.fromEntries(ids)
             };
-            await post(this.apiUrl + '/deleteComments', params);
+            await post('/deleteComments', params);
         }
         async findPosts(filter, sort, limit, start) {
             let params = {
@@ -146,14 +142,14 @@
                 'Limit': limit,
                 'Start': start,
             };
-            return post(this.apiUrl + '/findPosts', params);
+            return post('/findPosts', params);
         }
         async bulkSetVisible(ids, visible) {
             let params = {
                 'Ids': Object.fromEntries(ids),
                 'Visible': visible
             };
-            await post(this.apiUrl + '/bulkSetVisible', params);
+            await post('/bulkSetVisible', params);
         }
         async bulkUpdatePostConfigs(postIds, writable, readable) {
             let params = {
@@ -163,17 +159,17 @@
                     'IsReadable': readable,
                 },
             };
-            await post(this.apiUrl + '/bulkUpdatePostConfigs', params);
+            await post('/bulkUpdatePostConfigs', params);
         }
     }
     async function post(url, data) {
-        let response = await fetch(url, { method: 'POST', mode: 'cors', body: JSON.stringify(data) });
+        let response = await fetch(apiUrl + url, { method: 'POST', mode: 'cors', body: JSON.stringify(data) });
         if (response.status != 200) {
             throw `Error ${response.status}: ${await response.text()}`;
         }
         return response.json();
     }
-    function findApiUrl() {
+    const apiUrl = (() => {
         let scripts = document.getElementsByTagName('script');
         let baseUrl = new URL(scripts[scripts.length - 1].attributes['src'].value, window.location.toString());
         let pathname = baseUrl.pathname;
@@ -185,7 +181,7 @@
             baseUrl.pathname = pathname.substring(0, lastSlash) + '_';
         }
         return baseUrl.toString();
-    }
+    })();
 
     function doAdminComments(rootElement) {
         new AdminComments(rootElement);

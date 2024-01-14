@@ -1,126 +1,6 @@
 (function () {
     'use strict';
 
-    function applyTemplate(element, map) {
-        let elements = findPlaceholders(element);
-        for (let elem of elements) {
-            if (elem.nodeName == 'JTVAR') {
-                replacePlaceholder(elem, map);
-            }
-            else if (elem.hasAttribute('jtvar')) {
-                fillElement(elem, map);
-            }
-            else {
-                fillAttributes(elem, map);
-            }
-        }
-    }
-    function findPlaceholders(root) {
-        return new class {
-            [Symbol.iterator]() {
-                return new class {
-                    iter;
-                    constructor() {
-                        this.iter = root.querySelectorAll('*').entries();
-                    }
-                    next() {
-                        while (true) {
-                            let next = this.iter.next();
-                            if (next.done)
-                                return { done: true, value: undefined };
-                            const elem = next.value[1];
-                            if (elem.nodeName == 'JTVAR' || elem.hasAttribute('jtvar'))
-                                return { done: false, value: elem };
-                            for (let attr of elem.attributes) {
-                                if (attr.value.startsWith('jtvar '))
-                                    return { done: false, value: elem };
-                            }
-                        }
-                    }
-                };
-            }
-        };
-    }
-    function replacePlaceholder(elem, map) {
-        for (let attr of elem.attributes) {
-            let replacer = map[attr.name];
-            if (replacer === undefined)
-                continue;
-            if ("function" === typeof replacer) {
-                replacer(elem);
-            }
-            else if ("string" === typeof replacer) {
-                elem.insertAdjacentText("afterend", replacer);
-            }
-            else if ("object" === typeof replacer) {
-                if (replacer.html !== undefined) {
-                    elem.insertAdjacentHTML("afterend", replacer.html);
-                }
-                else if (replacer.text !== undefined) {
-                    elem.insertAdjacentText("afterend", replacer.text);
-                }
-            }
-            break;
-        }
-        elem.remove();
-    }
-    function fillElement(elem, map) {
-        let name = elem.getAttribute('jtvar');
-        if (!name)
-            return;
-        let replacer = map[name];
-        if (replacer === undefined) {
-            elem.removeAttribute('jtvar');
-            return;
-        }
-        if ("function" === typeof replacer) {
-            replacer(elem);
-        }
-        else if ("string" === typeof replacer) {
-            elem.textContent = replacer;
-        }
-        else if ("boolean" === typeof replacer) {
-            if (!replacer) {
-                elem.remove();
-                return;
-            }
-        }
-        else if ("object" === typeof replacer) {
-            if (replacer.html !== undefined) {
-                elem.innerHTML = replacer.html;
-            }
-            else if (replacer.text !== undefined) {
-                elem.textContent = replacer.text;
-            }
-            else if (replacer.visible !== undefined) {
-                if (!replacer.visible) {
-                    elem.remove();
-                    return;
-                }
-            }
-        }
-        elem.removeAttribute('jtvar');
-    }
-    function fillAttributes(elem, map) {
-        for (let attr of elem.attributes) {
-            if (!attr.value.startsWith('jtvar '))
-                continue;
-            let name = attr.value.substring(6).trim();
-            if (!name)
-                continue;
-            let replacer = map[name];
-            if (replacer === undefined) {
-                elem.removeAttribute(attr.name);
-            }
-            else if ("string" === typeof replacer) {
-                elem.setAttribute(attr.name, replacer);
-            }
-            else if ("object" === typeof replacer && replacer.text !== undefined) {
-                elem.setAttribute(attr.name, replacer.text);
-            }
-        }
-    }
-
     var MessageType;
     (function (MessageType) {
         MessageType[MessageType["ErrorPostingComment"] = 0] = "ErrorPostingComment";
@@ -141,69 +21,75 @@
         }
     };
     const Templates = {
-        'en': {
-            'main': `
-            <h1 jtvar="none_count">No comments</h1>
-            <h1 jtvar="singular_count">1 comment</h1>
-            <h1 jtvar="plural_count"><jtvar count></jtvar> comments</h1>
-            <div jtvar="comments"></div>
-            <div jtvar="newcomment"></div>
-        `,
-            'entry': `
-            <p>By <jtvar author></jtvar> on <a href="jtvar url" name="jtvar anchor"><jtvar when></jtvar></a></p>
-            <p jtvar="text"></p>
-        `,
-            'form': `
-            <form id="commentform">
-                <p>Your name: <input type="text" name="author"></p>
-                <p>Comment: <textarea name="text" rows="10" cols="50"></textarea></p>
-                <input type="submit" value="Submit"><input type="reset" value="Reset"><input type="button" value="Preview" id="jtPreviewButton">
-            </form>
-            <div id="jtPreviewContainer"><div id="jtPreviewBox"></div></div>
-        `,
-        },
-        'gl': {
-            'main': `
-            <h1 jtvar="none_count">Ningún comentario</h1>
-            <h1 jtvar="singular_count">1 comentario</h1>
-            <h1 jtvar="plural_count"><jtvar count></jtvar> comentarios</h1>
-            <div jtvar="comments"></div>
-            <div jtvar="newcomment"></div>
-        `,
-            'entry': `
-            <p>Por <jtvar author></jtvar> o <a href="jtvar url" name="jtvar anchor"><jtvar when></jtvar></a></p>
-            <p jtvar="text"></p>
-        `,
-            'form': `
-            <form id="commentform">
-                <p>O teu nome: <input type="text" name="author"></p>
-                <p>Comentario: <textarea name="text" rows="10" cols="50"></textarea></p>
-                <input type="submit" value="Enviar"><input type="reset" value="Descartar"><input type="button" value="Previsualizar" id="jtPreviewButton">
-            </form>
-            <div id="jtPreviewContainer"><div id="jtPreviewBox"></div></div>
-        `,
-        },
-        'es': {
-            'main': `
-            <h1 jtvar="none_count">Ningún comentario</h1>
-            <h1 jtvar="singular_count">1 comentario</h1>
-            <h1 jtvar="plural_count"><jtvar count></jtvar> comentarios</h1>
-            <div jtvar="comments"></div>
-            <div jtvar="newcomment"></div>
-        `,
-            'entry': `
-            <p>Por <jtvar author></jtvar> el <a href="jtvar url" name="jtvar anchor"><jtvar when></jtvar></a></p>
-            <p jtvar="text"></p>
-        `,
-            'form': `
+        'en': `<div class="comment">
+    <jv-if cond="has_none_count"><h1>No comments</h1></jv-if>
+    <jv-if cond="has_singular_count"><h1>1 comment</h1></jv-if>
+    <jv-if cond="has_plural_count"><h1><jv>count</jv> comments</h1></jv-if>
+    <jv-for items="comments" item="comment">
+        <div class="commentByline">By <jv>comment.author</jv> on <a jv-href="comment.url" jv-name="comment.anchor"><jv date>comment.when</jv></a></div>
+        <div class="commentText><jv html>comment.text</jv></div>
+    </jv-for>
+    <jv-if cond="can_add_comment">
         <form id="commentform">
-            <p>Tu nombre: <input type="text" name="author"></p>
-            <p>Comentario: <textarea name="text" rows="10" cols="50"></textarea></p>
-            <input type="submit" value="Enviar"><input type="reset" value="Descartar"><input type="button" value="Previsualizar" id="jtPreviewButton">
+            <h1>Would you like to write a comment?</h1>
+            <div class="commentForm">
+                <div>Your name or nickname: <input type="text" name="author"> (it will be published)</div>
+                <div>Your comment:</div>
+                <textarea name="text" id="jtComment"></textarea>
+                <div id="jtPreviewContainer"><div id="jtPreviewBox"></div></div>
+            </div>
+            <div class="commentButtons">
+                <input type="reset" value="Reset"><input type="submit" value="Submit"><input type="button" value="Preview" id="jtPreviewButton">
+            </div>
         </form>
-        <div id="jtPreviewContainer"><div id="jtPreviewBox"></div></div>
-        `,
-        },
+    </jv-if>
+</div>`,
+        'gl': `<div class="comment">
+    <jv-if cond="has_none_count"><h1>Ningún comentario</h1></jv-if>
+    <jv-if cond="has_singular_count"><h1>1 comentario</h1></jv-if>
+    <jv-if cond="has_plural_count"><h1><jv>count</jv> comentarios</h1></jv-if>
+    <jv-for items="comments" item="comment">
+        <div class="commentByline">Por <jv>comment.author</jv> o <a jv-href="comment.url" jv-name="comment.anchor"><jv date>comment.when</jv></a></div>
+        <div class="commentText><jv html>comment.text</jv></div>
+    </jv-for>
+    <jv-if cond="can_add_comment">
+        <form id="commentform">
+            <h1>Queres escribir un comentario?</h1>
+            <div class="commentForm">
+                <div>O teu nome ou sobrenome: <input type="text" name="author"> (hase publicar)</div>
+                <div>O teu comentario:</div>
+                <textarea name="text" id="jtComment"></textarea>
+                <div id="jtPreviewContainer"><div id="jtPreviewBox"></div></div>
+            </div>
+            <div class="commentButtons">
+                <input type="reset" value="Descartar"><input type="submit" value="Enviar"><input type="button" value="Previsualizar" id="jtPreviewButton">
+            </div>
+        </form>
+    </jv-if>
+</div>`,
+        'es': `<div class="comment">
+    <jv-if cond="has_none_count"><h1>Ningún comentario</h1></jv-if>
+    <jv-if cond="has_singular_count"><h1>1 comentario</h1></jv-if>
+    <jv-if cond="has_plural_count"><h1><jv>count</jv> comentarios</h1></jv-if>
+    <jv-for items="comments" item="comment">
+        <div class="commentByline">Por <jv>comment.author</jv> el <a jv-href="comment.url" jv-name="comment.anchor"><jv date>comment.when</jv></a></div>
+        <div class="commentText><jv html>comment.text</jv></div>
+    </jv-for>
+    <jv-if cond="can_add_comment">
+        <form id="commentform">
+            <h1>¿Quieres escribir un comentario?</h1>
+            <div class="commentForm">
+                <div>Tu nombre o sobrenombre: <input type="text" name="author"> (se publicará)</div>
+                <div>Tu comentario:</div>
+                <textarea name="text" id="jtComment"></textarea>
+                <div id="jtPreviewContainer"><div id="jtPreviewBox"></div></div>
+            </div>
+            <div class="commentButtons">
+                <input type="reset" value="Descartar"><input type="submit" value="Enviar"><input type="button" value="Previsualizar" id="jtPreviewButton">
+            </div>
+        </form>
+    </jv-if>
+</div>`,
     };
 
     function getLanguage() {
@@ -217,11 +103,11 @@
             return lang.substring(0, underline);
         return lang;
     }
-    function getTemplate(name) {
-        let templates = Templates[getLanguage()];
-        if (!templates)
-            templates = Templates['en'];
-        return templates[name];
+    function getTemplate() {
+        let template = Templates[getLanguage()];
+        if (!template)
+            template = Templates['en'];
+        return template;
     }
     function getMessage(msg) {
         let msgs = Messages[getLanguage()];
@@ -256,6 +142,129 @@
                     ' at ' + String(d.getHours()).padStart(2, '0') +
                     ':' + String(d.getMinutes()).padStart(2, '0'));
         }
+    }
+
+    // <p>Some text <jv>varName</jv></p>
+    // <p>Parse date <jv date>varName</jv></p>
+    // <p>Insert as html <jv html>varName</jv></p>
+    // <p>Nested vars <jv>varName.field1.field2</jv>
+    // <a jv-href="varName">...content...</a>
+    // <jv-if cond="varName">...content...</jv-if>
+    // <jv-if not cond="varName">...content...</jv-if>
+    // <jv-for items="varName" item="itemVarName">...content...</jv-for>
+    // <jv-for items="varName" item="itemVarName" index="indexVarName">...content...</jv-for>
+    function applyTemplate(element, map) {
+        if (element.nodeName == 'JV') {
+            replaceElement(element, map);
+        }
+        else if (element.nodeName == 'JV-IF') {
+            doIf(element, map);
+        }
+        else if (element.nodeName == 'JV-FOR') {
+            doFor(element, map);
+        }
+        else {
+            replaceAttributes(element, map);
+        }
+    }
+    function getMapValue(name, map) {
+        let scope = map;
+        if (name === null || name === undefined)
+            return undefined;
+        while (true) {
+            if (name == '')
+                return scope;
+            if ('object' !== typeof scope)
+                return undefined;
+            let dot = name.indexOf('.');
+            let index = dot == -1 ? name : name.substring(0, dot);
+            name = dot == -1 ? '' : name.substring(dot + 1);
+            let newScope = undefined;
+            if (Array.isArray(scope)) {
+                let indexNum = Number(index);
+                if (!Number.isNaN(indexNum)) {
+                    newScope = scope[indexNum];
+                }
+            }
+            if (newScope === undefined)
+                newScope = scope[index];
+            scope = newScope;
+        }
+    }
+    function applyTemplateToChildren(parent, map) {
+        let child = parent.firstElementChild;
+        while (child != null) {
+            let next = child.nextElementSibling;
+            applyTemplate(child, map);
+            child = next;
+        }
+    }
+    function replaceElement(element, map) {
+        let replacement = getMapValue(element.textContent?.trim(), map);
+        if (element.hasAttribute('html')) {
+            element.outerHTML = String(replacement);
+        }
+        else if (element.hasAttribute('date')) {
+            element.replaceWith(formatDate(String(replacement)));
+        }
+        else {
+            element.replaceWith(String(replacement));
+        }
+    }
+    function doIf(element, map) {
+        let cond = Boolean(getMapValue(element.getAttribute('cond'), map));
+        if (element.hasAttribute('not')) {
+            cond = !cond;
+        }
+        if (cond) {
+            applyTemplateToChildren(element, map);
+            while (element.firstChild != null)
+                element.before(element.firstChild);
+        }
+        element.remove();
+    }
+    function doFor(element, map) {
+        let items = getMapValue(element.getAttribute('items'), map);
+        let itemVarName = element.getAttribute('item');
+        let indexVarName = element.getAttribute('index');
+        for (let index in items) {
+            let item = items[index];
+            let childMap = { ...map };
+            if (itemVarName)
+                childMap[itemVarName] = item;
+            if (indexVarName)
+                childMap[indexVarName] = index;
+            let child = element.firstElementChild;
+            while (child != null) {
+                let next = child.nextElementSibling;
+                let clone = child.cloneNode(true);
+                element.before(clone);
+                applyTemplate(clone, childMap);
+                child = next;
+            }
+        }
+        element.remove();
+    }
+    function replaceAttributes(element, map) {
+        let toDelete = [];
+        for (let attr of element.attributes || []) {
+            if (!attr.name.startsWith('jv-'))
+                continue;
+            let attrName = attr.name.substring(3);
+            let varName = attr.value;
+            let replacement = getMapValue(varName, map);
+            toDelete.push(attr.name);
+            if ('boolean' === typeof replacement) {
+                if (replacement) {
+                    element.setAttribute(attrName, '');
+                }
+            }
+            else {
+                element.setAttribute(attrName, String(replacement));
+            }
+        }
+        toDelete.forEach(name => element.removeAttribute(name));
+        applyTemplateToChildren(element, map);
     }
 
     function setup(params) {
@@ -340,18 +349,14 @@
     }
 
     class UserApi {
-        constructor() {
-            this.apiUrl = findApiUrl();
-        }
-        apiUrl;
         async list(postId) {
-            return post(this.apiUrl + '/list', { 'PostId': postId });
+            return post('/list', { 'PostId': postId });
         }
         async add(newComment) {
-            return post(this.apiUrl + '/add', newComment);
+            return post('/add', newComment);
         }
         async render(text) {
-            return post(this.apiUrl + '/render', { 'Text': text });
+            return post('/render', { 'Text': text });
         }
     }
     var Sort;
@@ -359,13 +364,13 @@
         Sort[Sort["NewestFirst"] = 0] = "NewestFirst";
     })(Sort || (Sort = {}));
     async function post(url, data) {
-        let response = await fetch(url, { method: 'POST', mode: 'cors', body: JSON.stringify(data) });
+        let response = await fetch(apiUrl + url, { method: 'POST', mode: 'cors', body: JSON.stringify(data) });
         if (response.status != 200) {
             throw `Error ${response.status}: ${await response.text()}`;
         }
         return response.json();
     }
-    function findApiUrl() {
+    const apiUrl = (() => {
         let scripts = document.getElementsByTagName('script');
         let baseUrl = new URL(scripts[scripts.length - 1].attributes['src'].value, window.location.toString());
         let pathname = baseUrl.pathname;
@@ -377,15 +382,13 @@
             baseUrl.pathname = pathname.substring(0, lastSlash) + '_';
         }
         return baseUrl.toString();
-    }
+    })();
 
     const AnchorPrefix = 'comment_';
     class JtCommentsElement extends HTMLElement {
         api;
         postId;
         allTemplate;
-        commentTemplate;
-        formTemplate;
         constructor() {
             super();
             this.api = new UserApi();
@@ -393,8 +396,6 @@
         connectedCallback() {
             this.postId = this.getAttribute('post-id');
             this.allTemplate = this.getTemplate();
-            this.commentTemplate = this.getTemplate('entry');
-            this.formTemplate = this.getTemplate('form');
             this.refresh();
         }
         async refresh() {
@@ -406,20 +407,31 @@
             this.render(await this.api.list(this.postId));
         }
         render(comments) {
-            if (!comments.Config.IsReadable) {
+            if (!comments.Config.IsReadable || (!comments.Config.IsWritable && comments.List.length == 0)) {
                 this.remove();
                 return;
             }
             let numComments = comments.List.length;
+            let renderedComments = comments.List.map(c => ({
+                author: c.Author,
+                when: c.When,
+                url: new URL('#' + AnchorPrefix + c.Id, window.location.toString()).toString(),
+                anchor: AnchorPrefix + c.Id,
+                text: c.Text,
+            }));
             let block = this.allTemplate.cloneNode(true);
             applyTemplate(block, {
-                'none_count': (numComments == 0),
-                'singular_count': (numComments == 1),
-                'plural_count': (numComments > 1),
+                'has_none_count': (numComments == 0),
+                'has_singular_count': (numComments == 1),
+                'has_plural_count': (numComments > 1),
+                'can_add_comment': comments.Config.IsWritable,
+                'might_have_comments': comments.Config.IsReadable && (comments.Config.IsWritable || comments.List.length > 0),
                 'count': String(numComments),
-                'comments': (c) => { this.renderComments(c, comments); },
-                'newcomment': comments.Config.IsWritable ? (c) => { this.renderForm(c); } : false,
+                'comments': renderedComments,
             });
+            if (comments.Config.IsWritable) {
+                this.attachFormEvents(block);
+            }
             this.appendChild(block);
             if (window.location.hash.startsWith('#' + AnchorPrefix)) {
                 let anchor = window.location.hash.substring(1);
@@ -428,21 +440,7 @@
                     element.scrollIntoView();
             }
         }
-        renderComments(list, comments) {
-            for (let comment of comments.List) {
-                let row = this.commentTemplate.cloneNode(true);
-                applyTemplate(row, {
-                    'author': comment.Author,
-                    'when': formatDate(comment.When),
-                    'url': new URL('#' + AnchorPrefix + comment.Id, window.location.toString()).toString(),
-                    'anchor': AnchorPrefix + comment.Id,
-                    'text': { html: comment.Text },
-                });
-                list.appendChild(row);
-            }
-        }
-        renderForm(elem) {
-            let form = this.formTemplate.cloneNode(true);
+        attachFormEvents(form) {
             form.querySelector('form')?.addEventListener('submit', e => {
                 this.submitComment(e.target);
                 e.preventDefault();
@@ -460,7 +458,6 @@
                     api: this.api
                 });
             }
-            elem.appendChild(form);
         }
         async submitComment(form) {
             let msg;
@@ -487,18 +484,17 @@
             form.insertAdjacentElement("beforebegin", p);
             p.scrollIntoView();
         }
-        getTemplate(id) {
-            let name = 'jt-comments' + (id ? '-' + id : '');
-            let template = document.getElementById(name);
+        getTemplate() {
+            let template = this.getElementsByTagName('template')[0];
             if (template) {
                 template.remove();
                 return template.content;
             }
             template = document.createElement('template');
-            template.innerHTML = getTemplate(id ? id : 'main');
+            template.innerHTML = getTemplate();
             return template.content;
         }
     }
-    customElements.define('jt-comments', JtCommentsElement);
+    window.addEventListener('DOMContentLoaded', _ => customElements.define('jt-comments', JtCommentsElement));
 
 })();

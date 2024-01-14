@@ -22,22 +22,16 @@ export type NewComment = {
 }
 
 export class UserApi {
-    constructor() {
-        this.apiUrl = findApiUrl();
-    }
-
-    private apiUrl: string;
-
     async list(postId: string): Promise<Comments> {
-        return post(this.apiUrl + '/list', { 'PostId': postId });
+        return post('/list', { 'PostId': postId });
     }
 
     async add(newComment: NewComment): Promise<Comment> {
-        return post(this.apiUrl + '/add', newComment);
+        return post('/add', newComment);
     }
 
     async render(text: string): Promise<string> {
-        return post(this.apiUrl + '/render', { 'Text': text });
+        return post('/render', { 'Text': text });
     }
 }
 
@@ -84,12 +78,6 @@ export type CommentConfig = {
 }
 
 export class AdminApi {
-    constructor() {
-        this.apiUrl = findApiUrl();
-    }
-
-    private apiUrl: string;
-
     async findComments(filter: CommentFilter, sort: Sort, limit: number, start: number): Promise<FoundComments> {
         let params = {
             'Filter': filter,
@@ -97,14 +85,14 @@ export class AdminApi {
             'Limit': limit,
             'Start': start,
         };
-        return post(this.apiUrl + '/findComments', params);
+        return post('/findComments', params);
     }
 
     async deleteComments(ids: Map<string, string[]>) {
         let params = {
             'Ids': Object.fromEntries(ids)
         };
-        await post(this.apiUrl + '/deleteComments', params);
+        await post('/deleteComments', params);
     }
 
     async findPosts(filter: PostFilter, sort: Sort, limit: number, start: number): Promise<FoundPosts> {
@@ -114,7 +102,7 @@ export class AdminApi {
             'Limit': limit,
             'Start': start,
         };
-        return post(this.apiUrl + '/findPosts', params);
+        return post('/findPosts', params);
     }
 
     async bulkSetVisible(ids: Map<string, string[]>, visible: boolean) {
@@ -122,7 +110,7 @@ export class AdminApi {
             'Ids': Object.fromEntries(ids),
             'Visible': visible
         };
-        await post(this.apiUrl + '/bulkSetVisible', params);
+        await post('/bulkSetVisible', params);
     }
 
     async bulkUpdatePostConfigs(postIds: string[], writable: boolean, readable: boolean) {
@@ -133,12 +121,12 @@ export class AdminApi {
                 'IsReadable': readable,
             },
         }
-        await post(this.apiUrl + '/bulkUpdatePostConfigs', params);
+        await post('/bulkUpdatePostConfigs', params);
     }
 }
 
 async function get<R>(url: string): Promise<R> {
-    let response = await fetch(url, { method: 'GET', mode: 'cors' });
+    let response = await fetch(apiUrl + url, { method: 'GET', mode: 'cors' });
     if (response.status != 200) {
         throw `Error ${response.status}: ${await response.text()}`;
     }
@@ -146,14 +134,14 @@ async function get<R>(url: string): Promise<R> {
 }
 
 async function post<R, M>(url: string, data: M): Promise<R> {
-    let response = await fetch(url, { method: 'POST', mode: 'cors', body: JSON.stringify(data) });
+    let response = await fetch(apiUrl + url, { method: 'POST', mode: 'cors', body: JSON.stringify(data) });
     if (response.status != 200) {
         throw `Error ${response.status}: ${await response.text()}`;
     }
     return response.json();
 }
 
-function findApiUrl(): string {
+const apiUrl = (() => {
     let scripts = document.getElementsByTagName('script');
     let baseUrl = new URL(scripts[scripts.length - 1].attributes['src'].value, window.location.toString());
     let pathname = baseUrl.pathname;
@@ -164,4 +152,4 @@ function findApiUrl(): string {
         baseUrl.pathname = pathname.substring(0, lastSlash) + '_';
     }
     return baseUrl.toString();
-}
+})();

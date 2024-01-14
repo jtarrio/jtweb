@@ -13,10 +13,10 @@ function getLanguage() {
     return lang;
 }
 
-export function getTemplate(name: string) {
-    let templates = Data.Templates[getLanguage()];
-    if (!templates) templates = Data.Templates['en'];
-    return templates[name];
+export function getTemplate() {
+    let template = Data.Templates[getLanguage()];
+    if (!template) template = Data.Templates['en'];
+    return template;
 }
 
 

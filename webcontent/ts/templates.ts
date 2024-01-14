@@ -1,110 +1,120 @@
-export type TmplReplaceFn = (element: Element) => void
-export type TmplContent = { text?: string, html?: string, visible?: boolean };
-export type TmplReplacer = string | boolean | TmplContent | TmplReplaceFn;
-export type TmplMap = { [key: string]: TmplReplacer }
+import { formatDate } from "./languages";
+
+export type TmplMap = object;
+
+// <p>Some text <jv>varName</jv></p>
+// <p>Parse date <jv date>varName</jv></p>
+// <p>Insert as html <jv html>varName</jv></p>
+// <p>Nested vars <jv>varName.field1.field2</jv>
+// <a jv-href="varName">...content...</a>
+// <jv-if cond="varName">...content...</jv-if>
+// <jv-if not cond="varName">...content...</jv-if>
+// <jv-for items="varName" item="itemVarName">...content...</jv-for>
+// <jv-for items="varName" item="itemVarName" index="indexVarName">...content...</jv-for>
 
 export default function applyTemplate(element: Element, map: TmplMap) {
-    let elements = findPlaceholders(element);
-    for (let elem of elements) {
-        if (elem.nodeName == 'JTVAR') {
-            replacePlaceholder(elem, map);
-        } else if (elem.hasAttribute('jtvar')) {
-            fillElement(elem, map);
+    if (element.nodeName == 'JV') {
+        replaceElement(element, map);
+    } else if (element.nodeName == 'JV-IF') {
+        doIf(element, map);
+    } else if (element.nodeName == 'JV-FOR') {
+        doFor(element, map);
+    } else {
+        replaceAttributes(element, map);
+    }
+}
+
+function getMapValue(name: any, map: TmplMap): any {
+    let scope: any = map;
+    if (name === null || name === undefined) return undefined;
+    while (true) {
+        if (name == '') return scope;
+        if ('object' !== typeof scope) return undefined;
+        let dot = name.indexOf('.')
+        let index = dot == -1 ? name : name.substring(0, dot);
+        name = dot == -1 ? '' : name.substring(dot + 1);
+        let newScope = undefined;
+        if (Array.isArray(scope)) {
+            let indexNum = Number(index);
+            if (!Number.isNaN(indexNum)) {
+                newScope = scope[indexNum];
+            }
+        }
+        if (newScope === undefined) newScope = scope[index];
+        scope = newScope;
+    }
+}
+
+function applyTemplateToChildren(parent: Element, map: TmplMap) {
+    let child = parent.firstElementChild;
+    while (child != null) {
+        let next = child.nextElementSibling;
+        applyTemplate(child, map);
+        child = next;
+    }
+}
+
+function replaceElement(element: Element, map: TmplMap) {
+    let replacement = getMapValue(element.textContent?.trim(), map);
+    if (element.hasAttribute('html')) {
+        element.outerHTML = String(replacement);
+    } else if (element.hasAttribute('date')) {
+        element.replaceWith(formatDate(String(replacement)));
+    } else {
+        element.replaceWith(String(replacement));
+    }
+}
+
+function doIf(element: Element, map: TmplMap) {
+    let cond = Boolean(getMapValue(element.getAttribute('cond'), map));
+    if (element.hasAttribute('not')) {
+        cond = !cond;
+    }
+    if (cond) {
+        applyTemplateToChildren(element, map);
+        while (element.firstChild != null) element.before(element.firstChild);
+    }
+    element.remove();
+}
+
+function doFor(element: Element, map: TmplMap) {
+    let items = getMapValue(element.getAttribute('items'), map);
+    let itemVarName = element.getAttribute('item');
+    let indexVarName = element.getAttribute('index');
+    for (let index in items) {
+        let item = items[index];
+        let childMap = { ...map };
+        if (itemVarName) childMap[itemVarName] = item;
+        if (indexVarName) childMap[indexVarName] = index;
+        let child = element.firstElementChild;
+        while (child != null) {
+            let next = child.nextElementSibling;
+            let clone = child.cloneNode(true) as Element;
+            element.before(clone);
+            applyTemplate(clone, childMap);
+            child = next;
+        }
+    }
+    element.remove();
+}
+
+function replaceAttributes(element: Element, map: TmplMap) {
+    let toDelete: string[] = [];
+    for (let attr of element.attributes || []) {
+        if (!attr.name.startsWith('jv-')) continue;
+        let attrName = attr.name.substring(3);
+        let varName = attr.value;
+        let replacement = getMapValue(varName, map);
+        toDelete.push(attr.name);
+        if ('boolean' === typeof replacement) {
+            if (replacement) {
+                element.setAttribute(attrName, '');
+            }
         } else {
-            fillAttributes(elem, map);
+            element.setAttribute(attrName, String(replacement));
         }
     }
+    toDelete.forEach(name => element.removeAttribute(name));
+    applyTemplateToChildren(element, map);
 }
 
-function findPlaceholders(root: Element) {
-    return new class implements Iterable<Element> {
-        [Symbol.iterator](): Iterator<Element> {
-            return new class implements Iterator<Element> {
-                iter: IterableIterator<[number, Element]>;
-                constructor() {
-                    this.iter = root.querySelectorAll('*').entries();
-                }
-                next(): IteratorResult<Element> {
-                    while (true) {
-                        let next = this.iter.next();
-                        if (next.done) return { done: true, value: undefined };
-                        const elem = next.value[1];
-                        if (elem.nodeName == 'JTVAR' || elem.hasAttribute('jtvar'))
-                            return { done: false, value: elem };
-                        for (let attr of elem.attributes) {
-                            if (attr.value.startsWith('jtvar ')) return { done: false, value: elem };
-                        }
-                    }
-                }
-            }
-        }
-    };
-}
-
-function replacePlaceholder(elem: Element, map: TmplMap) {
-    for (let attr of elem.attributes) {
-        let replacer = map[attr.name];
-        if (replacer === undefined) continue;
-        if ("function" === typeof replacer) {
-            replacer(elem);
-        } else if ("string" === typeof replacer) {
-            elem.insertAdjacentText("afterend", replacer);
-        } else if ("object" === typeof replacer) {
-            if (replacer.html !== undefined) {
-                elem.insertAdjacentHTML("afterend", replacer.html);
-            } else if (replacer.text !== undefined) {
-                elem.insertAdjacentText("afterend", replacer.text);
-            }
-        }
-        break;
-    }
-    elem.remove();
-}
-
-function fillElement(elem: Element, map: TmplMap) {
-    let name = elem.getAttribute('jtvar');
-    if (!name) return;
-    let replacer = map[name];
-    if (replacer === undefined) {
-        elem.removeAttribute('jtvar');
-        return;
-    }
-    if ("function" === typeof replacer) {
-        replacer(elem);
-    } else if ("string" === typeof replacer) {
-        elem.textContent = replacer;
-    } else if ("boolean" === typeof replacer) {
-        if (!replacer) {
-            elem.remove();
-            return;
-        }
-    } else if ("object" === typeof replacer) {
-        if (replacer.html !== undefined) {
-            elem.innerHTML = replacer.html;
-        } else if (replacer.text !== undefined) {
-            elem.textContent = replacer.text;
-        } else if (replacer.visible !== undefined) {
-            if (!replacer.visible) {
-                elem.remove();
-                return;
-            }
-        }
-    }
-    elem.removeAttribute('jtvar');
-}
-
-function fillAttributes(elem: Element, map: TmplMap) {
-    for (let attr of elem.attributes) {
-        if (!attr.value.startsWith('jtvar ')) continue;
-        let name = attr.value.substring(6).trim();
-        if (!name) continue;
-        let replacer = map[name];
-        if (replacer === undefined) {
-            elem.removeAttribute(attr.name);
-        } else if ("string" === typeof replacer) {
-            elem.setAttribute(attr.name, replacer);
-        } else if ("object" === typeof replacer && replacer.text !== undefined) {
-            elem.setAttribute(attr.name, replacer.text);
-        }
-    }
-}

@@ -9,8 +9,6 @@ class JtCommentsElement extends HTMLElement {
     private api: UserApi;
     private postId: string | null;
     private allTemplate: DocumentFragment;
-    private commentTemplate: DocumentFragment;
-    private formTemplate: DocumentFragment;
 
     constructor() {
         super();
@@ -20,8 +18,6 @@ class JtCommentsElement extends HTMLElement {
     connectedCallback() {
         this.postId = this.getAttribute('post-id');
         this.allTemplate = this.getTemplate();
-        this.commentTemplate = this.getTemplate('entry');
-        this.formTemplate = this.getTemplate('form');
         this.refresh();
     }
 
@@ -34,21 +30,32 @@ class JtCommentsElement extends HTMLElement {
     }
 
     private render(comments: Comments) {
-        if (!comments.Config.IsReadable) {
+        if (!comments.Config.IsReadable || (!comments.Config.IsWritable && comments.List.length == 0)) {
             this.remove();
             return;
         }
 
         let numComments = comments.List.length;
-        let block = this.allTemplate.cloneNode(true);
-        applyTemplate(block as Element, {
-            'none_count': (numComments == 0),
-            'singular_count': (numComments == 1),
-            'plural_count': (numComments > 1),
+        let renderedComments = comments.List.map(c => ({
+            author: c.Author,
+            when: c.When,
+            url: new URL('#' + AnchorPrefix + c.Id, window.location.toString()).toString(),
+            anchor: AnchorPrefix + c.Id,
+            text: c.Text,
+        }));
+        let block = this.allTemplate.cloneNode(true) as Element;
+        applyTemplate(block, {
+            'has_none_count': (numComments == 0),
+            'has_singular_count': (numComments == 1),
+            'has_plural_count': (numComments > 1),
+            'can_add_comment': comments.Config.IsWritable,
+            'might_have_comments': comments.Config.IsReadable && (comments.Config.IsWritable || comments.List.length > 0),
             'count': String(numComments),
-            'comments': (c: Element) => { this.renderComments(c, comments); },
-            'newcomment': comments.Config.IsWritable ? (c: Element) => { this.renderForm(c); } : false,
+            'comments': renderedComments,
         });
+        if (comments.Config.IsWritable) {
+            this.attachFormEvents(block);
+        }
         this.appendChild(block);
 
         if (window.location.hash.startsWith('#' + AnchorPrefix)) {
@@ -58,22 +65,7 @@ class JtCommentsElement extends HTMLElement {
         }
     }
 
-    private renderComments(list: Element, comments: Comments) {
-        for (let comment of comments.List) {
-            let row = this.commentTemplate.cloneNode(true);
-            applyTemplate(row as Element, {
-                'author': comment.Author,
-                'when': Lang.formatDate(comment.When),
-                'url': new URL('#' + AnchorPrefix + comment.Id, window.location.toString()).toString(),
-                'anchor': AnchorPrefix + comment.Id,
-                'text': { html: comment.Text },
-            });
-            list.appendChild(row);
-        }
-    }
-
-    private renderForm(elem: Element) {
-        let form = this.formTemplate.cloneNode(true) as Element;
+    private attachFormEvents(form: Element) {
         form.querySelector('form')?.addEventListener('submit', e => {
             this.submitComment(e.target as HTMLFormElement);
             e.preventDefault();
@@ -91,7 +83,6 @@ class JtCommentsElement extends HTMLElement {
                 api: this.api
             });
         }
-        elem.appendChild(form);
     }
 
     private async submitComment(form: HTMLFormElement) {
@@ -119,17 +110,17 @@ class JtCommentsElement extends HTMLElement {
         p.scrollIntoView();
     }
 
-    private getTemplate(id?: string): DocumentFragment {
-        let name = 'jt-comments' + (id ? '-' + id : '');
-        let template = document.getElementById(name) as HTMLTemplateElement;
+    private getTemplate(): DocumentFragment {
+        let template = this.getElementsByTagName('template')[0];
         if (template) {
             template.remove();
             return template.content;
         }
         template = document.createElement('template');
-        template.innerHTML = Lang.getTemplate(id ? id : 'main');
+        template.innerHTML = Lang.getTemplate();
         return template.content;
     }
 }
 
-customElements.define('jt-comments', JtCommentsElement);
+window.addEventListener('DOMContentLoaded', _ =>
+    customElements.define('jt-comments', JtCommentsElement));

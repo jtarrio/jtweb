@@ -26,67 +26,73 @@ export const Messages = {
 };
 
 export const Templates = {
-    'en': {
-        'main': `
-            <h1 jtvar="none_count">No comments</h1>
-            <h1 jtvar="singular_count">1 comment</h1>
-            <h1 jtvar="plural_count"><jtvar count></jtvar> comments</h1>
-            <div jtvar="comments"></div>
-            <div jtvar="newcomment"></div>
-        `,
-        'entry': `
-            <p>By <jtvar author></jtvar> on <a href="jtvar url" name="jtvar anchor"><jtvar when></jtvar></a></p>
-            <p jtvar="text"></p>
-        `,
-        'form': `
-            <form id="commentform">
-                <p>Your name: <input type="text" name="author"></p>
-                <p>Comment: <textarea name="text" rows="10" cols="50"></textarea></p>
-                <input type="submit" value="Submit"><input type="reset" value="Reset"><input type="button" value="Preview" id="jtPreviewButton">
-            </form>
-            <div id="jtPreviewContainer"><div id="jtPreviewBox"></div></div>
-        `,
-    },
-    'gl': {
-        'main': `
-            <h1 jtvar="none_count">Ningún comentario</h1>
-            <h1 jtvar="singular_count">1 comentario</h1>
-            <h1 jtvar="plural_count"><jtvar count></jtvar> comentarios</h1>
-            <div jtvar="comments"></div>
-            <div jtvar="newcomment"></div>
-        `,
-        'entry': `
-            <p>Por <jtvar author></jtvar> o <a href="jtvar url" name="jtvar anchor"><jtvar when></jtvar></a></p>
-            <p jtvar="text"></p>
-        `,
-        'form': `
-            <form id="commentform">
-                <p>O teu nome: <input type="text" name="author"></p>
-                <p>Comentario: <textarea name="text" rows="10" cols="50"></textarea></p>
-                <input type="submit" value="Enviar"><input type="reset" value="Descartar"><input type="button" value="Previsualizar" id="jtPreviewButton">
-            </form>
-            <div id="jtPreviewContainer"><div id="jtPreviewBox"></div></div>
-        `,
-    },
-    'es': {
-        'main': `
-            <h1 jtvar="none_count">Ningún comentario</h1>
-            <h1 jtvar="singular_count">1 comentario</h1>
-            <h1 jtvar="plural_count"><jtvar count></jtvar> comentarios</h1>
-            <div jtvar="comments"></div>
-            <div jtvar="newcomment"></div>
-        `,
-        'entry': `
-            <p>Por <jtvar author></jtvar> el <a href="jtvar url" name="jtvar anchor"><jtvar when></jtvar></a></p>
-            <p jtvar="text"></p>
-        `,
-        'form': `
+    'en': `<div class="comment">
+    <jv-if cond="has_none_count"><h1>No comments</h1></jv-if>
+    <jv-if cond="has_singular_count"><h1>1 comment</h1></jv-if>
+    <jv-if cond="has_plural_count"><h1><jv>count</jv> comments</h1></jv-if>
+    <jv-for items="comments" item="comment">
+        <div class="commentByline">By <jv>comment.author</jv> on <a jv-href="comment.url" jv-name="comment.anchor"><jv date>comment.when</jv></a></div>
+        <div class="commentText><jv html>comment.text</jv></div>
+    </jv-for>
+    <jv-if cond="can_add_comment">
         <form id="commentform">
-            <p>Tu nombre: <input type="text" name="author"></p>
-            <p>Comentario: <textarea name="text" rows="10" cols="50"></textarea></p>
-            <input type="submit" value="Enviar"><input type="reset" value="Descartar"><input type="button" value="Previsualizar" id="jtPreviewButton">
+            <h1>Would you like to write a comment?</h1>
+            <div class="commentForm">
+                <div>Your name or nickname: <input type="text" name="author"> (it will be published)</div>
+                <div>Your comment:</div>
+                <textarea name="text" id="jtComment"></textarea>
+                <div id="jtPreviewContainer"><div id="jtPreviewBox"></div></div>
+            </div>
+            <div class="commentButtons">
+                <input type="reset" value="Reset"><input type="submit" value="Submit"><input type="button" value="Preview" id="jtPreviewButton">
+            </div>
         </form>
-        <div id="jtPreviewContainer"><div id="jtPreviewBox"></div></div>
-        `,
-    },
+    </jv-if>
+</div>`,
+    'gl': `<div class="comment">
+    <jv-if cond="has_none_count"><h1>Ningún comentario</h1></jv-if>
+    <jv-if cond="has_singular_count"><h1>1 comentario</h1></jv-if>
+    <jv-if cond="has_plural_count"><h1><jv>count</jv> comentarios</h1></jv-if>
+    <jv-for items="comments" item="comment">
+        <div class="commentByline">Por <jv>comment.author</jv> o <a jv-href="comment.url" jv-name="comment.anchor"><jv date>comment.when</jv></a></div>
+        <div class="commentText><jv html>comment.text</jv></div>
+    </jv-for>
+    <jv-if cond="can_add_comment">
+        <form id="commentform">
+            <h1>Queres escribir un comentario?</h1>
+            <div class="commentForm">
+                <div>O teu nome ou sobrenome: <input type="text" name="author"> (hase publicar)</div>
+                <div>O teu comentario:</div>
+                <textarea name="text" id="jtComment"></textarea>
+                <div id="jtPreviewContainer"><div id="jtPreviewBox"></div></div>
+            </div>
+            <div class="commentButtons">
+                <input type="reset" value="Descartar"><input type="submit" value="Enviar"><input type="button" value="Previsualizar" id="jtPreviewButton">
+            </div>
+        </form>
+    </jv-if>
+</div>`,
+    'es': `<div class="comment">
+    <jv-if cond="has_none_count"><h1>Ningún comentario</h1></jv-if>
+    <jv-if cond="has_singular_count"><h1>1 comentario</h1></jv-if>
+    <jv-if cond="has_plural_count"><h1><jv>count</jv> comentarios</h1></jv-if>
+    <jv-for items="comments" item="comment">
+        <div class="commentByline">Por <jv>comment.author</jv> el <a jv-href="comment.url" jv-name="comment.anchor"><jv date>comment.when</jv></a></div>
+        <div class="commentText><jv html>comment.text</jv></div>
+    </jv-for>
+    <jv-if cond="can_add_comment">
+        <form id="commentform">
+            <h1>¿Quieres escribir un comentario?</h1>
+            <div class="commentForm">
+                <div>Tu nombre o sobrenombre: <input type="text" name="author"> (se publicará)</div>
+                <div>Tu comentario:</div>
+                <textarea name="text" id="jtComment"></textarea>
+                <div id="jtPreviewContainer"><div id="jtPreviewBox"></div></div>
+            </div>
+            <div class="commentButtons">
+                <input type="reset" value="Descartar"><input type="submit" value="Enviar"><input type="button" value="Previsualizar" id="jtPreviewButton">
+            </div>
+        </form>
+    </jv-if>
+</div>`,
 }

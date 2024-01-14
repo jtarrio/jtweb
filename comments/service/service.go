@@ -81,7 +81,11 @@ type CommentConfig struct {
 }
 
 func NewCommentsService(engine engine.Engine, options ...CommentsServiceOptions) CommentsService {
-	service := &commentsServiceImpl{engine: engine, renderer: NewEscapeRenderer(), defaultVisible: true}
+	service := &commentsServiceImpl{
+		engine:         engine,
+		notifications:  notification.NullNotificationEngine(),
+		renderer:       NewEscapeRenderer(),
+		defaultVisible: true}
 	for _, option := range options {
 		option(service)
 	}
