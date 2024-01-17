@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"math"
 	"net/http"
 	"net/url"
@@ -83,6 +84,7 @@ func output(what any, err error, rw http.ResponseWriter) {
 	rw.WriteHeader(http.StatusInternalServerError)
 	rw.Header().Add("Content-Type", "text/plain")
 	rw.Write([]byte(err.Error()))
+	log.Printf("Error: %s", err)
 }
 
 func input(req *http.Request, v any, rw http.ResponseWriter) error {
