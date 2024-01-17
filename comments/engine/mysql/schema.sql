@@ -3,7 +3,7 @@ CREATE TABLE `Posts` (
   `State` tinyint(1) NOT NULL,
   `StateFromWeb` tinyint(1) DEFAULT NULL,
   PRIMARY KEY (`PostId`)
-) DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE `Comments` (
   `PostId` varchar(255) NOT NULL,
@@ -15,4 +15,4 @@ CREATE TABLE `Comments` (
   PRIMARY KEY (`CommentId`),
   KEY `PostId` (`PostId`),
   CONSTRAINT `Comments_ibfk_1` FOREIGN KEY (`PostId`) REFERENCES `Posts` (`PostId`)
-) DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
