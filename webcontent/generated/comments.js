@@ -480,7 +480,7 @@
             }
             let p = document.createElement('p');
             p.classList.add("jtSubmitMessage");
-            p.textContent = getMessage(MessageType.CommentPostedAsDraft);
+            p.textContent = getMessage(msg);
             form.insertAdjacentElement("beforebegin", p);
             p.scrollIntoView();
         }

@@ -105,7 +105,7 @@ class JtCommentsElement extends HTMLElement {
         }
         let p = document.createElement('p');
         p.classList.add("jtSubmitMessage");
-        p.textContent = Lang.getMessage(Lang.MessageType.CommentPostedAsDraft);
+        p.textContent = Lang.getMessage(msg);
         form.insertAdjacentElement("beforebegin", p);
         p.scrollIntoView();
     }
