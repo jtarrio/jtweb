@@ -125,14 +125,6 @@ export class AdminApi {
     }
 }
 
-async function get<R>(url: string): Promise<R> {
-    let response = await fetch(apiUrl + url, { method: 'GET', mode: 'cors' });
-    if (response.status != 200) {
-        throw `Error ${response.status}: ${await response.text()}`;
-    }
-    return response.json();
-}
-
 async function post<R, M>(url: string, data: M): Promise<R> {
     let response = await fetch(apiUrl + url, { method: 'POST', mode: 'cors', body: JSON.stringify(data) });
     if (response.status != 200) {
