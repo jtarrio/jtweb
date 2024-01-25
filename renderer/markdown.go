@@ -11,11 +11,13 @@ import (
 	highlighting "github.com/yuin/goldmark-highlighting"
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/extension"
+	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/renderer/html"
 	"github.com/yuin/goldmark/text"
 )
 
 var markdown goldmark.Markdown = goldmark.New(
+	goldmark.WithParserOptions(parser.WithAttribute()),
 	goldmark.WithRendererOptions(
 		html.WithUnsafe(),
 	),
@@ -24,6 +26,7 @@ var markdown goldmark.Markdown = goldmark.New(
 		extensions.YouTubeExtension,
 		extensions.MultipleImageExtension,
 		extensions.ImageCaptionExtension,
+		extension.Footnote,
 		extension.GFM,
 		extension.Typographer,
 		highlighting.NewHighlighting(highlighting.WithStyle("igor")),

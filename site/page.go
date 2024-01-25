@@ -88,7 +88,7 @@ func (c *Contents) makePageData(page *page.Page) (*templates.PageData, error) {
 		return nil, err
 	}
 	content := bytes.Buffer{}
-	err = renderer.SanitizePost(&content, &buf, c.Config.Site(page.Header.Language).WebRoot(), string(page.Name))
+	err = renderer.SanitizePost(&content, &buf, c.Config.Site(page.Header.Language).WebRoot(), string(page.Name)+".html")
 	if err != nil {
 		return nil, err
 	}
