@@ -193,9 +193,9 @@ func (t *Templates) plural(count int, singular string, plural string) string {
 	return plural
 }
 
-func (t *Templates) htmlToText(content template.HTML, linksTitle string, pictureTitle string) string {
+func (t *Templates) htmlToText(content template.HTML, linksTitle string, pictureTitle string, notesTitle string) string {
 	sb := strings.Builder{}
-	err := HtmlToText(strings.NewReader(string(content)), &sb, linksTitle, pictureTitle)
+	err := HtmlToText(strings.NewReader(string(content)), &sb, Titles{Links: linksTitle, Picture: pictureTitle, Notes: notesTitle})
 	if err != nil {
 		panic(err)
 	}

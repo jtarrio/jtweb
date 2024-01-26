@@ -112,105 +112,204 @@ func (t *text) appendWrapping(n string) {
 	}
 }
 
-func HtmlToText(i io.Reader, o io.Writer, linksTitle string, pictureTitle string) error {
+type Titles struct {
+	Links   string
+	Picture string
+	Notes   string
+}
+
+type htmlToTextParams struct {
+	titles        Titles
+	links         *[]string
+	inPara, inPre bool
+	toUpper       bool
+	lists         []*uint
+	inFootnotes   bool
+}
+
+type htmlTagProcessor func(n *html.Node, t *text, params *htmlToTextParams)
+
+type htmlTag struct {
+	preFn  htmlTagProcessor
+	postFn htmlTagProcessor
+}
+
+func doNothing(*html.Node, *text, *htmlToTextParams) {}
+
+func endAnchor(n *html.Node, t *text, params *htmlToTextParams) {
+	for _, a := range n.Attr {
+		if a.Key == "href" {
+			if !isFootnoteLink(a.Val) {
+				*params.links = append(*params.links, a.Val)
+				t.appendWrapping(string(zeroWidthSpace) + "[" + fmt.Sprint(len(*params.links)) + "]")
+			}
+		}
+	}
+}
+
+func startParagraph(n *html.Node, t *text, params *htmlToTextParams) {
+	t.startParagraph()
+	params.inPara = true
+}
+
+func startHeader(n *html.Node, t *text, params *htmlToTextParams) {
+	t.startParagraph()
+	params.inPara = true
+	params.toUpper = n.Data == "h1"
+	prefix := "   "
+	if n.Data == "h2" {
+		prefix = " * "
+	} else if n.Data == "h3" {
+		prefix = " = "
+	} else if n.Data == "h4" {
+		prefix = " - "
+	}
+	t.prefix(prefix)
+}
+
+func startPre(n *html.Node, t *text, params *htmlToTextParams) {
+	t.startParagraph()
+	params.inPre = true
+}
+
+func startImg(n *html.Node, t *text, params *htmlToTextParams) {
+	caption := ""
+	for _, a := range n.Attr {
+		if a.Key == "alt" || (a.Key == "src" && caption == "") {
+			caption = a.Val
+		}
+	}
+	if caption == "" {
+		return
+	}
+	if !params.inPara {
+		t.startParagraph()
+	}
+	t.appendWrapping("(" + params.titles.Picture + ": " + caption + ")")
+}
+
+func startHr(n *html.Node, t *text, params *htmlToTextParams) {
+	t.startParagraph()
+	t.append("***")
+	if params.inFootnotes {
+		t.addIndent()
+		t.startParagraph()
+		t.appendWrapping(params.titles.Notes)
+		t.removeIndent()
+	}
+	t.startParagraph()
+}
+
+func startOl(n *html.Node, t *text, params *htmlToTextParams) {
+	t.startParagraph()
+	var number uint = 1
+	params.lists = append(params.lists, &number)
+}
+
+func startUl(n *html.Node, t *text, params *htmlToTextParams) {
+	t.startParagraph()
+	params.lists = append(params.lists, nil)
+}
+
+func endList(n *html.Node, t *text, params *htmlToTextParams) {
+	params.lists = params.lists[:len(params.lists)-1]
+}
+
+func startLi(n *html.Node, t *text, params *htmlToTextParams) {
+	t.startParagraph()
+	li := params.lists[len(params.lists)-1]
+	if li == nil {
+		t.prefix("   * ")
+	} else {
+		t.prefix(fmt.Sprintf("%3d. ", *li))
+		(*li)++
+	}
+	t.addIndent()
+}
+
+func endLi(n *html.Node, t *text, params *htmlToTextParams) {
+	t.removeIndent()
+}
+
+func startDiv(n *html.Node, t *text, params *htmlToTextParams) {
+	for _, a := range n.Attr {
+		if a.Key == "class" && a.Val == "footnotes" {
+			params.inFootnotes = true
+		}
+	}
+}
+
+func appendText(txt string) htmlTagProcessor {
+	return func(n *html.Node, t *text, params *htmlToTextParams) {
+		t.append(txt)
+	}
+}
+
+var htmlTags = map[string]htmlTag{
+	"a":   {doNothing, endAnchor},
+	"p":   {startParagraph, doNothing},
+	"h1":  {startHeader, doNothing},
+	"h2":  {startHeader, doNothing},
+	"h3":  {startHeader, doNothing},
+	"h4":  {startHeader, doNothing},
+	"h5":  {startHeader, doNothing},
+	"h6":  {startHeader, doNothing},
+	"pre": {startPre, doNothing},
+	"img": {startImg, doNothing},
+	"sup": {appendText("^("), appendText(")")},
+	"hr":  {startHr, doNothing},
+	"ol":  {startOl, endList},
+	"ul":  {startUl, endList},
+	"li":  {startLi, endLi},
+	"div": {startDiv, doNothing},
+}
+
+func HtmlToText(i io.Reader, o io.Writer, titles Titles) error {
 	var t text
-	var links []string
 	doc, err := html.Parse(i)
 	if err != nil {
 		return err
 	}
-	type listItem struct {
-		number *int
+	links := []string{}
+	params := htmlToTextParams{
+		titles: titles,
+		links:  &links,
 	}
-	type processParams struct {
-		inPara, inPre bool
-		lists         []listItem
-	}
-	var processNode func(*html.Node, processParams)
-	processNode = func(n *html.Node, params processParams) {
-		if n.Type == html.ElementNode {
-			if n.Data == "p" {
-				t.startParagraph()
-				params.inPara = true
-			} else if n.Data == "pre" {
-				t.startParagraph()
-				params.inPre = true
-			} else if n.Data == "img" {
-				caption := ""
-				for _, a := range n.Attr {
-					if a.Key == "alt" || (a.Key == "src" && caption == "") {
-						caption = a.Val
-					}
-				}
-				if caption != "" {
-					if !params.inPara {
-						t.startParagraph()
-					}
-					t.appendWrapping("(" + pictureTitle + ": " + caption + ")")
-				}
-			} else if n.Data == "sup" {
-				t.append("^(")
-			} else if n.Data == "hr" {
-				t.startParagraph()
-				t.append("***")
-				t.startParagraph()
-			} else if n.Data == "ol" {
-				t.startParagraph()
-				number := 1
-				params.lists = append(params.lists, listItem{number: &number})
-			} else if n.Data == "ul" {
-				t.startParagraph()
-				params.lists = append(params.lists, listItem{number: nil})
-			} else if n.Data == "li" {
-				t.startParagraph()
-				li := params.lists[len(params.lists)-1]
-				if li.number == nil {
-					t.prefix("  *  ")
-				} else {
-					t.prefix(fmt.Sprintf(" %2d. ", *li.number))
-					(*li.number)++
-				}
-				t.addIndent()
+	var processNode func(*html.Node, htmlToTextParams)
+	processNode = func(n *html.Node, params htmlToTextParams) {
+		if n.Type == html.TextNode {
+			txt := n.Data
+			if params.toUpper {
+				txt = strings.ToUpper(txt)
 			}
-		} else if n.Type == html.TextNode {
 			if params.inPara {
-				t.appendWrapping(n.Data)
+				t.appendWrapping(txt)
 			} else if params.inPre {
-				t.append(n.Data)
+				t.append(txt)
 			}
-		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			processNode(c, params)
-		}
-		if n.Type == html.ElementNode {
-			if n.Data == "a" {
-				for _, a := range n.Attr {
-					if a.Key == "href" {
-						if !isFootnoteLink(a.Val) {
-							links = append(links, a.Val)
-							t.appendWrapping(string(zeroWidthSpace) + "[" + fmt.Sprint(len(links)) + "]")
-						}
-					}
-				}
-			} else if n.Data == "sup" {
-				t.append(")")
-			} else if n.Data == "ol" || n.Data == "ul" {
-				params.lists = params.lists[:len(params.lists)-1]
-			} else if n.Data == "li" {
-				t.removeIndent()
+		} else if n.Type == html.ElementNode {
+			tag, ok := htmlTags[n.Data]
+			if !ok {
+				tag = htmlTag{doNothing, doNothing}
+			}
+			tag.preFn(n, &t, &params)
+			for c := n.FirstChild; c != nil; c = c.NextSibling {
+				processNode(c, params)
+			}
+			tag.postFn(n, &t, &params)
+		} else {
+			for c := n.FirstChild; c != nil; c = c.NextSibling {
+				processNode(c, params)
 			}
 		}
 	}
-	processNode(doc, processParams{
-		inPara: false,
-		inPre:  false,
-		lists:  []listItem{},
-	})
+	processNode(doc, params)
 
 	if len(links) > 0 {
 		t.addLine()
 		t.addLine()
-		t.appendWrapping(linksTitle + ":")
+		t.appendWrapping(titles.Links + ":")
+		t.addLine()
 		for i, l := range links {
 			t.addLine()
 			t.append(fmt.Sprintf("  [%d] %s", i+1, l))
