@@ -22,7 +22,7 @@ Quieren decir que tenía el sobrenombre de Quijada, o Quesada, que en esto hay a
 
 	w := strings.Builder{}
 
-	err := HtmlToText(r, &w, "Links", "Picture")
+	err := HtmlToText(r, &w, Titles{"Links", "Picture", "Notes"})
 	if err != nil {
 		panic(err)
 	}
@@ -67,7 +67,7 @@ añadidura los domingos</span>, consumían las tres partes de su hacienda.</p>
 
 	w := strings.Builder{}
 
-	err := HtmlToText(r, &w, "Links", "Picture")
+	err := HtmlToText(r, &w, Titles{"Links", "Picture", "Notes"})
 	if err != nil {
 		panic(err)
 	}
@@ -100,7 +100,7 @@ con sus pantuflos de lo mesmo, y los días de entresemana se honraba con su vell
 
 	w := strings.Builder{}
 
-	err := HtmlToText(r, &w, "Links", "Picture")
+	err := HtmlToText(r, &w, Titles{"Links", "Picture", "Notes"})
 	if err != nil {
 		panic(err)
 	}
@@ -133,7 +133,7 @@ tres partes de su hacienda.</p>
 
 	w := strings.Builder{}
 
-	err := HtmlToText(r, &w, "Links", "Picture")
+	err := HtmlToText(r, &w, Titles{"Links", "Picture", "Notes"})
 	if err != nil {
 		panic(err)
 	}
@@ -147,6 +147,7 @@ quebrantos los sábados, lantejas los viernes, algún palomino de añadidura los
 domingos, consumían las tres partes de su hacienda.
 
 Links:
+
   [1] link1.html
   [2] link2.html`
 	assert.Equal(t, expected, w.String())
@@ -166,7 +167,7 @@ hacienda.</p>
 
 	w := strings.Builder{}
 
-	err := HtmlToText(r, &w, "Links", "Picture")
+	err := HtmlToText(r, &w, Titles{"Links", "Picture", "Notes"})
 	if err != nil {
 		panic(err)
 	}
