@@ -116,6 +116,7 @@ func (g *EmailGenerator) SendMails() error {
 				return err
 			}
 			e.Plaintext = sb.String()
+			println(e.Plaintext)
 		}
 		emails = append(emails, &e)
 	}
