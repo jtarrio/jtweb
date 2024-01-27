@@ -20,12 +20,15 @@ func makeUrlRewriter(siteUrl, pageUrl string) (func(u *url.URL), error) {
 		return nil, err
 	}
 	rewriter := func(u *url.URL) {
+		if u.Scheme == "" && u.Host == "" && u.User == nil && u.Path == "" && u.RawQuery == "" && u.Fragment != "" {
+			return
+		}
 		if u.Scheme == "" && u.Host == "" && u.User == nil && u.Path != "" && u.Path[0] == '/' {
 			u.Path = u.Path[1:]
 			*u = *base.ResolveReference(u)
-		} else {
-			*u = *base.ResolveReference(page).ResolveReference(u)
+			return
 		}
+		*u = *base.ResolveReference(page).ResolveReference(u)
 	}
 	return rewriter, nil
 }
