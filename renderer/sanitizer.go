@@ -10,6 +10,33 @@ import (
 	"golang.org/x/net/html"
 )
 
+func RewriteUrl(siteUrl, pageUrl, targetUrl string) (string, error) {
+	base, err := url.Parse(siteUrl)
+	if err != nil {
+		return "", err
+	}
+	page, err := url.Parse(pageUrl)
+	if err != nil {
+		return "", err
+	}
+	target, err := url.Parse(targetUrl)
+	if err != nil {
+		return "", err
+	}
+	return rewriteUrl(base, page, target).String(), nil
+}
+
+func rewriteUrl(base, page, target *url.URL) *url.URL {
+	if target.Scheme == "" && target.Host == "" && target.User == nil && target.Path == "" && target.RawQuery == "" && target.Fragment != "" {
+		return target
+	}
+	if target.Scheme == "" && target.Host == "" && target.User == nil && target.Path != "" && target.Path[0] == '/' {
+		target.Path = target.Path[1:]
+		return base.ResolveReference(target)
+	}
+	return base.ResolveReference(page).ResolveReference(target)
+}
+
 func makeUrlRewriter(siteUrl, pageUrl string) (func(u *url.URL), error) {
 	base, err := url.Parse(siteUrl)
 	if err != nil {
@@ -20,15 +47,7 @@ func makeUrlRewriter(siteUrl, pageUrl string) (func(u *url.URL), error) {
 		return nil, err
 	}
 	rewriter := func(u *url.URL) {
-		if u.Scheme == "" && u.Host == "" && u.User == nil && u.Path == "" && u.RawQuery == "" && u.Fragment != "" {
-			return
-		}
-		if u.Scheme == "" && u.Host == "" && u.User == nil && u.Path != "" && u.Path[0] == '/' {
-			u.Path = u.Path[1:]
-			*u = *base.ResolveReference(u)
-			return
-		}
-		*u = *base.ResolveReference(page).ResolveReference(u)
+		*u = *rewriteUrl(base, page, u)
 	}
 	return rewriter, nil
 }

@@ -37,12 +37,14 @@ var markdown goldmark.Markdown = goldmark.New(
 type PageMarkdown struct {
 	Root   ast.Node
 	Header []byte
+	Images []string
 }
 
 func ParseMarkdown(src []byte) PageMarkdown {
 	var ret PageMarkdown
 	ret.Root = markdown.Parser().Parse(text.NewReader(src))
 	ret.Header = findHeader(ret.Root, src)
+	ret.Images = getImages(ret.Root, src)
 	return ret
 }
 
@@ -59,6 +61,17 @@ func findHeader(root ast.Node, src []byte) []byte {
 		return ast.WalkContinue, nil
 	})
 	return buf.Bytes()
+}
+
+func getImages(root ast.Node, src []byte) []string {
+	var imgs []string
+	ast.Walk(root, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
+		if n.Kind() == ast.KindImage {
+			imgs = append(imgs, string(n.(*ast.Image).Destination))
+		}
+		return ast.WalkContinue, nil
+	})
+	return imgs
 }
 
 // Render renders the page in HTML format.

@@ -10,6 +10,7 @@ import (
 	"jacobo.tarrio.org/jtweb/config"
 	"jacobo.tarrio.org/jtweb/io"
 	"jacobo.tarrio.org/jtweb/languages"
+	"jacobo.tarrio.org/jtweb/renderer"
 	"jacobo.tarrio.org/jtweb/uri"
 )
 
@@ -38,6 +39,7 @@ type PageData struct {
 	Summary      string
 	Episode      string
 	PublishDate  time.Time
+	CoverImage   string
 	Tags         []string
 	Content      template.HTML
 	NewerPage    LinkData
@@ -119,6 +121,7 @@ func (t *Templates) getTemplate(name string) (*template.Template, error) {
 		"plural":     t.plural,
 		"site":       t.getSite,
 		"webRoot":    t.getWebroot,
+		"rebaseUrl":  t.rebaseUrl,
 		"commentsJs": t.getCommentsJs,
 	}).Parse(string(tmpl))
 	if err != nil {
@@ -152,6 +155,7 @@ func (t *Templates) getTextTemplate(name string) (*textTemplate.Template, error)
 		"plural":     t.plural,
 		"site":       t.getSite,
 		"webRoot":    t.getWebroot,
+		"rebaseUrl":  t.rebaseUrl,
 	}).Parse(string(tmpl))
 	if err != nil {
 		return nil, err
@@ -211,6 +215,14 @@ func (t *Templates) getSite() LinkData {
 
 func (t *Templates) getWebroot() string {
 	return t.config.WebRoot()
+}
+
+func (t *Templates) rebaseUrl(base, url string) string {
+	result, err := renderer.RewriteUrl(t.config.Uri(), base, url)
+	if err != nil {
+		return url
+	}
+	return result
 }
 
 func (t *Templates) getCommentsJs() string {

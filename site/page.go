@@ -94,15 +94,16 @@ func (c *Contents) makePageData(page *page.Page) (*templates.PageData, error) {
 	}
 
 	pageData := &templates.PageData{
-		Title:     page.Header.Title,
-		Permalink: c.makePageURI(page),
-		Name:      string(page.Name),
-		Author:    templates.LinkData{},
-		Summary:   page.Header.Summary,
-		Episode:   page.Header.Episode,
-		Tags:      page.Header.Tags,
-		Content:   template.HTML(content.String()),
-		Draft:     page.Header.Draft,
+		Title:      page.Header.Title,
+		Permalink:  c.makePageURI(page),
+		Name:       string(page.Name),
+		Author:     templates.LinkData{},
+		Summary:    page.Header.Summary,
+		Episode:    page.Header.Episode,
+		CoverImage: page.Header.CoverImage,
+		Tags:       page.Header.Tags,
+		Content:    template.HTML(content.String()),
+		Draft:      page.Header.Draft,
 	}
 	if !page.Header.HidePublishDate {
 		pageData.PublishDate = page.Header.PublishDate

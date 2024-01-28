@@ -238,6 +238,9 @@ author_uri: "http://example.com/johndoe"
 hide_author: true
 # (Optional) If true, do not add this page in tables of contents. Default: false.
 no_index: true
+# (Optional) The image to display in social media cards for links to this post.
+# The first image in the article will be added if unspecified. Leave empty for "none".
+cover_image: image.jpg
 # (Optional) The name of the page this is a translation of.
 translation_of: "textos/bonito-articulo"
 # (Optional) A list of tags for this page. This page will appear in those tag's tables of contents.

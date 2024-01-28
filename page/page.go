@@ -35,6 +35,7 @@ type HeaderData struct {
 	AuthorName      string
 	AuthorURI       string
 	HideAuthor      bool
+	CoverImage      string
 	Tags            []string
 	NoIndex         bool
 	OldURI          []string
@@ -75,7 +76,7 @@ func Parse(name string, r io.Reader) (*Page, error) {
 	}
 	src := buf.Bytes()
 	md := renderer.ParseMarkdown(src)
-	header, err := parseHeader(md.Header)
+	header, err := parseHeader(md.Header, md.Images)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +90,7 @@ func (p *Page) Render(w io.Writer) error {
 }
 
 // parseHeader parses the raw header and returns a HeaderData object.
-func parseHeader(hdr []byte) (HeaderData, error) {
+func parseHeader(hdr []byte, imgs []string) (HeaderData, error) {
 	var out HeaderData
 
 	// RawHeader contains the structure for the header contents.
@@ -98,11 +99,12 @@ func parseHeader(hdr []byte) (HeaderData, error) {
 		Language        string
 		Summary         string
 		Episode         string
-		PublishDate     string `yaml:"publish_date"`
-		HidePublishDate bool   `yaml:"no_publish_date"`
-		AuthorName      string `yaml:"author_name"`
-		AuthorURI       string `yaml:"author_uri"`
-		HideAuthor      bool   `yaml:"hide_author"`
+		PublishDate     string  `yaml:"publish_date"`
+		HidePublishDate bool    `yaml:"no_publish_date"`
+		AuthorName      string  `yaml:"author_name"`
+		AuthorURI       string  `yaml:"author_uri"`
+		HideAuthor      bool    `yaml:"hide_author"`
+		CoverImage      *string `yaml:"cover_image"`
 		Tags            []string
 		NoIndex         bool     `yaml:"no_index"`
 		OldURI          []string `yaml:"old_uris"`
@@ -146,6 +148,13 @@ func parseHeader(hdr []byte) (HeaderData, error) {
 	out.AuthorName = rawHeader.AuthorName
 	out.AuthorURI = rawHeader.AuthorURI
 	out.HideAuthor = rawHeader.HideAuthor
+	if rawHeader.CoverImage == nil {
+		if len(imgs) > 0 {
+			out.CoverImage = imgs[0]
+		}
+	} else {
+		out.CoverImage = *rawHeader.CoverImage
+	}
 	out.Tags = rawHeader.Tags
 	out.NoIndex = rawHeader.NoIndex
 	out.OldURI = rawHeader.OldURI
