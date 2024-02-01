@@ -100,7 +100,7 @@ class JtCommentsElement extends HTMLElement {
                 return;
             }
             msg = Lang.MessageType.CommentPostedAsDraft;
-        } catch (_) {
+        } catch {
             msg = Lang.MessageType.ErrorPostingComment;
         }
         let p = document.createElement('p');
