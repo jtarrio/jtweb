@@ -475,7 +475,7 @@
                 }
                 msg = MessageType.CommentPostedAsDraft;
             }
-            catch (_) {
+            catch {
                 msg = MessageType.ErrorPostingComment;
             }
             let p = document.createElement('p');
