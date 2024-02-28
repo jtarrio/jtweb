@@ -1,6 +1,7 @@
 package genericsql
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"strconv"
@@ -27,8 +28,8 @@ func NewGenericSqlEngine(db *sql.DB) engine.Engine {
 	return &GenericSqlEngine{db: db}
 }
 
-func (e *GenericSqlEngine) GetConfig(postId comments.PostId) (*engine.Config, error) {
-	return doInReadTx(e, func(tx *sql.Tx) (*engine.Config, error) {
+func (e *GenericSqlEngine) GetConfig(ctx context.Context, postId comments.PostId) (*engine.Config, error) {
+	return doInReadTx(ctx, e, func(tx *sql.Tx) (*engine.Config, error) {
 		return getConfig(tx, postId)
 	})
 }
@@ -75,8 +76,8 @@ func getConfig(tx *sql.Tx, postId comments.PostId) (*engine.Config, error) {
 	return cfg, nil
 }
 
-func (e *GenericSqlEngine) SetConfig(newConfig, oldConfig *engine.Config) error {
-	return doInWriteTxNoReturn(e, func(tx *sql.Tx) error {
+func (e *GenericSqlEngine) SetConfig(ctx context.Context, newConfig, oldConfig *engine.Config) error {
+	return doInWriteTxNoReturn(ctx, e, func(tx *sql.Tx) error {
 		current, err := getConfig(tx, newConfig.PostId)
 		if err != nil {
 			return err
@@ -94,8 +95,8 @@ func (e *GenericSqlEngine) SetConfig(newConfig, oldConfig *engine.Config) error 
 	})
 }
 
-func (e *GenericSqlEngine) SetAllPostConfigs(cfg *engine.BulkConfig) error {
-	return doInWriteTxNoReturn(e, func(tx *sql.Tx) error {
+func (e *GenericSqlEngine) SetAllPostConfigs(ctx context.Context, cfg *engine.BulkConfig) error {
+	return doInWriteTxNoReturn(ctx, e, func(tx *sql.Tx) error {
 		knownPosts := map[engine.PostId]engine.CommentState{}
 		{
 			rows, err := tx.Query(`SELECT PostId, State FROM Posts`)
@@ -196,8 +197,8 @@ func parseCommentRow(rows *sql.Rows) (*engine.Comment, error) {
 	}, nil
 }
 
-func (e *GenericSqlEngine) List(postId comments.PostId, seeDrafts bool) ([]*engine.Comment, error) {
-	return doInReadTx(e, func(tx *sql.Tx) ([]*engine.Comment, error) {
+func (e *GenericSqlEngine) List(ctx context.Context, postId comments.PostId, seeDrafts bool) ([]*engine.Comment, error) {
+	return doInReadTx(ctx, e, func(tx *sql.Tx) ([]*engine.Comment, error) {
 		stmt, err := tx.Prepare(fmt.Sprintf(`SELECT %s FROM Comments WHERE PostId = ? AND (Visible OR ?)`, commentRowFields()))
 		if err != nil {
 			return nil, sqlError(err)
@@ -220,8 +221,8 @@ func (e *GenericSqlEngine) List(postId comments.PostId, seeDrafts bool) ([]*engi
 	})
 }
 
-func (e *GenericSqlEngine) Add(newComment *engine.NewComment) (*engine.Comment, error) {
-	return doInWriteTx(e, func(tx *sql.Tx) (*engine.Comment, error) {
+func (e *GenericSqlEngine) Add(ctx context.Context, newComment *engine.NewComment) (*engine.Comment, error) {
+	return doInWriteTx(ctx, e, func(tx *sql.Tx) (*engine.Comment, error) {
 		stmt, err := tx.Prepare(`INSERT INTO Comments (PostId, Visible, Author, Date, Text) VALUES (?, ?, ?, ?, ?)`)
 		if err != nil {
 			return nil, sqlError(err)
@@ -246,8 +247,8 @@ func (e *GenericSqlEngine) Add(newComment *engine.NewComment) (*engine.Comment, 
 	})
 }
 
-func (e *GenericSqlEngine) FindComments(filter engine.CommentFilter, sort engine.Sort, limit int, start int) ([]*engine.Comment, error) {
-	return doInReadTx(e, func(tx *sql.Tx) ([]*engine.Comment, error) {
+func (e *GenericSqlEngine) FindComments(ctx context.Context, filter engine.CommentFilter, sort engine.Sort, limit int, start int) ([]*engine.Comment, error) {
+	return doInReadTx(ctx, e, func(tx *sql.Tx) ([]*engine.Comment, error) {
 		where, args := whereStrComments(filter)
 		order := orderStrComments(sort)
 		stmt, err := tx.Prepare(fmt.Sprintf(`SELECT %s FROM Comments WHERE %s ORDER BY %s LIMIT %d OFFSET %d`, commentRowFields(), where, order, limit, start))
@@ -292,8 +293,8 @@ func orderStrComments(sort engine.Sort) string {
 	}
 }
 
-func (e *GenericSqlEngine) DeleteComments(ids map[engine.PostId][]*engine.CommentId) error {
-	return doInWriteTxNoReturn(e, func(tx *sql.Tx) error {
+func (e *GenericSqlEngine) DeleteComments(ctx context.Context, ids map[engine.PostId][]*engine.CommentId) error {
+	return doInWriteTxNoReturn(ctx, e, func(tx *sql.Tx) error {
 		stmt, err := tx.Prepare(`DELETE FROM Comments WHERE PostId = ? AND CommentId = ?`)
 		if err != nil {
 			return sqlError(err)
@@ -315,8 +316,8 @@ func (e *GenericSqlEngine) DeleteComments(ids map[engine.PostId][]*engine.Commen
 	})
 }
 
-func (e *GenericSqlEngine) FindPosts(filter engine.PostFilter, sort engine.Sort, limit int, start int) ([]*engine.Config, error) {
-	return doInReadTx(e, func(tx *sql.Tx) ([]*engine.Config, error) {
+func (e *GenericSqlEngine) FindPosts(ctx context.Context, filter engine.PostFilter, sort engine.Sort, limit int, start int) ([]*engine.Config, error) {
+	return doInReadTx(ctx, e, func(tx *sql.Tx) ([]*engine.Config, error) {
 		where, args := whereStrPosts(filter)
 		order := orderStrPosts(sort)
 		stmt, err := tx.Prepare(fmt.Sprintf(`SELECT %s FROM Posts WHERE %s ORDER BY %s LIMIT %d OFFSET %d`, postRowFields(), where, order, limit, start))
@@ -384,8 +385,8 @@ func orderStrPosts(sort engine.Sort) string {
 	}
 }
 
-func (e *GenericSqlEngine) BulkSetVisible(ids map[engine.PostId][]*engine.CommentId, visible bool) error {
-	return doInWriteTxNoReturn(e, func(tx *sql.Tx) error {
+func (e *GenericSqlEngine) BulkSetVisible(ctx context.Context, ids map[engine.PostId][]*engine.CommentId, visible bool) error {
+	return doInWriteTxNoReturn(ctx, e, func(tx *sql.Tx) error {
 		stmt, err := tx.Prepare(`UPDATE Comments SET Visible = ? WHERE PostId = ? AND CommentId = ?`)
 		if err != nil {
 			return sqlError(err)
@@ -407,8 +408,8 @@ func (e *GenericSqlEngine) BulkSetVisible(ids map[engine.PostId][]*engine.Commen
 	})
 }
 
-func (e *GenericSqlEngine) BulkUpdatePostConfigs(cfg *engine.BulkConfig) error {
-	return doInWriteTxNoReturn(e, func(tx *sql.Tx) error {
+func (e *GenericSqlEngine) BulkUpdatePostConfigs(ctx context.Context, cfg *engine.BulkConfig) error {
+	return doInWriteTxNoReturn(ctx, e, func(tx *sql.Tx) error {
 		stmt, err := tx.Prepare(`UPDATE Posts SET StateFromWeb = ? WHERE PostId = ?`)
 		if err != nil {
 			return sqlError(err)

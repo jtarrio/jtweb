@@ -26,14 +26,14 @@ func IsSqlError(e error) bool {
 	return ok
 }
 
-func doInReadTx[R any](e *GenericSqlEngine, op func(tx *sql.Tx) (R, error)) (R, error) {
-	return doInTx(e, sql.LevelReadCommitted, op)
+func doInReadTx[R any](ctx context.Context, e *GenericSqlEngine, op func(tx *sql.Tx) (R, error)) (R, error) {
+	return doInTx(ctx, e, sql.LevelReadCommitted, op)
 }
 
-func doInWriteTx[R any](e *GenericSqlEngine, op func(tx *sql.Tx) (R, error)) (R, error) {
+func doInWriteTx[R any](ctx context.Context, e *GenericSqlEngine, op func(tx *sql.Tx) (R, error)) (R, error) {
 	retries_left := 1
 	for {
-		ret, err := doInTx(e, sql.LevelSerializable, op)
+		ret, err := doInTx(ctx, e, sql.LevelSerializable, op)
 		if !IsSqlError(err) {
 			return ret, err
 		}
@@ -45,16 +45,16 @@ func doInWriteTx[R any](e *GenericSqlEngine, op func(tx *sql.Tx) (R, error)) (R,
 	}
 }
 
-func doInWriteTxNoReturn(e *GenericSqlEngine, op func(tx *sql.Tx) error) error {
-	_, err := doInWriteTx(e, func(tx *sql.Tx) (bool, error) {
+func doInWriteTxNoReturn(ctx context.Context, e *GenericSqlEngine, op func(tx *sql.Tx) error) error {
+	_, err := doInWriteTx(ctx, e, func(tx *sql.Tx) (bool, error) {
 		return false, op(tx)
 	})
 	return err
 }
 
-func doInTx[R any](e *GenericSqlEngine, level sql.IsolationLevel, op func(tx *sql.Tx) (R, error)) (R, error) {
+func doInTx[R any](ctx context.Context, e *GenericSqlEngine, level sql.IsolationLevel, op func(tx *sql.Tx) (R, error)) (R, error) {
 	var zero R
-	tx, err := e.db.BeginTx(context.TODO(), &sql.TxOptions{Isolation: (sql.LevelReadCommitted)})
+	tx, err := e.db.BeginTx(ctx, &sql.TxOptions{Isolation: level})
 	if err != nil {
 		return zero, err
 	}

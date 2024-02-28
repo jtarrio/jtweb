@@ -1,6 +1,8 @@
 package lib
 
 import (
+	"context"
+
 	"jacobo.tarrio.org/jtweb/comments"
 	"jacobo.tarrio.org/jtweb/comments/service"
 	"jacobo.tarrio.org/jtweb/site"
@@ -17,6 +19,6 @@ func OpComments() OpFn {
 			}
 			posts.Posts[comments.PostId(name)] = cfg
 		}
-		return cfg.Service().SetAvailablePosts(posts)
+		return cfg.Service().SetAvailablePosts(context.Background(), posts)
 	}
 }

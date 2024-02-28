@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"context"
 	"time"
 
 	"jacobo.tarrio.org/jtweb/comments"
@@ -60,14 +61,14 @@ const (
 )
 
 type Engine interface {
-	GetConfig(postId PostId) (*Config, error)
-	SetConfig(newConfig, oldConfig *Config) error
-	SetAllPostConfigs(cfg *BulkConfig) error
-	BulkUpdatePostConfigs(cfg *BulkConfig) error
-	List(postId PostId, seeDrafts bool) ([]*Comment, error)
-	Add(comment *NewComment) (*Comment, error)
-	FindComments(filter CommentFilter, sort Sort, limit int, start int) ([]*Comment, error)
-	DeleteComments(ids map[PostId][]*CommentId) error
-	FindPosts(filter PostFilter, sort Sort, limit int, start int) ([]*Config, error)
-	BulkSetVisible(ids map[PostId][]*CommentId, visible bool) error
+	GetConfig(ctx context.Context, postId PostId) (*Config, error)
+	SetConfig(ctx context.Context, newConfig, oldConfig *Config) error
+	SetAllPostConfigs(ctx context.Context, cfg *BulkConfig) error
+	BulkUpdatePostConfigs(ctx context.Context, cfg *BulkConfig) error
+	List(ctx context.Context, postId PostId, seeDrafts bool) ([]*Comment, error)
+	Add(ctx context.Context, comment *NewComment) (*Comment, error)
+	FindComments(ctx context.Context, filter CommentFilter, sort Sort, limit int, start int) ([]*Comment, error)
+	DeleteComments(ctx context.Context, ids map[PostId][]*CommentId) error
+	FindPosts(ctx context.Context, filter PostFilter, sort Sort, limit int, start int) ([]*Config, error)
+	BulkSetVisible(ctx context.Context, ids map[PostId][]*CommentId, visible bool) error
 }

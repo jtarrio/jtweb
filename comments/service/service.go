@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"time"
@@ -16,15 +17,15 @@ type Markdown = comments.Markdown
 type Html = comments.Html
 
 type CommentsService interface {
-	List(id PostId, seeDrafts bool) (*CommentList, error)
-	Add(comment *NewComment) (*Comment, error)
-	Render(text Markdown) (Html, error)
-	FindComments(filter CommentFilter, sort Sort, limit int, start int) (*FoundComments, error)
-	DeleteComments(ids map[PostId][]*CommentId) error
-	FindPosts(filter PostFilter, sort Sort, limit int, start int) (*FoundPosts, error)
-	BulkSetVisible(ids map[PostId][]*CommentId, visible bool) error
-	SetAvailablePosts(posts *AvailablePosts) error
-	BulkUpdatePostConfigs(ids []PostId, config CommentConfig) error
+	List(ctx context.Context, id PostId, seeDrafts bool) (*CommentList, error)
+	Add(ctx context.Context, comment *NewComment) (*Comment, error)
+	Render(ctx context.Context, text Markdown) (Html, error)
+	FindComments(ctx context.Context, filter CommentFilter, sort Sort, limit int, start int) (*FoundComments, error)
+	DeleteComments(ctx context.Context, ids map[PostId][]*CommentId) error
+	FindPosts(ctx context.Context, filter PostFilter, sort Sort, limit int, start int) (*FoundPosts, error)
+	BulkSetVisible(ctx context.Context, ids map[PostId][]*CommentId, visible bool) error
+	SetAvailablePosts(ctx context.Context, posts *AvailablePosts) error
+	BulkUpdatePostConfigs(ctx context.Context, ids []PostId, config CommentConfig) error
 }
 
 type CommentList struct {
@@ -136,8 +137,8 @@ func commentStateToConfig(state engine.CommentState) CommentConfig {
 	}
 }
 
-func (s *commentsServiceImpl) List(id PostId, seeDrafts bool) (*CommentList, error) {
-	cfg, err := s.engine.GetConfig(id)
+func (s *commentsServiceImpl) List(ctx context.Context, id PostId, seeDrafts bool) (*CommentList, error) {
+	cfg, err := s.engine.GetConfig(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +149,7 @@ func (s *commentsServiceImpl) List(id PostId, seeDrafts bool) (*CommentList, err
 	if !out.Config.IsReadable {
 		return out, nil
 	}
-	list, err := s.engine.List(id, seeDrafts)
+	list, err := s.engine.List(ctx, id, seeDrafts)
 	if err != nil {
 		return nil, err
 	}
@@ -162,11 +163,11 @@ func (s *commentsServiceImpl) List(id PostId, seeDrafts bool) (*CommentList, err
 	return out, nil
 }
 
-func (s *commentsServiceImpl) FindComments(filter CommentFilter, sort Sort, limit int, start int) (*FoundComments, error) {
+func (s *commentsServiceImpl) FindComments(ctx context.Context, filter CommentFilter, sort Sort, limit int, start int) (*FoundComments, error) {
 	if start < 0 {
 		start = 0
 	}
-	list, err := s.engine.FindComments(filter, sort, limit+1, start)
+	list, err := s.engine.FindComments(ctx, filter, sort, limit+1, start)
 	if err != nil {
 		return nil, err
 	}
@@ -181,15 +182,15 @@ func (s *commentsServiceImpl) FindComments(filter CommentFilter, sort Sort, limi
 	return out, nil
 }
 
-func (s *commentsServiceImpl) DeleteComments(ids map[PostId][]*CommentId) error {
-	return s.engine.DeleteComments(ids)
+func (s *commentsServiceImpl) DeleteComments(ctx context.Context, ids map[PostId][]*CommentId) error {
+	return s.engine.DeleteComments(ctx, ids)
 }
 
-func (s *commentsServiceImpl) FindPosts(filter PostFilter, sort Sort, limit int, start int) (*FoundPosts, error) {
+func (s *commentsServiceImpl) FindPosts(ctx context.Context, filter PostFilter, sort Sort, limit int, start int) (*FoundPosts, error) {
 	if start < 0 {
 		start = 0
 	}
-	list, err := s.engine.FindPosts(filter, sort, limit+1, start)
+	list, err := s.engine.FindPosts(ctx, filter, sort, limit+1, start)
 	if err != nil {
 		return nil, err
 	}
@@ -206,8 +207,8 @@ func (s *commentsServiceImpl) FindPosts(filter PostFilter, sort Sort, limit int,
 	return out, nil
 }
 
-func (s *commentsServiceImpl) BulkSetVisible(ids map[PostId][]*CommentId, visible bool) error {
-	return s.engine.BulkSetVisible(ids, visible)
+func (s *commentsServiceImpl) BulkSetVisible(ctx context.Context, ids map[PostId][]*CommentId, visible bool) error {
+	return s.engine.BulkSetVisible(ctx, ids, visible)
 }
 
 func (s *commentsServiceImpl) parseComment(comment *engine.Comment) (*Comment, error) {
@@ -225,15 +226,15 @@ func (s *commentsServiceImpl) parseComment(comment *engine.Comment) (*Comment, e
 	return cmt, nil
 }
 
-func (s *commentsServiceImpl) Add(comment *NewComment) (*Comment, error) {
-	cfg, err := s.engine.GetConfig(comment.PostId)
+func (s *commentsServiceImpl) Add(ctx context.Context, comment *NewComment) (*Comment, error) {
+	cfg, err := s.engine.GetConfig(ctx, comment.PostId)
 	if err != nil {
 		return nil, err
 	}
 	if cfg.State != engine.CommentsEnabled {
 		return nil, fmt.Errorf("comments are closed for post [%s]", comment.PostId)
 	}
-	nc, err := s.engine.Add(&engine.NewComment{
+	nc, err := s.engine.Add(ctx, &engine.NewComment{
 		PostId:  comment.PostId,
 		Visible: s.defaultVisible,
 		Author:  comment.Author,
@@ -250,19 +251,19 @@ func (s *commentsServiceImpl) Add(comment *NewComment) (*Comment, error) {
 	return s.parseComment(nc)
 }
 
-func (s *commentsServiceImpl) Render(text Markdown) (Html, error) {
+func (s *commentsServiceImpl) Render(ctx context.Context, text Markdown) (Html, error) {
 	return s.renderer.Render(text)
 }
 
-func (s *commentsServiceImpl) SetAvailablePosts(posts *AvailablePosts) error {
+func (s *commentsServiceImpl) SetAvailablePosts(ctx context.Context, posts *AvailablePosts) error {
 	cfg := &engine.BulkConfig{Configs: make([]engine.Config, 0)}
 	for id, postCfg := range posts.Posts {
 		cfg.Configs = append(cfg.Configs, engine.Config{PostId: id, State: commentConfigToState(postCfg)})
 	}
-	return s.engine.SetAllPostConfigs(cfg)
+	return s.engine.SetAllPostConfigs(ctx, cfg)
 }
 
-func (s *commentsServiceImpl) BulkUpdatePostConfigs(ids []PostId, config CommentConfig) error {
+func (s *commentsServiceImpl) BulkUpdatePostConfigs(ctx context.Context, ids []PostId, config CommentConfig) error {
 	cfg := &engine.BulkConfig{
 		Configs: []engine.Config{},
 	}
@@ -273,5 +274,5 @@ func (s *commentsServiceImpl) BulkUpdatePostConfigs(ids []PostId, config Comment
 			State:  state,
 		})
 	}
-	return s.engine.BulkUpdatePostConfigs(cfg)
+	return s.engine.BulkUpdatePostConfigs(ctx, cfg)
 }

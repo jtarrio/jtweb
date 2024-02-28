@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"net/http"
 	"time"
 
@@ -37,27 +38,30 @@ func Serve(service service.CommentsService, adminChecker *AdminChecker) http.Han
 }
 
 func (s *apiService) list(rw http.ResponseWriter, req *http.Request) {
+	ctx := context.Background()
 	var params struct {
 		PostId service.PostId
 	}
 	if input(req, &params, rw) != nil {
 		return
 	}
-	list, err := s.service.List(params.PostId, false)
+	list, err := s.service.List(ctx, params.PostId, false)
 	output(list, err, rw)
 }
 
 func (s *apiService) add(rw http.ResponseWriter, req *http.Request) {
+	ctx := context.Background()
 	var newComment service.NewComment
 	if input(req, &newComment, rw) != nil {
 		return
 	}
 	newComment.When = time.Now()
-	comment, err := s.service.Add(&newComment)
+	comment, err := s.service.Add(ctx, &newComment)
 	output(comment, err, rw)
 }
 
 func (s *apiService) render(rw http.ResponseWriter, req *http.Request) {
+	ctx := context.Background()
 	if limitRate(s.renderLimiter, rw) != nil {
 		return
 	}
@@ -65,11 +69,12 @@ func (s *apiService) render(rw http.ResponseWriter, req *http.Request) {
 	if input(req, &inputData, rw) != nil {
 		return
 	}
-	outputData, err := s.service.Render(comments.Markdown(inputData.Text))
+	outputData, err := s.service.Render(ctx, comments.Markdown(inputData.Text))
 	output(struct{ Text comments.Html }{Text: outputData}, err, rw)
 }
 
 func (s *apiService) findComments(rw http.ResponseWriter, req *http.Request) {
+	ctx := context.Background()
 	var params struct {
 		Filter service.CommentFilter
 		Sort   service.Sort
@@ -79,22 +84,24 @@ func (s *apiService) findComments(rw http.ResponseWriter, req *http.Request) {
 	if input(req, &params, rw) != nil {
 		return
 	}
-	result, err := s.service.FindComments(params.Filter, params.Sort, params.Limit, params.Start)
+	result, err := s.service.FindComments(ctx, params.Filter, params.Sort, params.Limit, params.Start)
 	output(result, err, rw)
 }
 
 func (s *apiService) deleteComments(rw http.ResponseWriter, req *http.Request) {
+	ctx := context.Background()
 	var params struct {
 		Ids map[service.PostId][]*service.CommentId
 	}
 	if input(req, &params, rw) != nil {
 		return
 	}
-	err := s.service.DeleteComments(params.Ids)
+	err := s.service.DeleteComments(ctx, params.Ids)
 	output("Success", err, rw)
 }
 
 func (s *apiService) findPosts(rw http.ResponseWriter, req *http.Request) {
+	ctx := context.Background()
 	var params struct {
 		Filter service.PostFilter
 		Sort   service.Sort
@@ -104,11 +111,12 @@ func (s *apiService) findPosts(rw http.ResponseWriter, req *http.Request) {
 	if input(req, &params, rw) != nil {
 		return
 	}
-	result, err := s.service.FindPosts(params.Filter, params.Sort, params.Limit, params.Start)
+	result, err := s.service.FindPosts(ctx, params.Filter, params.Sort, params.Limit, params.Start)
 	output(result, err, rw)
 }
 
 func (s *apiService) bulkSetVisible(rw http.ResponseWriter, req *http.Request) {
+	ctx := context.Background()
 	var params struct {
 		Ids     map[service.PostId][]*service.CommentId
 		Visible bool
@@ -116,11 +124,12 @@ func (s *apiService) bulkSetVisible(rw http.ResponseWriter, req *http.Request) {
 	if input(req, &params, rw) != nil {
 		return
 	}
-	err := s.service.BulkSetVisible(params.Ids, params.Visible)
+	err := s.service.BulkSetVisible(ctx, params.Ids, params.Visible)
 	output("Success", err, rw)
 }
 
 func (s *apiService) bulkUpdatePostConfigs(rw http.ResponseWriter, req *http.Request) {
+	ctx := context.Background()
 	var params struct {
 		PostIds []service.PostId
 		Config  service.CommentConfig
@@ -128,6 +137,6 @@ func (s *apiService) bulkUpdatePostConfigs(rw http.ResponseWriter, req *http.Req
 	if input(req, &params, rw) != nil {
 		return
 	}
-	err := s.service.BulkUpdatePostConfigs(params.PostIds, params.Config)
+	err := s.service.BulkUpdatePostConfigs(ctx, params.PostIds, params.Config)
 	output("Success", err, rw)
 }
