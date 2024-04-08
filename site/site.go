@@ -282,7 +282,8 @@ func getTranslationsByName(pages map[page.Name]*page.Page) (map[page.Name][]Tran
 	translations := make(map[page.Name][]Translation)
 	for name, trans := range translationsByName {
 		for code, page := range trans {
-			if code != pages[name].Header.Language {
+			pg, ok := pages[name]
+			if ok && code != pg.Header.Language {
 				translations[name] = append(translations[name], Translation{Language: code, Name: page})
 			}
 		}
